@@ -1,1 +1,40 @@
-bash: /usr/bin/time: No such file or directory
+camera-imu timeoffset = 0.00007
+cam0 intrinsics = 191.920,191.989,255.148,256.561 | 0.003,-0.002,0.001,-0.000
+cam1 intrinsics = 191.285,191.373,252.661,254.605 | 0.004,-0.003,0.001,-0.000
+cam0 extrinsics = -0.013,-0.695,0.719,0.008 | 0.046,-0.050,-0.062
+cam1 extrinsics = -0.013,-0.712,0.702,0.008 | -0.055,-0.050,-0.066
+[34m[TIME]: 0.0330 seconds total (30.3 hz, 0.17 ms behind)
+[0mq_GtoI = -0.033,0.049,0.728,0.683 | p_IinG = 0.058,0.872,0.001 | dist = 146.50 (meters)
+bg = -0.0001,0.0001,0.0002 | ba = -0.0130,0.0059,-0.0342
+camera-imu timeoffset = 0.00007
+cam0 intrinsics = 191.920,191.989,255.148,256.560 | 0.003,-0.002,0.001,-0.000
+cam1 intrinsics = 191.284,191.373,252.662,254.605 | 0.004,-0.003,0.001,-0.000
+cam0 extrinsics = -0.013,-0.695,0.719,0.008 | 0.046,-0.050,-0.062
+cam1 extrinsics = -0.013,-0.712,0.702,0.008 | -0.055,-0.050,-0.066
+[34m[TIME]: 0.0356 seconds total (28.1 hz, 0.18 ms behind)
+[0mq_GtoI = -0.036,0.050,0.726,0.685 | p_IinG = 0.056,0.870,-0.001 | dist = 146.50 (meters)
+bg = -0.0001,0.0001,0.0002 | ba = -0.0129,0.0062,-0.0339
+camera-imu timeoffset = 0.00007
+cam0 intrinsics = 191.920,191.989,255.148,256.560 | 0.003,-0.002,0.001,-0.000
+cam1 intrinsics = 191.284,191.373,252.662,254.605 | 0.004,-0.003,0.001,-0.000
+cam0 extrinsics = -0.013,-0.695,0.719,0.008 | 0.046,-0.050,-0.062
+cam1 extrinsics = -0.013,-0.712,0.702,0.008 | -0.055,-0.050,-0.066
+[34m[TIME]: 0.0336 seconds total (29.7 hz, 0.20 ms behind)
+[0mq_GtoI = -0.035,0.049,0.722,0.689 | p_IinG = 0.055,0.869,-0.002 | dist = 146.50 (meters)
+bg = -0.0001,0.0001,0.0002 | ba = -0.0130,0.0065,-0.0336
+camera-imu timeoffset = 0.00007
+cam0 intrinsics = 191.919,191.989,255.148,256.560 | 0.003,-0.002,0.001,-0.000
+cam1 intrinsics = 191.284,191.372,252.662,254.605 | 0.004,-0.003,0.001,-0.000
+cam0 extrinsics = -0.013,-0.695,0.719,0.008 | 0.046,-0.050,-0.062
+cam1 extrinsics = -0.013,-0.712,0.702,0.008 | -0.055,-0.050,-0.066
+[34m[TIME]: 0.0428 seconds total (23.4 hz, 0.21 ms behind)
+[0mq_GtoI = -0.033,0.052,0.719,0.692 | p_IinG = 0.055,0.868,-0.004 | dist = 146.51 (meters)
+bg = -0.0002,0.0001,0.0002 | ba = -0.0130,0.0069,-0.0334
+camera-imu timeoffset = 0.00007
+cam0 intrinsics = 191.920,191.989,255.149,256.561 | 0.003,-0.002,0.001,-0.000
+cam1 intrinsics = 191.284,191.373,252.662,254.605 | 0.004,-0.003,0.001,-0.000
+cam0 extrinsics = -0.013,-0.695,0.719,0.008 | 0.046,-0.050,-0.062
+cam1 extrinsics = -0.013,-0.712,0.702,0.008 | -0.055,-0.050,-0.066
+[34m[TIME]: 0.terminate called after throwing an instance of 'class_loader::LibraryUnloadException'
+  what():  Attempt to unload library that class_loader is unaware of: /opt/ros/noetic/lib//libcompressed_depth_image_transport.so
+BENCH_STATS wall_s=99.8 cpu_s=128.8 cpu_percent=129 maxrss_mb=101.7

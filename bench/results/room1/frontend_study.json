@@ -1,0 +1,34 @@
+{
+  "orb/day": {
+    "matches_mean": 396.15,
+    "inliers_mean": 210.625,
+    "inliers_median": 177.0,
+    "inlier_ratio_mean": 0.4975370177341164,
+    "pairs_below_30_inliers": 2,
+    "n_pairs": 40
+  },
+  "xfeat/day": {
+    "matches_mean": 890.0,
+    "inliers_mean": 395.675,
+    "inliers_median": 382.0,
+    "inlier_ratio_mean": 0.41877205781062576,
+    "pairs_below_30_inliers": 0,
+    "n_pairs": 40
+  },
+  "orb/night": {
+    "matches_mean": 203.5,
+    "inliers_mean": 66.3,
+    "inliers_median": 43.0,
+    "inlier_ratio_mean": 0.28975093235861527,
+    "pairs_below_30_inliers": 14,
+    "n_pairs": 40
+  },
+  "xfeat/night": {
+    "matches_mean": 814.65,
+    "inliers_mean": 292.925,
+    "inliers_median": 268.0,
+    "inlier_ratio_mean": 0.3371327139588681,
+    "pairs_below_30_inliers": 0,
+    "n_pairs": 40
+  }
+}

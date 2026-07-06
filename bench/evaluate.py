@@ -103,24 +103,28 @@ def ate_stats(gt_xyz: np.ndarray, est_xyz: np.ndarray, with_scale: bool = False)
     }
 
 
-def rpe_stats(gt: np.ndarray, est: np.ndarray, delta: float) -> dict:
-    """Relative pose (translation) error over time windows of `delta` seconds.
+def rpe_stats(gt_xyz_t: np.ndarray, est_xyz_aligned: np.ndarray, t: np.ndarray,
+              delta: float) -> dict:
+    """Relative (windowed) translation drift over `delta` seconds.
 
-    gt/est are time-associated (N,8) arrays with identical row correspondence.
+    Compares world-frame displacement vectors after SE3 alignment:
+        err_i = || (p_est[j]-p_est[i]) - (p_gt[j]-p_gt[i]) ||,  t[j] ~ t[i]+delta
+
+    Deliberately NOT the body-frame RPE: mocap ground truth commonly sits in a
+    marker frame with a constant rotation/lever-arm offset from the IMU frame,
+    which poisons body-frame relative translations while leaving ATE valid
+    (observed on TUM-VI room1: body-frame RPE ~1.7 m vs 7 cm ATE).
     """
-    t = gt[:, 0]
     j = np.searchsorted(t, t + delta)
     keep = j < len(t)
     i, j = np.nonzero(keep)[0], j[keep]
     if len(i) == 0:
-        return {"rmse": None, "max": None, "pairs": 0}
-
-    Rg, Re = quat_to_rot(gt[:, 4:8]), quat_to_rot(est[:, 4:8])
-    # relative translations expressed in the frame at time i
-    dg = np.einsum("nij,ni->nj", Rg[i].transpose(0, 2, 1), gt[j, 1:4] - gt[i, 1:4])
-    de = np.einsum("nij,ni->nj", Re[i].transpose(0, 2, 1), est[j, 1:4] - est[i, 1:4])
+        return {"rmse": None, "median": None, "max": None, "pairs": 0}
+    dg = gt_xyz_t[j] - gt_xyz_t[i]
+    de = est_xyz_aligned[j] - est_xyz_aligned[i]
     err = np.linalg.norm(dg - de, axis=1)
-    return {"rmse": float(np.sqrt(np.mean(err**2))), "max": float(err.max()), "pairs": int(len(err))}
+    return {"rmse": float(np.sqrt(np.mean(err**2))), "median": float(np.median(err)),
+            "max": float(err.max()), "pairs": int(len(err))}
 
 
 def coverage_stats(t_gt: np.ndarray, t_est: np.ndarray, gap_threshold: float) -> dict:
@@ -149,9 +153,11 @@ def evaluate(gt_path: str, est_path: str, max_diff: float = 0.02,
     if len(gi) < 10:
         raise ValueError(f"only {len(gi)} associated pairs (max_diff={max_diff}s) — clocks aligned?")
     g, e = gt[gi], est[ei]
+    s, R, tr = umeyama(e[:, 1:4], g[:, 1:4], with_scale)
+    e_aligned = (s * (R @ e[:, 1:4].T)).T + tr
     return {
         "ate": ate_stats(g[:, 1:4], e[:, 1:4], with_scale),
-        "rpe": rpe_stats(g, e, delta),
+        "rpe": rpe_stats(g[:, 1:4], e_aligned, g[:, 0], delta),
         **coverage_stats(gt[:, 0], est[:, 0], gap_threshold),
         "gt_duration": float(gt[-1, 0] - gt[0, 0]),
         "est_poses": int(len(est)),

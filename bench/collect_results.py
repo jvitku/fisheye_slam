@@ -36,21 +36,18 @@ def find_trajectory(run_dir: Path) -> Path | None:
 
 
 def scrape_time_v(log: Path) -> dict:
-    """Pull wall / CPU / peak-RSS out of a /usr/bin/time -v capture."""
+    """Pull wall / CPU / peak-RSS from a BENCH_STATS line (bench/timer_wrap.py)."""
     out = {}
     if not log.exists():
         return out
     text = log.read_text(errors="replace")
-    m = re.search(r"Elapsed \(wall clock\).*?(\d+):([\d.]+)(?::([\d.]+))?", text)
+    m = re.search(r"BENCH_STATS wall_s=([\d.]+) cpu_s=([\d.]+) "
+                  r"cpu_percent=(\d+) maxrss_mb=([\d.]+)", text)
     if m:
-        a, b, c = m.groups()
-        out["wall_s"] = (int(a) * 3600 + float(b) * 60 + float(c)) if c else (int(a) * 60 + float(b))
-    m = re.search(r"Maximum resident set size \(kbytes\): (\d+)", text)
-    if m:
-        out["peak_rss_mb"] = round(int(m.group(1)) / 1024, 1)
-    m = re.search(r"Percent of CPU this job got: (\d+)%", text)
-    if m:
-        out["cpu_percent"] = int(m.group(1))
+        out["wall_s"] = float(m.group(1))
+        out["cpu_s"] = float(m.group(2))
+        out["cpu_percent"] = int(m.group(3))
+        out["peak_rss_mb"] = float(m.group(4))
     return out
 
 
@@ -75,7 +72,7 @@ def collect(results_dir: Path) -> dict:
 
 
 def to_markdown(rows: dict) -> str:
-    hdr = ("| run | ATE rmse [m] | ATE max [m] | RPE@1s rmse [m] | coverage | gaps | "
+    hdr = ("| run | ATE rmse [m] | ATE max [m] | RPE@1s med [m] | coverage | gaps | "
            "poses | wall [s] | cpu | peak RSS [MB] | status |")
     sep = "|" + "---|" * 11
     lines = [hdr, sep]
@@ -85,7 +82,7 @@ def to_markdown(rows: dict) -> str:
         fmt = lambda v, p=3: (f"{v:.{p}f}" if isinstance(v, (int, float)) else "—")
         lines.append(
             f"| {name} | {fmt(ate.get('rmse'))} | {fmt(ate.get('max'))} "
-            f"| {fmt(rpe.get('rmse'))} | {fmt(r.get('coverage'), 2)} "
+            f"| {fmt(rpe.get('median'))} | {fmt(r.get('coverage'), 2)} "
             f"| {r.get('gaps', '—')} | {r.get('est_poses', '—')} "
             f"| {fmt(r.get('wall_s'), 0)} | {r.get('cpu_percent', '—')}% "
             f"| {r.get('peak_rss_mb', '—')} | {r.get('status', '?')} |"

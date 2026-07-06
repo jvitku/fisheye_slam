@@ -17,21 +17,27 @@ openvins)
     docker run --rm \
         -v "$BAG:/data/input.bag:ro" \
         -v "$ROOT/bench/configs/openvins_tumvi:/config:ro" \
+        -v "$ROOT/bench/timer_wrap.py:/timer_wrap.py:ro" \
         -v "$OUT:/out" \
         3dfe/openvins \
         bash -lc "source /catkin_ws/devel/setup.bash && \
             (roscore >/dev/null 2>&1 &) && sleep 3 && \
-            /usr/bin/time -v rosrun ov_msckf ros1_serial_msckf \
+            python3 /timer_wrap.py rosrun ov_msckf ros1_serial_msckf \
                 /config/estimator_config.yaml _path_bag:=/data/input.bag \
+                _save_total_state:=true \
+                _filepath_est:=/out/state_estimate.txt \
+                _filepath_std:=/out/state_std.txt \
+                _filepath_gt:=/out/state_gt.txt \
                 2>&1 | tail -40" 2>&1 | tee "$OUT/run.log"
     ;;
 basalt)
     docker run --rm \
         -v "$BAG:/data/input.bag:ro" \
+        -v "$ROOT/bench/timer_wrap.py:/timer_wrap.py:ro" \
         -v "$OUT:/out" \
         -w /out \
         3dfe/basalt \
-        bash -c "/usr/bin/time -v basalt_vio \
+        bash -c "python3 /timer_wrap.py basalt_vio \
             --dataset-path /data/input.bag --dataset-type bag \
             --cam-calib /src/basalt/data/tumvi_512_ds_calib.json \
             --config-path /src/basalt/data/tumvi_512_config.json \

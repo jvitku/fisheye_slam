@@ -1,0 +1,40 @@
+cam0 intrinsics = 191.875,192.097,255.264,256.804 | 0.003,-0.003,0.001,-0.000
+cam1 intrinsics = 191.183,191.421,252.787,254.801 | 0.005,-0.005,0.002,-0.001
+cam0 extrinsics = -0.013,-0.695,0.719,0.008 | 0.046,-0.050,-0.061
+cam1 extrinsics = -0.013,-0.712,0.702,0.008 | -0.055,-0.049,-0.066
+[34m[TIME]: 0.0093 seconds total (107.4 hz, 0.17 ms behind)
+[0mq_GtoI = -0.034,0.048,0.730,0.681 | p_IinG = 0.190,0.769,-0.047 | dist = 146.55 (meters)
+bg = -0.0000,0.0002,0.0001 | ba = -0.0131,0.0082,-0.0366
+camera-imu timeoffset = 0.00006
+cam0 intrinsics = 191.875,192.097,255.264,256.804 | 0.003,-0.003,0.001,-0.000
+cam1 intrinsics = 191.183,191.421,252.787,254.801 | 0.005,-0.005,0.002,-0.001
+cam0 extrinsics = -0.013,-0.695,0.719,0.008 | 0.046,-0.050,-0.061
+cam1 extrinsics = -0.013,-0.712,0.702,0.008 | -0.055,-0.049,-0.066
+[34m[TIME]: 0.0116 seconds total (86.6 hz, 0.18 ms behind)
+[0mq_GtoI = -0.036,0.049,0.727,0.684 | p_IinG = 0.189,0.768,-0.049 | dist = 146.55 (meters)
+bg = -0.0000,0.0002,0.0001 | ba = -0.0131,0.0083,-0.0363
+camera-imu timeoffset = 0.00006
+cam0 intrinsics = 191.875,192.097,255.264,256.804 | 0.003,-0.003,0.001,-0.000
+cam1 intrinsics = 191.183,191.421,252.786,254.801 | 0.005,-0.005,0.002,-0.001
+cam0 extrinsics = -0.013,-0.695,0.719,0.008 | 0.046,-0.050,-0.061
+cam1 extrinsics = -0.013,-0.712,0.702,0.008 | -0.055,-0.049,-0.066
+[34m[TIME]: 0.0101 seconds total (99.5 hz, 0.20 ms behind)
+[0mq_GtoI = -0.036,0.049,0.724,0.688 | p_IinG = 0.188,0.767,-0.050 | dist = 146.55 (meters)
+bg = -0.0000,0.0002,0.0001 | ba = -0.0131,0.0084,-0.0361
+camera-imu timeoffset = 0.00006
+cam0 intrinsics = 191.876,192.097,255.264,256.804 | 0.003,-0.003,0.001,-0.000
+cam1 intrinsics = 191.183,191.420,252.786,254.801 | 0.005,-0.005,0.002,-0.001
+cam0 extrinsics = -0.013,-0.695,0.719,0.008 | 0.046,-0.050,-0.061
+cam1 extrinsics = -0.013,-0.712,0.702,0.008 | -0.055,-0.049,-0.066
+[34m[TIME]: 0.0121 seconds total (82.7 hz, 0.22 ms behind)
+[0mq_GtoI = -0.033,0.051,0.720,0.691 | p_IinG = 0.187,0.766,-0.052 | dist = 146.56 (meters)
+bg = -0.0000,0.0002,0.0001 | ba = -0.0131,0.0086,-0.0359
+camera-imu timeoffset = 0.00006
+cam0 intrinsics = 191.876,192.098,255.263,256.804 | 0.003,-0.003,0.001,-0.000
+cam1 intrinsics = 191.183,191.420,252.786,254.801 | 0.005,-0.005,0.002,-0.001
+cam0 extrinsics = -0.013,-0.695,0.719,0.008 | 0.046,-0.050,-0.061
+cam1 extrinsics = -0.013,-0.712,0.702,0.008 | -0.055,-0.049,-0.066
+[34m[TIME]: 0.0124 seconds total (80.3 hz, 0.23 ms behind)
+[0mq_GtoI = -0.028,0.054,0.719,0.692 | p_IinG = 0.186,0.765,-0.053 | dist = 146.56 terminate called after throwing an instance of 'class_loader::LibraryUnloadException'
+  what():  Attempt to unload library that class_loader is unaware of: /opt/ros/noetic/lib//libcompressed_depth_image_transport.so
+BENCH_STATS wall_s=96.7 cpu_s=127.7 cpu_percent=132 maxrss_mb=100.1
