@@ -43,6 +43,29 @@ Key design decisions:
   dropout gaps, not just ATE. A candidate that diverges quietly scores worse
   than one that dies loudly and recovers.
 
+## The sensor pod (the thing we're actually building)
+
+Besides the body-mounted survey rigs (`rig_{2,3,6}cam.yaml`), the benchmark
+models the target product: a **self-contained sensor pod** mounted on top of
+the drone — N coplanar fisheye cameras facing the same direction plus the
+pod's **own PX4 FC used as the IMU source** (independent of the drone's flight
+FC). Two variants:
+
+| Rig | Layout |
+|---|---|
+| `rigs/pod_2cam.yaml` | horizontal stereo pair, baseline 0.12 m |
+| `rigs/pod_3cam_triangle.yaml` | equilateral triangle (side 0.12 m) — adds vertical/diagonal baselines |
+
+In sim the pod FC IMU is `PodIMU` (`sim/isaac/workspace/pod_imu.py`): rigid
+mounted at the pod origin with correct offset physics, published on
+`/uav1/sensor_pod/imu` at 400 Hz; the drone's body IMU stays on `/uav1/imu`
+as reference. Camera/IMU mounts in pod rigs are pod-relative and resolved to
+the body frame by `rig_math.py` (unit-tested on the host).
+
+Pod **output** = position (winning VIO candidate on pod cams + pod IMU) and a
+dense 3D map (voxblox/nvblox TSDF) — that stage lives in
+`experiments/06_dense_mapping/`.
+
 ## Metrics (bench/evaluate.py)
 
 | Metric | Meaning |
@@ -56,7 +79,7 @@ Key design decisions:
 ## The matrix
 
 candidates {openvins, basalt*, openmavis, dba-fusion} ×
-rigs {2cam, 3cam, 6cam*} ×
+rigs {2cam, 3cam, 6cam*, pod_2cam, pod_3cam_triangle} ×
 trajectories {slow_scan, fast_yaw, low_light} ×
 skew {sync, 15ms, 40ms, 15ms+2ms-jitter}
 

@@ -44,6 +44,12 @@ deterministically offline. See **[bench/README.md](bench/README.md)** for the
 contract and metrics. The Isaac Sim + Pegasus setup in `sim/isaac/` is copied
 from `swarm_stack/tools/isaac` (provenance in its CLAUDE.md).
 
+The target product is modeled as a **sensor pod**: N coplanar same-direction
+fisheye cameras + the pod's own PX4-FC IMU, mounted on top of the drone —
+`rigs/pod_2cam.yaml` (stereo pair) and `rigs/pod_3cam_triangle.yaml`
+(triangle). Pod output = position + dense 3D map
+(`experiments/06_dense_mapping/`, voxblox/nvblox).
+
 ```bash
 # sim (GPU host): fisheye benchmark drone with the 3-cam rig
 cd sim/isaac && RIG_CONFIG=/rigs/rig_3cam.yaml ./start_all.sh -d

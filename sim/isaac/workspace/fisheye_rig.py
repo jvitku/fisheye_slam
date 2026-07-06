@@ -2,7 +2,8 @@
 
 Loads a rig definition from rigs/*.yaml (mounted at /rigs in the container) and
 
-  1. builds Pegasus MonocularCamera sensors for each camera entry, and
+  1. builds Pegasus MonocularCamera sensors for each camera entry (pod-relative
+     mounts already resolved to body frame by rig_math.load_rig), and
   2. after the vehicle is spawned, rewrites each camera prim to an f-theta
      (fisheyePolynomial) projection matching the rig's kb4 intrinsics.
 
@@ -12,48 +13,44 @@ polyC..E=0 — so the ground-truth calibration handed to the candidates is
 exact and calibration error is eliminated as a benchmark variable.
 
 Frame conventions:
-  - rig yaml `mount`: position [m] + rpy_deg (ZYX euler) in the body FLU frame,
-    with z-forward optical axis derived from it (see rigs/README section in
-    each yaml).
-  - Pegasus MonocularCamera orientation quirk: the swarm_stack setup uses
-    [0, 0, 180] for a forward-facing camera (see px4_drone.py). We keep that
-    convention: `mount.rpy_deg` of [0,0,0] means "optical axis along body +x"
-    and the 180-deg yaw correction is applied here.
-    VERIFY-IN-SIM: confirm image orientation on first bring-up.
+  - rig mounts: position [m] + rpy_deg = [roll, pitch, yaw] in the parent FLU
+    frame, rpy [0,0,0] = optical axis along +x (see rig_math.py).
+  - Pegasus sensor `orientation` lists are consumed as
+    Rotation.from_euler("ZYX", ori) — i.e. ori = [yaw, pitch, roll] — see
+    livox_imu.py and the px4_drone.py examples ("forward" = [0,0,180],
+    "down" = [0,90,180]). A forward camera needs a 180-deg ROLL flip
+    (last element), which we apply as the optical-convention correction.
+    VERIFY-IN-SIM: confirm image orientation for yawed cameras on first
+    bring-up.
 """
 
 import carb
-import yaml
 
 from pegasus.simulator.logic.graphical_sensors.monocular_camera import MonocularCamera
 
-# Pegasus/Isaac camera convention correction (see module docstring).
-_YAW_CORRECTION_DEG = 180.0
+from rig_math import load_rig  # re-exported for bench_drone.py
+
+__all__ = ["load_rig", "make_cameras", "apply_fisheye_projections"]
+
+# Pegasus/Isaac camera optical-convention correction (see module docstring).
+_ROLL_CORRECTION_DEG = 180.0
 
 
-def load_rig(path):
-    with open(path) as f:
-        rig = yaml.safe_load(f)
-    for cam in rig["cameras"]:
-        if cam["model"] != "kb4":
-            raise ValueError(
-                f"benchmark rigs must use kb4 intrinsics (got '{cam['model']}' "
-                f"for {cam['name']}') — the sim renders an exact f-theta match"
-            )
-    return rig
+def _pegasus_orientation(rpy_deg):
+    """[roll, pitch, yaw] body mount -> Pegasus ZYX list [yaw, pitch, roll+180]."""
+    roll, pitch, yaw = rpy_deg
+    return [yaw, pitch, roll + _ROLL_CORRECTION_DEG]
 
 
 def make_cameras(rig):
-    """Build Pegasus MonocularCamera sensors from the rig definition."""
+    """Build Pegasus MonocularCamera sensors from a rig loaded by load_rig()."""
     cameras = []
     for cam in rig["cameras"]:
-        mount = cam["mount"]
-        rpy = list(mount["rpy_deg"])
-        rpy[2] = rpy[2] + _YAW_CORRECTION_DEG
+        mount = cam["body_mount"]
         cameras.append(
             MonocularCamera(cam["name"], config={
                 "position": list(mount["position"]),
-                "orientation": rpy,
+                "orientation": _pegasus_orientation(mount["rpy_deg"]),
                 "resolution": tuple(cam["resolution"]),
                 "frequency": cam["rate_hz"],
                 # Placeholder pinhole FOV; the prim is rewritten to f-theta by

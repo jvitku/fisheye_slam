@@ -126,6 +126,13 @@ Orin Nano Super, 3 cameras first.** The evaluation exists to confirm/refute this
   images under controlled timing degradation.
 - `bench/evaluate.py`: ATE, RPE@1s, coverage and dropout gaps (robustness first-class).
 - Matrix: candidates × rigs {2,3,6} × trajectories × skew profiles — see `bench/README.md`.
+- **Sensor pod** (added 2026-07-06): the target product is modeled explicitly — a
+  self-contained unit of N coplanar, same-direction fisheye cameras + its own PX4-FC
+  IMU (`/uav1/sensor_pod/imu`, simulated with rigid-offset physics), mounted on top of
+  the drone which keeps its own flight FC. Variants: `pod_2cam` (stereo pair) and
+  `pod_3cam_triangle` (equilateral triangle → adds vertical/diagonal baselines for
+  depth on horizontal structure). Pod output = position + dense TSDF map; the mapping
+  stage (voxblox now, nvblox on Orin) is scaffolded in `experiments/06_dense_mapping/`.
 
 **Phase 1 — Baselines on public data + sim bring-up (desktop, ~1–2 weeks)**
 - Build Tracks A–C in Docker; run TUM-VI `room1/room4` (A, B, D) and a multi-cam sequence (C).

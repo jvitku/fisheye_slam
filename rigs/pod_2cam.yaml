@@ -1,0 +1,44 @@
+# Sensor pod, 2-camera variant: self-contained sensor unit — two coplanar
+# fisheye cameras facing the SAME direction (horizontal stereo pair) plus the
+# pod's own PX4-FC IMU — mounted as one rigid piece on TOP of the drone (which
+# has its own PX4 FC for flying; the two are independent).
+#
+# Pod output contract (produced by the candidate stack, not the sim):
+#   - position/odometry of the pod (VIO on pod cams + pod IMU)
+#   - local dense 3D map (voxblox/nvblox TSDF; see experiments/06_dense_mapping)
+#
+# Pod frame = FLU at the pod origin (IMU location). Camera mounts are
+# POD-relative; rig_math.load_rig() resolves them to the drone body frame via
+# pod.mount. All cameras sit in the x = 0.02 plane of the pod, optical axes
+# along pod +x. Same shared intrinsics as every benchmark rig.
+
+name: pod_2cam
+pod:
+  # Pod origin on top of the drone body, 12 cm above center.
+  mount: {position: [0.0, 0.0, 0.12], rpy_deg: [0.0, 0.0, 0.0]}
+
+imu:
+  topic: /uav1/sensor_pod/imu
+  source: px4_fc        # real HW: the pod's PX4 FC via MAVLink HIGHRES_IMU;
+                        # sim: PodIMU (rigid-offset physics at the pod origin)
+  rate_hz: 400
+  mount: {position: [0.0, 0.0, 0.0], rpy_deg: [0.0, 0.0, 0.0]}   # pod-relative
+  gyro_noise_density: 1.0e-4
+  gyro_random_walk: 1.0e-5
+  accel_noise_density: 1.0e-3
+  accel_random_walk: 1.0e-4
+
+camera_defaults: &cam
+  model: kb4
+  resolution: [512, 512]
+  rate_hz: 20
+  fov_deg: 190.0
+  intrinsics: {fx: 140.0, fy: 140.0, cx: 256.0, cy: 256.0, k1: 0.0, k2: 0.0, k3: 0.0, k4: 0.0}
+
+cameras:                # pod-relative mounts, all facing pod +x, coplanar
+  - <<: *cam
+    name: cam0          # left
+    mount: {position: [0.02, 0.06, 0.0], rpy_deg: [0.0, 0.0, 0.0]}
+  - <<: *cam
+    name: cam1          # right
+    mount: {position: [0.02, -0.06, 0.0], rpy_deg: [0.0, 0.0, 0.0]}

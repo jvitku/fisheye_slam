@@ -1,0 +1,43 @@
+# Sensor pod, 3-camera variant: three coplanar fisheye cameras facing the SAME
+# direction, arranged as an equilateral TRIANGLE (side 0.12 m), plus the pod's
+# own PX4-FC IMU. Mounted as one rigid unit on top of the drone.
+# See pod_2cam.yaml for the pod concept, conventions and output contract.
+#
+# Triangle geometry (pod y-z plane at x = 0.02, all optical axes along pod +x):
+#   cam2 (top)            (y=0.00,  z=+0.069)
+#   cam0 (bottom-left)    (y=+0.06, z=-0.035)
+#   cam1 (bottom-right)   (y=-0.06, z=-0.035)
+# Three non-collinear baselines (horizontal, and two diagonals) -> vertical
+# parallax as well as horizontal, unlike the 2-cam pod.
+
+name: pod_3cam_triangle
+pod:
+  mount: {position: [0.0, 0.0, 0.12], rpy_deg: [0.0, 0.0, 0.0]}
+
+imu:
+  topic: /uav1/sensor_pod/imu
+  source: px4_fc
+  rate_hz: 400
+  mount: {position: [0.0, 0.0, 0.0], rpy_deg: [0.0, 0.0, 0.0]}
+  gyro_noise_density: 1.0e-4
+  gyro_random_walk: 1.0e-5
+  accel_noise_density: 1.0e-3
+  accel_random_walk: 1.0e-4
+
+camera_defaults: &cam
+  model: kb4
+  resolution: [512, 512]
+  rate_hz: 20
+  fov_deg: 190.0
+  intrinsics: {fx: 140.0, fy: 140.0, cx: 256.0, cy: 256.0, k1: 0.0, k2: 0.0, k3: 0.0, k4: 0.0}
+
+cameras:
+  - <<: *cam
+    name: cam0          # bottom-left
+    mount: {position: [0.02, 0.06, -0.035], rpy_deg: [0.0, 0.0, 0.0]}
+  - <<: *cam
+    name: cam1          # bottom-right
+    mount: {position: [0.02, -0.06, -0.035], rpy_deg: [0.0, 0.0, 0.0]}
+  - <<: *cam
+    name: cam2          # top-center
+    mount: {position: [0.02, 0.0, 0.069], rpy_deg: [0.0, 0.0, 0.0]}

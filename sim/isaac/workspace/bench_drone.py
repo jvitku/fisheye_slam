@@ -11,6 +11,9 @@ Published (ROS2, bridged to ROS1 by the ros1-bridge container):
                                      unsync variants are generated OFFLINE by
                                      bench/skew_bag.py from the recorded bag)
   /uav1/imu                          body-center IMU in sensor-local FLU
+  /uav1/sensor_pod/imu               pod FC IMU (only for pod rigs — the
+                                     sensor unit's own PX4-FC IMU, rigidly
+                                     mounted at the pod origin)
   /uav1/ground_truth                 nav_msgs/Odometry (mrs_bridge aggregator)
 """
 
@@ -57,6 +60,7 @@ from scipy.spatial.transform import Rotation
 import carb
 
 from livox_imu import LivoxIMU
+from pod_imu import PodIMU
 from fisheye_rig import load_rig, make_cameras, apply_fisheye_projections
 
 UAV_NAME = os.environ.get("UAV_NAME", "uav1")
@@ -64,42 +68,46 @@ RIG_CONFIG = os.environ.get("RIG_CONFIG", "/rigs/rig_3cam.yaml")
 
 
 class BenchROS2Backend(ROS2Backend):
-    """ROS2Backend + clean body-center IMU on /uavN/imu.
+    """ROS2Backend + clean FLU IMU streams for the benchmark.
 
-    Reuses the LivoxIMU sensor (sensor-local FLU output, no FRD/NED
-    conversion — see swarm_stack tools/isaac CLAUDE.md) mounted at the body
-    center, so the VIO candidates get a conventional FLU IMU that shares the
-    camera clock.
+    Two IMUs (both LivoxIMU-style: sensor-local FLU output, no FRD/NED
+    conversion — see swarm_stack tools/isaac CLAUDE.md):
+      LivoxIMU -> /uavN/imu             body-center reference IMU
+      PodIMU   -> /uavN/sensor_pod/imu  the sensor unit's own PX4-FC IMU
     """
 
     def initialize_publishers(self, config):
         super().initialize_publishers(config)
         import rclpy
         from sensor_msgs.msg import Imu
+        base = self._namespace + str(self._id)
         self.bench_imu_pub = self.node.create_publisher(
-            Imu,
-            self._namespace + str(self._id) + "/imu",
-            rclpy.qos.qos_profile_sensor_data,
+            Imu, base + "/imu", rclpy.qos.qos_profile_sensor_data,
+        )
+        self.pod_imu_pub = self.node.create_publisher(
+            Imu, base + "/sensor_pod/imu", rclpy.qos.qos_profile_sensor_data,
         )
 
     def update_sensor(self, sensor_type, data):
         if sensor_type == "LivoxIMU":
-            self._update_bench_imu(data)
+            self._publish_imu(data, self.bench_imu_pub, "/base_link")
+        elif sensor_type == "PodIMU":
+            self._publish_imu(data, self.pod_imu_pub, "/sensor_pod")
         else:
             super().update_sensor(sensor_type, data)
 
-    def _update_bench_imu(self, data):
+    def _publish_imu(self, data, publisher, frame_suffix):
         from sensor_msgs.msg import Imu
         msg = Imu()
         msg.header.stamp = self.node.get_clock().now().to_msg()
-        msg.header.frame_id = self._namespace + str(self._id) + "/base_link"
+        msg.header.frame_id = self._namespace + str(self._id) + frame_suffix
         msg.angular_velocity.x = float(data["angular_velocity"][0])
         msg.angular_velocity.y = float(data["angular_velocity"][1])
         msg.angular_velocity.z = float(data["angular_velocity"][2])
         msg.linear_acceleration.x = float(data["linear_acceleration"][0])
         msg.linear_acceleration.y = float(data["linear_acceleration"][1])
         msg.linear_acceleration.z = float(data["linear_acceleration"][2])
-        self.bench_imu_pub.publish(msg)
+        publisher.publish(msg)
 
 
 class BenchApp:
@@ -128,11 +136,24 @@ class BenchApp:
     def _setup_vehicle(self):
         cameras = make_cameras(self.rig)
 
-        # Body-center IMU for the VIO candidates (sensor-local FLU).
+        # Body-center reference IMU (sensor-local FLU).
         body_imu = LivoxIMU(config={
             "position": [0.0, 0.0, 0.0],
             "orientation": [0.0, 0.0, 0.0],
         })
+
+        # Sensor-pod FC IMU (only for pod rigs): rigidly mounted at the pod
+        # origin, correct rigid-body offset physics relative to body center.
+        pod_imu = None
+        if "pod" in self.rig:
+            mount = self.rig["imu"]["body_mount"]
+            r, p, y = mount["rpy_deg"]
+            pod_imu = PodIMU(config={
+                "position": list(mount["position"]),
+                # LivoxIMU consumes orientation as ZYX list = [yaw, pitch, roll]
+                "orientation": [y, p, r],
+                "update_rate": float(self.rig["imu"].get("rate_hz", 400)),
+            })
 
         mavlink_config = PX4MavlinkBackendConfig({
             "vehicle_id": 0,
@@ -152,6 +173,8 @@ class BenchApp:
 
         config = MultirotorConfig()
         config.sensors.append(body_imu)
+        if pod_imu is not None:
+            config.sensors.append(pod_imu)
         config.backends = [PX4MavlinkBackend(mavlink_config), ros2_backend]
         config.graphical_sensors = cameras
 

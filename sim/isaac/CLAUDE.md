@@ -5,7 +5,9 @@
 > project. 3d_fisheye additions: `workspace/bench_drone.py` (default
 > `SIM_SCRIPT`, N-fisheye benchmark rig from `RIG_CONFIG`, lidar removed),
 > `workspace/fisheye_rig.py` (rig yaml -> Pegasus cameras + f-theta projection
-> override), compose mounts `../../rigs:/rigs:ro`. The original `px4_drone.py`
+> override), `workspace/rig_math.py` (pure-math mount composition, host-tested),
+> `workspace/pod_imu.py` (sensor-pod PX4-FC IMU on /uav1/sensor_pod/imu),
+> compose mounts `../../rigs:/rigs:ro`. The original `px4_drone.py`
 > is kept unmodified as reference (`SIM_SCRIPT=px4_drone.py`). Upstream fixes
 > in swarm_stack should be ported here manually. Sections below describing the
 > lidar/FAST-LIO pipeline apply to the original, not to `bench_drone.py`.
