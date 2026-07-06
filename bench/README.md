@@ -76,16 +76,40 @@ dense 3D map (voxblox/nvblox TSDF) — that stage lives in
 | gaps / longest_gap | tracking dropouts > 0.5 s |
 | (per runner) CPU %, peak RSS | measured by the candidate runner scripts |
 
+## Lighting axis (day / night / transition)
+
+Isaac's RTX lighting is fully scriptable, so illumination is a controlled
+benchmark variable (`SIM_LIGHTING` env, implemented in
+`sim/isaac/workspace/lighting.py`):
+
+| Mode | Scene | Pod IR illuminator (`POD_IR_LIGHT=auto`) |
+|---|---|---|
+| `day` | environment's own lighting | off |
+| `night` | all scene lights ~0 + faint ambient | **on** — dominant light source |
+| `half` | one half of the scene lit, other half night-dark; trajectory crosses the boundary | **on** |
+
+The pod cameras are **NoIR** (no IR-cut filter) with an **850 nm IR flood LED
+at the triangle center** (`illuminator:` in the pod rig yamls). In sim the
+illuminator is a real shadow-casting RTX cone light rigidly attached to the
+drone: at night it both *enables* the cameras and *hurts* VIO — the light and
+its shadows move with the vehicle, so shadow edges are non-static features and
+illumination is never constant between frames. That trade-off is exactly what
+the night rows of the matrix measure. NIR is modeled as white light; NoIR
+imaging = grayscale conversion at candidate input.
+
 ## The matrix
 
-candidates {openvins, basalt*, openmavis, dba-fusion} ×
+candidates {openvins, basalt*, openmavis, dba-fusion, mast3r-slam†, dpvo} ×
 rigs {2cam, 3cam, 6cam*, pod_2cam, pod_3cam_triangle} ×
-trajectories {slow_scan, fast_yaw, low_light} ×
+trajectories {slow_scan, fast_yaw} ×
+lighting {day, night+IR, half-transition} ×
 skew {sync, 15ms, 40ms, 15ms+2ms-jitter}
 
 (*) basalt is stereo-only → 2cam column only; openmavis is the only 6cam-ready
-candidate today; openvins 6cam needs a config experiment. Run what fits,
-report the holes honestly.
+candidate today; openvins 6cam needs a config experiment. (†) mast3r-slam /
+dpvo are monocular (evaluate with `--scale`); see `experiments/07_learned_slam/`.
+Run what fits, report the holes honestly. The full cross-product is large —
+prioritize: {openvins, dpvo} × {pod rigs} × {day, night} × {sync, 15ms} first.
 
 ## Getting ground truth into TUM format
 

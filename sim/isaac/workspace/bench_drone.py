@@ -62,9 +62,14 @@ import carb
 from livox_imu import LivoxIMU
 from pod_imu import PodIMU
 from fisheye_rig import load_rig, make_cameras, apply_fisheye_projections
+from lighting import setup_lighting, attach_pod_ir_light
 
 UAV_NAME = os.environ.get("UAV_NAME", "uav1")
 RIG_CONFIG = os.environ.get("RIG_CONFIG", "/rigs/rig_3cam.yaml")
+# Benchmark lighting axis: day | night | half (lit->dark transition scene)
+SIM_LIGHTING = os.environ.get("SIM_LIGHTING", "day")
+# Pod IR illuminator: auto (on when lighting != day and rig defines one) | on | off
+POD_IR_LIGHT = os.environ.get("POD_IR_LIGHT", "auto")
 
 
 class BenchROS2Backend(ROS2Backend):
@@ -192,6 +197,12 @@ class BenchApp:
         # Rewrite camera prims to f-theta fisheye projection.
         stage = omni.usd.get_context().get_stage()
         apply_fisheye_projections(stage, "/World/quadrotor/body", self.rig)
+
+        # Benchmark lighting axis + pod IR illuminator (NoIR night operation).
+        setup_lighting(stage, SIM_LIGHTING)
+        ir_on = POD_IR_LIGHT == "on" or (POD_IR_LIGHT == "auto" and SIM_LIGHTING != "day")
+        if ir_on:
+            attach_pod_ir_light(stage, "/World/quadrotor/body", self.rig)
 
         self._start_odom_bridge()
 

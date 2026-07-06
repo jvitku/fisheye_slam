@@ -9,6 +9,13 @@
 #   cam1 (bottom-right)   (y=-0.06, z=-0.035)
 # Three non-collinear baselines (horizontal, and two diagonals) -> vertical
 # parallax as well as horizontal, unlike the 2-cam pod.
+#
+# Cameras are NoIR (no IR-cut filter): at night the pod's own 850 nm IR flood
+# LED at the TRIANGLE CENTER illuminates the scene. In sim the illuminator is
+# a real shadow-casting RTX light rigidly attached to the pod (lighting.py) —
+# it moves with the drone and casts moving shadows, the hard case for VIO.
+# NoIR imaging = grayscale conversion of the rendered RGB (mono at candidate
+# input).
 
 name: pod_3cam_triangle
 pod:
@@ -23,6 +30,14 @@ imu:
   gyro_random_walk: 1.0e-5
   accel_noise_density: 1.0e-3
   accel_random_walk: 1.0e-4
+
+# IR flood illuminator at the camera-triangle centroid (pod-relative mount),
+# beam along pod +x. Enabled by SIM_LIGHTING != day (POD_IR_LIGHT=auto).
+illuminator:
+  type: ir_850nm
+  mount: {position: [0.025, 0.0, 0.0], rpy_deg: [0.0, 0.0, 0.0]}
+  cone_half_angle_deg: 60
+  intensity: 30000        # RTX units, scaffold value — tune at bring-up
 
 camera_defaults: &cam
   model: kb4

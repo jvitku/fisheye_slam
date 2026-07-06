@@ -15,6 +15,8 @@ services:
       - UAV_NAME=${UAV_NAME:-uav1}
       - SIM_SCRIPT=${SIM_SCRIPT:-bench_drone.py}
       - RIG_CONFIG=${RIG_CONFIG:-/rigs/rig_3cam.yaml}
+      - SIM_LIGHTING=${SIM_LIGHTING:-day}
+      - POD_IR_LIGHT=${POD_IR_LIGHT:-auto}
       - HEADLESS=${HEADLESS:-false}
       - INTERACTIVE=${INTERACTIVE:-false}
       - STREAM_PUBLIC_IP=${STREAM_PUBLIC_IP:-}

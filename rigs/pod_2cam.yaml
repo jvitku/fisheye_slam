@@ -28,6 +28,14 @@ imu:
   accel_noise_density: 1.0e-3
   accel_random_walk: 1.0e-4
 
+# Cameras are NoIR; IR flood illuminator between the two cameras (see
+# pod_3cam_triangle.yaml for the night-mode / moving-shadow rationale).
+illuminator:
+  type: ir_850nm
+  mount: {position: [0.025, 0.0, 0.0], rpy_deg: [0.0, 0.0, 0.0]}
+  cone_half_angle_deg: 60
+  intensity: 30000
+
 camera_defaults: &cam
   model: kb4
   resolution: [512, 512]

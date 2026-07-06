@@ -104,6 +104,29 @@ def test_triangle_geometry_equilateral():
     assert np.mean(d) == pytest.approx(0.12, abs=5e-3)
 
 
+def test_illuminator_at_triangle_centroid():
+    """The IR flood LED sits at the camera-triangle centroid (y-z plane)."""
+    rig = load_rig(str(ROOT / "rigs" / "pod_3cam_triangle.yaml"))
+    ill = rig["illuminator"]
+    centroid = np.mean([c["mount"]["position"] for c in rig["cameras"]], axis=0)
+    np.testing.assert_allclose(ill["mount"]["position"][1:], centroid[1:], atol=2e-3)
+    # resolved to body frame: pod z-offset applied
+    assert "body_mount" in ill
+    pod_z = rig["pod"]["mount"]["position"][2]
+    assert ill["body_mount"]["position"][2] == pytest.approx(
+        pod_z + ill["mount"]["position"][2]
+    )
+
+
+def test_illuminator_resolved_for_both_pods():
+    for rig_file in ("pod_2cam.yaml", "pod_3cam_triangle.yaml"):
+        rig = load_rig(str(ROOT / "rigs" / rig_file))
+        assert rig["illuminator"]["type"] == "ir_850nm"
+        assert "body_mount" in rig["illuminator"]
+    # body rigs have no illuminator, and load_rig must not choke on that
+    assert "illuminator" not in load_rig(str(ROOT / "rigs" / "rig_2cam.yaml"))
+
+
 def test_load_rig_rejects_non_kb4(tmp_path):
     bad = tmp_path / "bad.yaml"
     bad.write_text(

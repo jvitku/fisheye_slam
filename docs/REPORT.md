@@ -85,6 +85,24 @@ Systems considered and **rejected for now**:
 - **What we test:** XFeat vs ORB/KLT matching quality on fisheye + synthetic low-light/NIR-ish
   degradation (`experiments/04_xfeat_lightglue/`); DBA-Fusion on TUM-VI on the desktop GPU.
 
+### Track F — Learned/hybrid SLAM on edge (added 2026-07-06)
+*The Skydio-style candidate: learned SLAM as a real runtime contender, not just a ceiling.*
+
+1. **MASt3R-SLAM** (`rmurai0610/MASt3R-SLAM`) — real-time dense monocular SLAM on
+   MASt3R two-view pointmap priors. Dense output doubles as the pod map; strong in
+   low-texture/low-light — the natural fit for the night+IR axis. Risks: 4090-class
+   paper runtime (edge gate = TensorRT on **Orin NX 16GB**, ≥5 keyframe-Hz or it drops
+   to offline-refiner role), monocular/no-IMU, and **CC BY-NC weights** (fine for
+   benchmarking, a product blocker unless retrained).
+2. **DPVO** (`princeton-vl/DPVO`) — deep patch VO, the DROID lineage made light; the
+   realistic **Orin Nano Super** runtime candidate. No IMU by default → evaluated as
+   VO first; EKF fusion with the pod IMU if it wins the night rows.
+
+Track F's decisive experiment: night+IR sequences vs Tracks A/B/C on identical bags.
+If the classical stacks hold up under moving IR shadows, we stay classical; if they
+collapse and Track F doesn't, the hybrid path gets promoted. Details:
+`experiments/07_learned_slam/`.
+
 ### Dense mapping (deferred, decided in principle)
 Not part of round 1. Decision already clear from the review: **voxblox** (CPU/Pi) or
 **nvblox** (Orin) TSDF/ESDF fed by depth from selected adjacent fisheye pairs. It plugs into
@@ -125,7 +143,16 @@ Orin Nano Super, 3 cameras first.** The evaluation exists to confirm/refute this
   (deterministic per-camera offsets/jitter) so every candidate sees byte-identical
   images under controlled timing degradation.
 - `bench/evaluate.py`: ATE, RPE@1s, coverage and dropout gaps (robustness first-class).
-- Matrix: candidates × rigs {2,3,6} × trajectories × skew profiles — see `bench/README.md`.
+- Matrix: candidates × rigs {2,3,6} × trajectories × **lighting {day, night+IR,
+  half-transition}** × skew profiles — see `bench/README.md`.
+- **Lighting axis** (added 2026-07-06): Isaac's RTX lights are scriptable
+  (`sim/isaac/workspace/lighting.py`, `SIM_LIGHTING=day|night|half`). `night` kills the
+  scene lights; `half` lights one half of the scene so the trajectory crosses a
+  lit→dark boundary. The pod's NoIR cameras + **850 nm IR flood LED at the triangle
+  center** (shadow-casting RTX cone light rigidly attached to the drone) then become
+  the dominant illumination — enabling the cameras while creating the moving-shadow /
+  non-constant-illumination conditions that make night VIO hard. This is the benchmark
+  axis Track F exists for.
 - **Sensor pod** (added 2026-07-06): the target product is modeled explicitly — a
   self-contained unit of N coplanar, same-direction fisheye cameras + its own PX4-FC
   IMU (`/uav1/sensor_pod/imu`, simulated with rigid-offset physics), mounted on top of

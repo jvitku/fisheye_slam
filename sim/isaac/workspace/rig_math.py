@@ -80,4 +80,8 @@ def load_rig(path: str) -> dict:
     imu = rig.get("imu", {})
     imu["body_mount"] = compose_mount(pod_mount, imu.get("mount", IDENTITY_MOUNT))
 
+    if "illuminator" in rig:
+        ill = rig["illuminator"]
+        ill["body_mount"] = compose_mount(pod_mount, ill.get("mount", IDENTITY_MOUNT))
+
     return rig

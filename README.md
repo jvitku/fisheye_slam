@@ -31,6 +31,7 @@ ls experiments/
 | B | [Basalt](https://gitlab.com/VladyslavUsenko/basalt) | Calibration backbone + lean stereo baseline |
 | C | [OpenMAVIS](https://github.com/MAVIS-SLAM/OpenMAVIS) | Multi-camera (>2) SLAM with loop closure |
 | D | [XFeat](https://github.com/verlab/accelerated_features) / [LightGlue](https://github.com/cvg/LightGlue) / [DBA-Fusion](https://github.com/GREAT-WHU/DBA-Fusion) | Learned front-end + hybrid ceiling |
+| F | [MASt3R-SLAM](https://github.com/rmurai0610/MASt3R-SLAM) / [DPVO](https://github.com/princeton-vl/DPVO) | Learned SLAM as runtime candidate on Orin (night+IR specialist) |
 
 Docker images per track live in `docker/`. All are exploratory — see the
 per-experiment READMEs for status.
@@ -45,10 +46,14 @@ contract and metrics. The Isaac Sim + Pegasus setup in `sim/isaac/` is copied
 from `swarm_stack/tools/isaac` (provenance in its CLAUDE.md).
 
 The target product is modeled as a **sensor pod**: N coplanar same-direction
-fisheye cameras + the pod's own PX4-FC IMU, mounted on top of the drone —
-`rigs/pod_2cam.yaml` (stereo pair) and `rigs/pod_3cam_triangle.yaml`
-(triangle). Pod output = position + dense 3D map
-(`experiments/06_dense_mapping/`, voxblox/nvblox).
+**NoIR** fisheye cameras + an **850 nm IR flood LED** (triangle center) + the
+pod's own PX4-FC IMU, mounted on top of the drone — `rigs/pod_2cam.yaml`
+(stereo pair) and `rigs/pod_3cam_triangle.yaml` (triangle). Pod output =
+position + dense 3D map (`experiments/06_dense_mapping/`, voxblox/nvblox).
+
+Lighting is a benchmark axis (`SIM_LIGHTING=day|night|half`): at night the
+pod's shadow-casting IR light is the dominant source — it enables the cameras
+but its moving shadows make VIO harder, which is what the night rows measure.
 
 ```bash
 # sim (GPU host): fisheye benchmark drone with the 3-cam rig

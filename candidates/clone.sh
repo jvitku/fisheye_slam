@@ -25,6 +25,9 @@ clone https://github.com/MAVIS-SLAM/OpenMAVIS OpenMAVIS
 clone https://github.com/verlab/accelerated_features accelerated_features
 clone https://github.com/cvg/LightGlue LightGlue
 clone https://github.com/GREAT-WHU/DBA-Fusion DBA-Fusion
+# Track F — learned SLAM on edge (Skydio-style hybrid candidates)
+clone https://github.com/rmurai0610/MASt3R-SLAM MASt3R-SLAM
+clone https://github.com/princeton-vl/DPVO DPVO
 # Fallback (Jetson stereo, kept for reference only)
 clone https://github.com/HKUST-Aerial-Robotics/VINS-Fisheye VINS-Fisheye
 
