@@ -1,0 +1,14 @@
+# candidate working copies (fetched by candidates/clone.sh)
+candidates/*/
+# datasets
+datasets/data/
+# python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+uv.lock
+# experiment outputs
+experiments/**/out/
+*.bag
+*.db3

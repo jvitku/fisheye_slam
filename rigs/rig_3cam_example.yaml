@@ -1,0 +1,65 @@
+# Example 3-camera fisheye + IMU rig definition.
+#
+# This is the project's shared rig vocabulary: forward stereo pair + one rear
+# camera (the "best 3-cam compromise" from docs/REPORT.md). Values below are
+# PLACEHOLDERS in the right ballpark for ~190-deg NoIR fisheye modules — replace
+# every number with Basalt/Kalibr calibration output in Phase 2.
+#
+# Conventions:
+#   - T_imu_cam: 4x4 row-major homogeneous transform, camera frame -> IMU frame
+#   - camera frames: x right, y down, z forward (optical axis)
+#   - time_offset_s: t_imu = t_cam + time_offset_s (per camera; unsynchronized rig!)
+
+imu:
+  rate_hz: 400
+  # Fill from Allan-variance calibration (see OpenVINS docs):
+  gyro_noise_density: 1.7e-4     # rad/s/sqrt(Hz)
+  gyro_random_walk: 2.0e-5       # rad/s^2/sqrt(Hz)
+  accel_noise_density: 2.0e-3    # m/s^2/sqrt(Hz)
+  accel_random_walk: 3.0e-3      # m/s^3/sqrt(Hz)
+
+cameras:
+  - name: cam_front_left
+    model: ds                     # kb4 | ds | eucm (see tools/fisheye)
+    resolution: [1280, 800]
+    rate_hz: 20
+    rolling_shutter: true
+    time_offset_s: 0.0
+    intrinsics: {fx: 315.0, fy: 315.0, cx: 640.0, cy: 400.0, xi: -0.18, alpha: 0.59}
+    T_imu_cam:
+      - [1.0, 0.0, 0.0,  0.05]
+      - [0.0, 1.0, 0.0,  0.00]
+      - [0.0, 0.0, 1.0,  0.02]
+      - [0.0, 0.0, 0.0,  1.00]
+
+  - name: cam_front_right
+    model: ds
+    resolution: [1280, 800]
+    rate_hz: 20
+    rolling_shutter: true
+    time_offset_s: 0.0
+    intrinsics: {fx: 315.0, fy: 315.0, cx: 640.0, cy: 400.0, xi: -0.18, alpha: 0.59}
+    T_imu_cam:
+      - [1.0, 0.0, 0.0, -0.05]
+      - [0.0, 1.0, 0.0,  0.00]
+      - [0.0, 0.0, 1.0,  0.02]
+      - [0.0, 0.0, 0.0,  1.00]
+
+  - name: cam_rear
+    model: ds
+    resolution: [1280, 800]
+    rate_hz: 20
+    rolling_shutter: true
+    time_offset_s: 0.0
+    intrinsics: {fx: 315.0, fy: 315.0, cx: 640.0, cy: 400.0, xi: -0.18, alpha: 0.59}
+    # Rotated 180 deg about y (looking backwards):
+    T_imu_cam:
+      - [-1.0, 0.0,  0.0, 0.00]
+      - [ 0.0, 1.0,  0.0, 0.00]
+      - [ 0.0, 0.0, -1.0, -0.06]
+      - [ 0.0, 0.0,  0.0, 1.00]
+
+illumination:
+  active_nir: true
+  wavelength_nm: 850
+  # Keep exposure/gain LOCKED when active NIR is on (see REPORT.md risks).

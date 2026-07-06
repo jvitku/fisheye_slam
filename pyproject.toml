@@ -1,0 +1,21 @@
+[project]
+name = "fisheye-tools"
+version = "0.1.0"
+description = "Shared fisheye lens models and rig utilities for the 3d_fisheye SLAM evaluation"
+requires-python = ">=3.10"
+dependencies = [
+    "numpy>=1.24",
+    "pyyaml>=6.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tools/fisheye/tests"]
+
+# Plain script/tool collection, not an installable package.
+[tool.uv]
+package = false
