@@ -1,0 +1,40 @@
+computerError2       (2817):    1.12+-1.30 [0.07, 12.14]
+iteration            (2817):    9.98+-8.09 [1.07, 51.74]
+resident_memory      (2817): 443073971.85+-196164949.62 [198918144.00, 1211793408.00]
+resident_memory_peak (2817): 443491521.02+-194421350.89 [186597376.00, 1187971072.00]
+optimize             (2817):   10.49+-8.45 [1.21, 54.16]
+num_it               (2817):     3.0+-1.4 [2, 8]
+num_it_rejected      (2817):     0.4+-1.3 [0, 8]
+marg_linearize       (2817):    0.79+-0.61 [0.04, 5.98]
+marg_helper          (2817):    0.82+-0.66 [0.14, 8.33]
+marg                 (2817):    2.33+-1.62 [0.27, 15.19]
+marginalize          (2817):    2.37+-1.64 [0.28, 15.31]
+Saved ExecutionStats to stats_all.ubjson.
+Saved ExecutionStats to stats_sums.ubjson.
+Total runtime: 46.183s
+Saved ExecutionStats to stats_vio.ubjson.
+Saving trajectory...
+Saved trajectory in TUM RGB-D Dataset format in trajectory.txt
+	Command being timed: "basalt_vio --dataset-path /data/input.bag --dataset-type bag --cam-calib /src/basalt/data/tumvi_512_ds_calib.json --config-path /src/basalt/data/tumvi_512_config.json --show-gui 0 --step-by-step 0 --save-trajectory tum"
+	User time (seconds): 542.01
+	System time (seconds): 109.71
+	Percent of CPU this job got: 1202%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:54.21
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 145016
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 1
+	Minor (reclaiming a frame) page faults: 79728
+	Voluntary context switches: 649025
+	Involuntary context switches: 4648392
+	Swaps: 0
+	File system inputs: 1577192
+	File system outputs: 3904
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0

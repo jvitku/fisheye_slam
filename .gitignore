@@ -12,3 +12,9 @@ uv.lock
 experiments/**/out/
 *.bag
 *.db3
+# bulky per-run dumps (trajectories + logs + summary are kept)
+bench/results/**/state_estimate.txt
+bench/results/**/state_std.txt
+bench/results/**/state_gt.txt
+bench/results/**/*.ubjson
+bench/results/**/groundtruth.txt

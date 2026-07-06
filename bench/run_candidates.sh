@@ -31,13 +31,15 @@ openvins)
                 2>&1 | tail -40" 2>&1 | tee "$OUT/run.log"
     ;;
 basalt)
+    # image has no python3 -> use the host's /usr/bin/time binary instead
     docker run --rm \
         -v "$BAG:/data/input.bag:ro" \
-        -v "$ROOT/bench/timer_wrap.py:/timer_wrap.py:ro" \
+        -v /usr/bin/time:/usr/bin/time:ro \
         -v "$OUT:/out" \
         -w /out \
+        -e LD_LIBRARY_PATH=/usr/local/lib \
         3dfe/basalt \
-        bash -c "python3 /timer_wrap.py basalt_vio \
+        bash -c "/usr/bin/time -v basalt_vio \
             --dataset-path /data/input.bag --dataset-type bag \
             --cam-calib /src/basalt/data/tumvi_512_ds_calib.json \
             --config-path /src/basalt/data/tumvi_512_config.json \

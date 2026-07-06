@@ -48,6 +48,18 @@ def scrape_time_v(log: Path) -> dict:
         out["cpu_s"] = float(m.group(2))
         out["cpu_percent"] = int(m.group(3))
         out["peak_rss_mb"] = float(m.group(4))
+        return out
+    # /usr/bin/time -v format (basalt runs)
+    m = re.search(r"Elapsed \(wall clock\) time.*?(?:(\d+):)?(\d+):([\d.]+)", text)
+    if m:
+        h, mi, s = m.groups()
+        out["wall_s"] = (int(h or 0) * 3600 + int(mi) * 60 + float(s))
+    m = re.search(r"Maximum resident set size \(kbytes\): (\d+)", text)
+    if m:
+        out["peak_rss_mb"] = round(int(m.group(1)) / 1024, 1)
+    m = re.search(r"Percent of CPU this job got: (\d+)%", text)
+    if m:
+        out["cpu_percent"] = int(m.group(1))
     return out
 
 
