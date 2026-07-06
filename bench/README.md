@@ -99,17 +99,22 @@ imaging = grayscale conversion at candidate input.
 
 ## The matrix
 
-candidates {openvins, basalt*, openmavis, dba-fusion, mast3r-slam†, dpvo} ×
+candidates {openvins, basalt*, openmavis, cuvslam, airslam*, dba-fusion} ×
 rigs {2cam, 3cam, 6cam*, pod_2cam, pod_3cam_triangle} ×
 trajectories {slow_scan, fast_yaw} ×
 lighting {day, night+IR, half-transition} ×
 skew {sync, 15ms, 40ms, 15ms+2ms-jitter}
 
-(*) basalt is stereo-only → 2cam column only; openmavis is the only 6cam-ready
-candidate today; openvins 6cam needs a config experiment. (†) mast3r-slam /
-dpvo are monocular (evaluate with `--scale`); see `experiments/07_learned_slam/`.
-Run what fits, report the holes honestly. The full cross-product is large —
-prioritize: {openvins, dpvo} × {pod rigs} × {day, night} × {sync, 15ms} first.
+(*) basalt and airslam are stereo(+IMU)-only → 2cam / pod front-pair columns;
+openmavis is the only 6cam-ready open candidate; cuvslam consumes the pod as
+1–3 stereo pairs + IMU (its native input model). MASt3R-SLAM and DPVO were
+removed from the matrix 2026-07-06 (license / monocular — see
+`experiments/07_learned_slam/`). Run what fits, report the holes honestly.
+The full cross-product is large — prioritize:
+{openvins, cuvslam} × {pod rigs} × {day, night} × {sync, 15ms} first.
+License lanes: GPL systems (openvins, openmavis, airslam, dba-fusion) are
+benchmark yardsticks only; the product lane is cuvslam / permissive hybrid
+(docs/REPORT.md §2b).
 
 ## Getting ground truth into TUM format
 

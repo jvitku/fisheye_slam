@@ -85,23 +85,50 @@ Systems considered and **rejected for now**:
 - **What we test:** XFeat vs ORB/KLT matching quality on fisheye + synthetic low-light/NIR-ish
   degradation (`experiments/04_xfeat_lightglue/`); DBA-Fusion on TUM-VI on the desktop GPU.
 
-### Track F — Learned/hybrid SLAM on edge (added 2026-07-06)
-*The Skydio-style candidate: learned SLAM as a real runtime contender, not just a ceiling.*
+### Track F — Hybrid SLAM exploiting the 3-cam+IMU pod (reshaped 2026-07-06)
+*Constraints tightened: commercial-approved licenses, must maximally use the pod
+geometry (the triangle = 3 stereo pairs sharing one IMU), inference on Orin Nano
+Super. General monocular systems removed from the comparison.*
 
-1. **MASt3R-SLAM** (`rmurai0610/MASt3R-SLAM`) — real-time dense monocular SLAM on
-   MASt3R two-view pointmap priors. Dense output doubles as the pod map; strong in
-   low-texture/low-light — the natural fit for the night+IR axis. Risks: 4090-class
-   paper runtime (edge gate = TensorRT on **Orin NX 16GB**, ≥5 keyframe-Hz or it drops
-   to offline-refiner role), monocular/no-IMU, and **CC BY-NC weights** (fine for
-   benchmarking, a product blocker unless retrained).
-2. **DPVO** (`princeton-vl/DPVO`) — deep patch VO, the DROID lineage made light; the
-   realistic **Orin Nano Super** runtime candidate. No IMU by default → evaluated as
-   VO first; EKF fusion with the pod IMU if it wins the night rows.
+1. **cuVSLAM / Isaac ROS Visual SLAM** (`NVIDIA-ISAAC-ROS/isaac_ros_visual_slam`,
+   Apache-2.0 wrapper + NVIDIA-licensed binary, commercial on NVIDIA hardware) —
+   the headline product-path candidate: natively consumes **up to 16 stereo pairs +
+   IMU**, auto-falls back to IMU→constant-velocity under visual degradation, built
+   for Orin. Caveats: closed-source core; fisheye handling to verify (may cost
+   peripheral FOV via rectification).
+2. **In-house permissive hybrid** — XFeat + LightGlue (Apache-2.0) over a BSD
+   backend (Basalt-derived or **Kimera-VIO**, BSD, stereo+IMU+mesh) extended to the
+   pod. Zero license risk, most integration work; the fallback lane.
+3. **AirSLAM** (`sair-lab/AirSLAM`, TRO 2025, **GPL-3**) — hybrid CNN point+line
+   front-end + classical backend, stereo + optional IMU, TensorRT, **40 Hz on Jetson
+   Orin embedded**, designed for illumination robustness (our night+IR axis).
+   Benchmark yardstick and architecture reference; GPL keeps it off the product path.
 
-Track F's decisive experiment: night+IR sequences vs Tracks A/B/C on identical bags.
-If the classical stacks hold up under moving IR shadows, we stay classical; if they
-collapse and Track F doesn't, the hybrid path gets promoted. Details:
-`experiments/07_learned_slam/`.
+Removed from the comparison (kept in `candidates/` as reference): **MASt3R-SLAM**
+(CC BY-NC weights — commercially unusable — and monocular), **DPVO** (MIT but
+monocular; doesn't exploit the rig). Details: `experiments/07_learned_slam/`.
+
+## 2b. License audit (added 2026-07-06)
+
+Commercial viability is now a hard requirement. Audit of all candidates (LICENSE
+files verified in the clones):
+
+| Lane | License | Systems |
+|---|---|---|
+| ✅ product-safe | Apache-2.0 | XFeat, LightGlue, nvblox, Isaac ROS wrappers |
+| ✅ product-safe | BSD | **Basalt**, **Kimera-VIO**, voxblox |
+| ✅ product-safe (NVIDIA hw) | NVIDIA binary | **cuVSLAM** |
+| ⚠️ copyleft — benchmark only | GPL-3 | **OpenVINS**, OpenMAVIS, AirSLAM, VINS-Fisheye, DBA-Fusion |
+| ❌ non-commercial | CC BY-NC | MASt3R-SLAM (removed) |
+| (mono, unused) | MIT | DPVO |
+
+Consequence — **two-lane strategy**: the *benchmark lane* keeps the GPL systems as
+yardsticks and architecture references (running GPL software internally for
+evaluation is unproblematic); the *product lane* is restricted to
+cuVSLAM / Basalt / Kimera-VIO cores + Apache learned components. Note this flags
+Track A's OpenVINS: still the best N-cam evaluation vehicle, but shipping it means
+GPL obligations — the product decision is cuVSLAM vs the permissive in-house hybrid,
+informed by how OpenVINS-class estimation performs in the benchmark.
 
 ### Dense mapping (deferred, decided in principle)
 Not part of round 1. Decision already clear from the review: **voxblox** (CPU/Pi) or
@@ -120,9 +147,12 @@ whichever VIO wins, so evaluating it now would be premature.
 - Everything chosen is **open source and buildable today** (all repos verified reachable at
   project creation).
 
-The expected end-state (matching the review's recommendation):
-**OpenVINS-derived multi-cam VIO + XFeat-augmented front-end + adjacent-pair depth + nvblox on
-Orin Nano Super, 3 cameras first.** The evaluation exists to confirm/refute this cheaply.
+The expected end-state (updated 2026-07-06 for the commercial-license constraint):
+the pod's 3-cam triangle + pod IMU runs either **cuVSLAM (3 stereo pairs + IMU)** or
+the **permissive in-house hybrid (XFeat front-end + BSD VIO core)**, + per-pair depth +
+nvblox on Orin Nano Super. GPL systems (OpenVINS/OpenMAVIS/AirSLAM) serve as benchmark
+yardsticks that tell us how much estimation quality the product lane leaves on the
+table (see §2b license audit). The evaluation exists to make that choice cheaply.
 
 ## 4. Plan
 

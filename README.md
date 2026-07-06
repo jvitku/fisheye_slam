@@ -31,7 +31,7 @@ ls experiments/
 | B | [Basalt](https://gitlab.com/VladyslavUsenko/basalt) | Calibration backbone + lean stereo baseline |
 | C | [OpenMAVIS](https://github.com/MAVIS-SLAM/OpenMAVIS) | Multi-camera (>2) SLAM with loop closure |
 | D | [XFeat](https://github.com/verlab/accelerated_features) / [LightGlue](https://github.com/cvg/LightGlue) / [DBA-Fusion](https://github.com/GREAT-WHU/DBA-Fusion) | Learned front-end + hybrid ceiling |
-| F | [MASt3R-SLAM](https://github.com/rmurai0610/MASt3R-SLAM) / [DPVO](https://github.com/princeton-vl/DPVO) | Learned SLAM as runtime candidate on Orin (night+IR specialist) |
+| F | [cuVSLAM](https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_visual_slam) / [AirSLAM](https://github.com/sair-lab/AirSLAM) / XFeat-hybrid | Multi-stereo+IMU on Orin: product-path (cuVSLAM), night-axis yardstick (AirSLAM, GPL), permissive in-house lane |
 
 Docker images per track live in `docker/`. All are exploratory — see the
 per-experiment READMEs for status.

@@ -1,47 +1,58 @@
-# Track F — Learned/hybrid SLAM on edge (the Skydio-style candidate)
+# Track F — Hybrid SLAM exploiting the 3-camera + IMU pod (Orin Nano Super)
 
-**Goal:** evaluate learned-SLAM systems as *real candidates* (not just a
-ceiling like Track D2), with a hard deployability gate: must realistically run
-on **Jetson Orin Nano Super**, or **Orin NX 16GB** at worst. Learned front-ends
-are also the natural fit for the night/IR benchmark axis — classical
-photometric tracking suffers most under the pod's moving IR illumination and
-its moving shadows.
+**Goal:** candidates that *maximally use the pod's geometry* — the triangle is
+three stereo pairs sharing one IMU — with a hard deployability gate (inference
+on **Orin Nano Super**) and a **commercial-license** gate. General monocular
+systems are out of scope for the comparison (they waste the rig).
 
 ## Candidates
 
-### MASt3R-SLAM (`rmurai0610/MASt3R-SLAM`)
-Real-time dense monocular SLAM on MASt3R two-view 3D-reconstruction priors.
-Attractive: dense pointmaps *are* the pod's map output; strong robustness to
-low texture/illumination; works without precise calibration (relevant to
-cheap fisheye).
-- **Reality check:** paper real-time is on a desktop 4090-class GPU with a
-  ViT-Large backbone; monocular RGB, no IMU fusion, pinhole-centric.
-- **License flag:** MASt3R weights are CC BY-NC (non-commercial) — fine for
-  benchmarking, a blocker for the product unless relicensed/retrained.
-- **Edge gate:** TensorRT/INT8 export of the MASt3R encoder at reduced
-  resolution on Orin NX 16GB. If it cannot hold ≥5 keyframe-Hz there, it is
-  out as a runtime candidate (may survive as an offline map refiner).
+### F1 — cuVSLAM / Isaac ROS Visual SLAM  ← headline product-path candidate
+`NVIDIA-ISAAC-ROS/isaac_ros_visual_slam` (Apache-2.0 wrapper, cuVSLAM binary
+under NVIDIA terms — commercial use on NVIDIA hardware, which is our target
+anyway).
+- **Native fit:** cuVSLAM consumes **up to 16 stereo pairs + IMU** — the
+  triangle pod maps directly to 2–3 stereo pairs sharing the pod FC IMU. It
+  auto-falls back to IMU (~1 s) then constant-velocity (~0.5 s) when vision
+  degrades — robustness behavior we otherwise have to build.
+- Built *for* Orin; GPU-accelerated; ROS 2 Humble.
+- **Caveats:** closed-source core (no fixes, black-box failures); fisheye
+  support to verify — may need rectification of the 190° lenses to ~120°
+  virtual pinholes (loses peripheral FOV; quantify the cost in the benchmark).
 
-### DPVO (`princeton-vl/DPVO`)
-Deep patch visual odometry (sparse learned patches + recurrent update; the
-DROID-SLAM lineage made light). Far smaller than MASt3R — the realistic
-**Orin Nano Super** candidate; DPV-SLAM adds loop closure.
-- No IMU by default → evaluate as VO; IMU fusion (e.g. feeding its poses into
-  a light EKF with the pod IMU) is a Phase-3 integration if it wins the
-  night-mode comparison.
+### F2 — In-house permissive hybrid (XFeat + LightGlue + BSD backend)
+The fully-permissive lane: Apache-2.0 learned front-end (XFeat every frame,
+LightGlue on keyframes) over a BSD backend (Basalt-derived, or Kimera-VIO
+`MIT-SPARK/Kimera-VIO`, BSD, stereo+IMU + mesh output) extended to the 3-cam
+pod. Most integration work, zero license risk, full control. This is the
+fallback if F1's black box disappoints and the GPL lane stays blocked.
+
+### F3 — AirSLAM (benchmark yardstick; GPL-3)
+`sair-lab/AirSLAM` (TRO 2025): hybrid CNN point+line front-end (PLNet) +
+classical backend, **stereo + optional IMU**, TensorRT-deployed, **40 Hz on a
+Jetson Orin embedded** — and built specifically for illumination robustness,
+i.e. our night+IR axis. **GPL-3**: same bucket as OpenVINS — benchmark and
+architecture reference, not product code without a licensing decision.
+
+## Deferred / removed from the comparison
+- **MASt3R-SLAM** — removed per decision 2026-07-06: CC BY-NC weights
+  (commercially unusable) + monocular (doesn't exploit the rig). Clone stays
+  in `candidates/` as an offline-tooling / future-reference option only.
+- **DPVO** — MIT, but monocular VO; doesn't use the 3-cam+IMU geometry.
+  Optional night-axis probe at best; not a matrix row.
 
 ## What we test
 
-- [ ] Desktop baselines on TUM-VI + sim day sequences (accuracy sanity)
-- [ ] **Night + IR sequences** (`SIM_LIGHTING=night`, pod illuminator on):
-      compare vs Tracks A/B/C on identical bags — this is Track F's
-      raison d'être. Also the `half` lit→dark transition.
-- [ ] Fisheye handling: native (distorted) vs rectified-to-pinhole inputs
-- [ ] Orin feasibility: TensorRT export, resolution/precision sweeps,
-      fps + VRAM on Orin Nano Super (DPVO) and Orin NX (MASt3R-SLAM)
+- [ ] F1: Isaac ROS Visual SLAM on the pod bags — 1/2/3 stereo-pair configs
+      (cam0+cam1, +diagonals), pod IMU on/off, fisheye vs rectified inputs
+- [ ] F1 vs Track A (OpenVINS 3-cam) on identical day + night+IR bags
+- [ ] F3: AirSLAM stereo(+IMU) on the front pair, day vs night+IR
+- [ ] F2: XFeat front-end grafted into the best permissive backend (Phase 3)
+- [ ] Orin Nano Super: fps / latency / VRAM for F1 and F3
 
 ## Notes
-- Both consume the same benchmark bags (mono conversion of the NoIR/IR
-  imagery at input). Evaluate with `bench/evaluate.py --scale` (monocular).
-- Environment: `docker/hybrid/` image covers both (PyTorch + CUDA); DPVO needs
-  its CUDA extensions compiled in-image; MASt3R-SLAM pulls its own checkpoints.
+- cuVSLAM wants ROS 2; bridge the benchmark ROS1 bags (or record ROS2 bags in
+  parallel — the sim is ROS2-native, cheapest path).
+- Depth for the map stage from the triangle's 3 baselines: permissive learned
+  stereo (HITNet / CREStereo, Apache-2.0 — verify per repo at integration)
+  → nvblox (Apache-2.0). See `experiments/06_dense_mapping/`.

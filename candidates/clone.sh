@@ -25,7 +25,13 @@ clone https://github.com/MAVIS-SLAM/OpenMAVIS OpenMAVIS
 clone https://github.com/verlab/accelerated_features accelerated_features
 clone https://github.com/cvg/LightGlue LightGlue
 clone https://github.com/GREAT-WHU/DBA-Fusion DBA-Fusion
-# Track F — learned SLAM on edge (Skydio-style hybrid candidates)
+# Track F — hybrid SLAM exploiting 3-cam+IMU on Orin (see experiments/07)
+clone https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_visual_slam isaac_ros_visual_slam
+clone https://github.com/sair-lab/AirSLAM AirSLAM
+clone https://github.com/MIT-SPARK/Kimera-VIO Kimera-VIO
+# Deferred references (NOT in the comparison matrix):
+#   MASt3R-SLAM — CC BY-NC weights + monocular (removed 2026-07-06)
+#   DPVO — MIT but monocular; doesn't exploit the 3-cam+IMU rig
 clone https://github.com/rmurai0610/MASt3R-SLAM MASt3R-SLAM
 clone https://github.com/princeton-vl/DPVO DPVO
 # Fallback (Jetson stereo, kept for reference only)
