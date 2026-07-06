@@ -34,3 +34,22 @@ ls experiments/
 
 Docker images per track live in `docker/`. All are exploratory — see the
 per-experiment READMEs for status.
+
+## Unified simulation benchmark
+
+All candidates are quantified on identical data: one Isaac Sim world, one
+flown trajectory, camera rigs of **2 / 3 / 6 fisheyes** mounted on the drone
+(`rigs/rig_{2,3,6}cam.yaml`), unsynchronized-camera variants generated
+deterministically offline. See **[bench/README.md](bench/README.md)** for the
+contract and metrics. The Isaac Sim + Pegasus setup in `sim/isaac/` is copied
+from `swarm_stack/tools/isaac` (provenance in its CLAUDE.md).
+
+```bash
+# sim (GPU host): fisheye benchmark drone with the 3-cam rig
+cd sim/isaac && RIG_CONFIG=/rigs/rig_3cam.yaml ./start_all.sh -d
+
+# record a run, generate an unsync variant, evaluate a candidate output
+./bench/record.sh rigs/rig_3cam.yaml slow_scan_3cam
+uv run python -m bench.skew_bag in.bag out.bag --offset /uav1/cam1/color/image_raw=0.015
+uv run python -m bench.evaluate gt.txt est.txt
+```

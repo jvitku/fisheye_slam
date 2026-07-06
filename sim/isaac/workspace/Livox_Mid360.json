@@ -1,0 +1,49 @@
+{
+    "class": "sensor",
+    "type": "lidar",
+    "name": "Livox Mid-360",
+    "driveWorksId": "GENERIC",
+    "profile":
+    {
+      "scanType": "rotary",
+      "intensityProcessing": "normalization",
+      "rotationDirection": "CW",
+      "rayType": "IDEALIZED",
+      "nearRangeM": 0.1,
+      "farRangeM": 40.0,
+
+      "startAzimuthOffsetDeg": 0.0,
+
+      "rangeResolutionM": 0.004,
+      "rangeAccuracyM": 0.02,
+
+      "avgPowerW": 0.002,
+      "minReflectance": 0.1,
+      "minReflectanceRange": 40.0,
+      "wavelengthNm": 905.0,
+      "pulseTimeNs": 6,
+
+      "azimuthErrorMean": 0.0,
+      "azimuthErrorStd": 0.015,
+      "elevationErrorMean": 0.0,
+      "elevationErrorStd": 0.0,
+
+      "maxReturns": 1,
+
+      "scanRateBaseHz": 10.0,
+
+      "reportRateBaseHz": 6250,
+
+      "numberOfEmitters": 32,
+      "emitterStateCount": 1,
+      "emitterStates": [
+      {
+        "azimuthDeg": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        "elevationDeg": [-7.0, -5.1, -3.2, -1.3, 0.6, 2.5, 4.4, 6.3, 8.2, 10.1, 12.0, 13.9, 15.8, 17.7, 19.6, 21.5, 23.5, 25.4, 27.3, 29.2, 31.1, 33.0, 34.9, 36.8, 38.7, 40.6, 42.5, 44.4, 46.3, 48.2, 50.1, 52.0],
+        "fireTimeNs": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3500, 3500, 3500, 3500, 3500, 3500, 3500, 3500, 3500, 3500, 3500, 3500, 3500, 3500, 3500, 3500]
+      }
+      ],
+
+      "intensityMappingType": "LINEAR"
+    }
+  }

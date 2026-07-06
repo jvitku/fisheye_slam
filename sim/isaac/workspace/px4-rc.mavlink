@@ -1,0 +1,44 @@
+#!/bin/sh
+# Custom px4-rc.mavlink — MRS high-rate MAVLink streams for SITL / Pegasus
+# Replaces default px4-rc.mavlink with higher stream rates needed by MRS stack.
+# shellcheck disable=SC2154
+
+udp_offboard_port_local=$((14580+px4_instance))
+udp_offboard_port_remote=$((14540+px4_instance))
+[ "$px4_instance" -gt 9 ] && udp_offboard_port_remote=14549
+udp_onboard_payload_port_local=$((14280+px4_instance))
+udp_onboard_payload_port_remote=$((14030+px4_instance))
+udp_onboard_gimbal_port_local=$((13030+px4_instance))
+udp_onboard_gimbal_port_remote=$((13280+px4_instance))
+udp_gcs_port_local=$((18570+px4_instance))
+
+# GCS link
+mavlink start -x -u $udp_gcs_port_local -r 4000000 -f
+
+# MRS high-rate streams on GCS link
+mavlink stream -r 100 -s ATTITUDE -u $udp_gcs_port_local
+mavlink stream -r 100 -s ATTITUDE_TARGET -u $udp_gcs_port_local
+mavlink stream -r 100 -s HIGHRES_IMU -u $udp_gcs_port_local
+mavlink stream -r 100 -s LOCAL_POSITION_NED -u $udp_gcs_port_local
+mavlink stream -r 100 -s ODOMETRY -u $udp_gcs_port_local
+mavlink stream -r 100 -s GLOBAL_POSITION_INT -u $udp_gcs_port_local
+mavlink stream -r 100 -s DISTANCE_SENSOR -u $udp_gcs_port_local
+mavlink stream -r 100 -s OPTICAL_FLOW_RAD -u $udp_gcs_port_local
+mavlink stream -r 100 -s HEARTBEAT -u $udp_gcs_port_local
+mavlink stream -r 50  -s ATTITUDE_QUATERNION -u $udp_gcs_port_local
+mavlink stream -r 50  -s POSITION_TARGET_LOCAL_NED -u $udp_gcs_port_local
+mavlink stream -r 20  -s RC_CHANNELS -u $udp_gcs_port_local
+mavlink stream -r 10  -s SERVO_OUTPUT_RAW_0 -u $udp_gcs_port_local
+mavlink stream -r 10  -s SYS_STATUS -u $udp_gcs_port_local
+mavlink stream -r 10  -s GPS_RAW_INT -u $udp_gcs_port_local
+mavlink stream -r 5   -s BATTERY_STATUS -u $udp_gcs_port_local
+mavlink stream -r 2   -s EXTENDED_SYS_STATE -u $udp_gcs_port_local
+
+# API/Offboard link
+mavlink start -x -u $udp_offboard_port_local -r 4000000 -f -m onboard -o $udp_offboard_port_remote
+
+# Onboard link to camera
+mavlink start -x -u $udp_onboard_payload_port_local -r 4000 -f -m onboard -o $udp_onboard_payload_port_remote
+
+# Onboard link to gimbal
+mavlink start -x -u $udp_onboard_gimbal_port_local -r 400000 -m gimbal -o $udp_onboard_gimbal_port_remote

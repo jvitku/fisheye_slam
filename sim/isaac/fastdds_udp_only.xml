@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!--
+  Force FastDDS to use UDP transport only (disable shared memory).
+
+  Docker containers have isolated /dev/shm by default, so FastDDS SHM transport
+  cannot cross container boundaries.  With ipc:host this file is redundant, but
+  it acts as a reliable fallback regardless of Docker IPC settings.
+-->
+<profiles>
+  <transport_descriptors>
+    <transport_descriptor>
+      <transport_id>UdpTransport</transport_id>
+      <type>UDPv4</type>
+    </transport_descriptor>
+  </transport_descriptors>
+  <participant profile_name="participant_profile" is_default_profile="true">
+    <rtps>
+      <userTransports>
+        <transport_id>UdpTransport</transport_id>
+      </userTransports>
+      <useBuiltinTransports>false</useBuiltinTransports>
+    </rtps>
+  </participant>
+</profiles>

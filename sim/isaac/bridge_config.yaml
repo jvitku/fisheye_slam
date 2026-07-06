@@ -1,0 +1,20 @@
+# Topic mapping reference for ros1_bridge.
+# The dynamic_bridge (--bridge-all-topics) automatically bridges all topics
+# with matching message types. This file documents the expected topics.
+#
+# ROS2 Topic (from Isaac Sim)          | Message Type                    | Notes
+# --------------------------------------|--------------------------------|------
+# /uav1/ground_truth                    | nav_msgs/msg/Odometry          | From mrs_bridge.py aggregator
+# /uav1/sensors/imu                     | sensor_msgs/msg/Imu            | Pegasus ROS2Backend
+# /uav1/camera_front/color/image_raw    | sensor_msgs/msg/Image           | Pegasus MonocularCamera
+# /uav1/camera_front/image_raw/compressed | sensor_msgs/msg/CompressedImage | JPEG republisher in px4_drone.py
+# /uav1/camera_down/color/image_raw     | sensor_msgs/msg/Image           | Pegasus MonocularCamera
+# /uav1/camera_down/image_raw/compressed | sensor_msgs/msg/CompressedImage | JPEG republisher in px4_drone.py
+# /uav1/livox_mid360/pointcloud        | sensor_msgs/msg/PointCloud2    | Pegasus Lidar
+# /uav1/livox/imu                      | sensor_msgs/msg/Imu            | LivoxIMU (at LiDAR position)
+# /uav1/camera_front/camera_info       | sensor_msgs/msg/CameraInfo     | Pegasus MonocularCamera
+# /uav1/camera_down/camera_info        | sensor_msgs/msg/CameraInfo     | Pegasus MonocularCamera
+#
+# All of the above use standard message types that exist in both ROS1 and ROS2,
+# so dynamic_bridge will pick them up automatically when subscribers appear on
+# the ROS1 side.

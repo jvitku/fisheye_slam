@@ -1,0 +1,66 @@
+# ros1_bridge: ROS2 Humble + ROS1 Noetic (upstream) + ros1_bridge
+# Adapted from: https://github.com/TommyChangUMD/ros-humble-ros1-bridge-builder
+# Docs: https://docs.ros.org/en/humble/How-To-Guides/Using-ros1_bridge-Jammy-upstream.html
+#
+# Ubuntu 22.04 (Jammy) ships ROS1 Noetic as upstream packages (ros-desktop-dev).
+# ROS2 Humble is installed from ROS apt repo. Both coexist after resolving
+# the catkin package conflict.
+FROM ros:humble-ros-base-jammy
+
+SHELL ["/bin/bash", "-o", "pipefail", "-o", "errexit", "-c"]
+
+# Temporarily remove ROS2 apt repo to install ROS1 upstream packages without conflicts
+RUN mv /etc/apt/sources.list.d/ros2.sources /root/
+RUN apt-get update
+
+# Resolve catkin conflict between ROS1 and ROS2 packages
+RUN sed -i -e 's|^Conflicts: catkin|#Conflicts: catkin|' /var/lib/dpkg/status
+RUN apt-get install -f
+
+# Force install ROS1 Python packages (overwrite ROS2 versions)
+RUN apt-get download python3-catkin-pkg python3-rospkg python3-rosdistro \
+    && dpkg --force-overwrite -i python3-catkin-pkg*.deb python3-rospkg*.deb python3-rosdistro*.deb \
+    && rm -f python3-*.deb \
+    && apt-get install -f
+
+# Install ROS1 core dev (Ubuntu 22.04 upstream Noetic packages).
+# Use ros-core-dev instead of ros-desktop-dev to avoid rviz's OpenGL dependency
+# which breaks headless Docker builds. Includes std_msgs, sensor_msgs, nav_msgs, etc.
+RUN apt-get install -y ros-core-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Restore ROS2 apt repo
+RUN mv /root/ros2.sources /etc/apt/sources.list.d/
+RUN apt-get update && rm -rf /var/lib/apt/lists/*
+
+# Build ros1_bridge from source.
+# Memory-intensive (~1 GB RAM per parallel job due to C++ template instantiation).
+# Auto-scales parallelism: min(available_RAM_GB, nproc).
+RUN mkdir -p /bridge_ws/src \
+    && cd /bridge_ws/src \
+    && git clone -b master --depth=1 https://github.com/ros2/ros1_bridge.git \
+    && cd /bridge_ws \
+    && source /opt/ros/humble/setup.bash \
+    && MEMG=$(printf "%.0f" $(free -g | awk '/^Mem:/{print $2}')) \
+    && NPROC=$(nproc) \
+    && JOBS=$((MEMG<NPROC ? MEMG : NPROC)) \
+    && JOBS=$((JOBS>0 ? JOBS : 1)) \
+    && echo "Building ros1_bridge with $JOBS parallel jobs..." \
+    && MAKEFLAGS="-j $JOBS" colcon build --packages-select ros1_bridge \
+         --cmake-args -DCMAKE_BUILD_TYPE=Release
+
+# Pack ROS1 shared libraries needed at runtime into the bridge install dir.
+# Use grep -w to avoid substring matches (e.g. libroscpp matching libroscpp_serialization).
+RUN cd /bridge_ws/install/ros1_bridge/lib \
+    && for lib in libxmlrpcpp librostime libroscpp.so libroscpp_serialization \
+         librosconsole.so librosconsole_log4cxx librosconsole_backend_interface \
+         liblog4cxx libcpp_common libb64 libaprutil-1 libapr-1 libactionlib; do \
+         soPath=$(ldd libros1_bridge.so | grep "$lib" | head -1 | awk '{print $3}') || true; \
+         [ -n "$soPath" ] && [ -f "$soPath" ] && cp "$soPath" ./ ; \
+       done ; true
+
+# Entrypoint
+COPY bridge_entrypoint.sh /bridge_entrypoint.sh
+RUN chmod +x /bridge_entrypoint.sh
+
+ENTRYPOINT ["/bridge_entrypoint.sh"]

@@ -1,0 +1,38 @@
+# Benchmark rig: 2 fisheye cameras (front stereo pair) + body-center IMU.
+#
+# All benchmark rigs (2/3/6 cam) share IDENTICAL per-camera intrinsics and
+# rates — camera COUNT/PLACEMENT is the only variable across the benchmark.
+#
+# Conventions (see sim/isaac/workspace/fisheye_rig.py):
+#   - mount.position [m], mount.rpy_deg [roll, pitch, yaw] in body FLU frame
+#     (x fwd, y left, z up); rpy [0,0,0] = optical axis along body +x.
+#   - intrinsics: ideal equidistant kb4 (k1..k4=0) rendered EXACTLY by Isaac's
+#     f-theta model -> ground-truth calibration, zero calibration error.
+#   - Cameras are perfectly synced in sim; unsynchronized variants are
+#     generated offline with bench/skew_bag.py.
+
+name: rig_2cam
+imu:
+  topic: /uav1/imu
+  rate_hz: 250          # LivoxIMU default update rate; verify on bring-up
+  # Sim IMU is near-noiseless; candidate configs still need non-zero noise
+  # densities. Use these placeholder values consistently for ALL candidates:
+  gyro_noise_density: 1.0e-4
+  gyro_random_walk: 1.0e-5
+  accel_noise_density: 1.0e-3
+  accel_random_walk: 1.0e-4
+
+camera_defaults: &cam
+  model: kb4
+  resolution: [512, 512]
+  rate_hz: 20
+  fov_deg: 190.0
+  intrinsics: {fx: 140.0, fy: 140.0, cx: 256.0, cy: 256.0, k1: 0.0, k2: 0.0, k3: 0.0, k4: 0.0}
+
+cameras:
+  - <<: *cam
+    name: cam0            # front-left
+    mount: {position: [0.10, 0.05, 0.0], rpy_deg: [0.0, 0.0, 0.0]}
+  - <<: *cam
+    name: cam1            # front-right
+    mount: {position: [0.10, -0.05, 0.0], rpy_deg: [0.0, 0.0, 0.0]}

@@ -1,0 +1,74 @@
+services:
+  isaac-sim:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: isaac-pegasus
+    entrypoint: ["/workspace/sim_entrypoint.sh"]
+    runtime: nvidia
+    network_mode: host
+    environment:
+      - ACCEPT_EULA=Y
+      - PRIVACY_CONSENT=Y
+      - DISPLAY=${DISPLAY:-:0}
+      - SIM_ENVIRONMENT=${SIM_ENVIRONMENT:-Curved Gridroom}
+      - UAV_NAME=${UAV_NAME:-uav1}
+      - SIM_SCRIPT=${SIM_SCRIPT:-bench_drone.py}
+      - RIG_CONFIG=${RIG_CONFIG:-/rigs/rig_3cam.yaml}
+      - HEADLESS=${HEADLESS:-false}
+      - INTERACTIVE=${INTERACTIVE:-false}
+      - STREAM_PUBLIC_IP=${STREAM_PUBLIC_IP:-}
+      - ROS_DISTRO=humble
+      - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+      - FASTRTPS_DEFAULT_PROFILES_FILE=
+    volumes:
+      # X11 forwarding
+      - /tmp/.X11-unix:/tmp/.X11-unix
+      - ${HOME}/.Xauthority:/root/.Xauthority:ro
+      # NVIDIA caches (persist between runs)
+      - isaac-cache-kit:/isaac-sim/kit/cache
+      - isaac-cache-pip:/root/.cache/pip
+      - isaac-cache-gl:/root/.cache/nvidia/GLCache
+      - isaac-cache-compute:/root/.cache/nvidia/ComputeCache
+      - isaac-cache-ov:/root/.cache/ov
+      # Omniverse data (downloaded assets, Nucleus data)
+      - isaac-data-ov:/root/.local/share/ov
+      # Workspace for user scripts
+      - ./workspace:/workspace
+      # Camera rig definitions (single source of truth, shared with bench/)
+      - ../../rigs:/rigs:ro
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    stdin_open: true
+    tty: true
+
+  ros1-bridge:
+    build:
+      context: .
+      dockerfile: Dockerfile.ros1bridge
+    container_name: ros1-bridge
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      - ROS_MASTER_URI=http://localhost:11311
+      - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+      - FASTRTPS_DEFAULT_PROFILES_FILE=/fastdds_udp_only.xml
+    volumes:
+      - ./bridge_entrypoint.sh:/bridge_entrypoint.sh:ro
+      - ./bridge_config.yaml:/bridge_config.yaml:ro
+      - ./fastdds_udp_only.xml:/fastdds_udp_only.xml:ro
+    depends_on:
+      - isaac-sim
+
+volumes:
+  isaac-cache-kit:
+  isaac-cache-pip:
+  isaac-cache-gl:
+  isaac-cache-compute:
+  isaac-cache-ov:
+  isaac-data-ov:

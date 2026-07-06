@@ -1,0 +1,41 @@
+# Benchmark rig: 6 fisheye cameras (hexagonal surround ring, 60-deg spacing)
+# + body-center IMU. With 190-deg lenses every adjacent pair overlaps heavily.
+# Same intrinsics/rates as rig_2cam/rig_3cam — camera count is the variable.
+# See rig_2cam.yaml for conventions.
+
+name: rig_6cam
+imu:
+  topic: /uav1/imu
+  rate_hz: 250
+  gyro_noise_density: 1.0e-4
+  gyro_random_walk: 1.0e-5
+  accel_noise_density: 1.0e-3
+  accel_random_walk: 1.0e-4
+
+camera_defaults: &cam
+  model: kb4
+  resolution: [512, 512]
+  rate_hz: 20
+  fov_deg: 190.0
+  intrinsics: {fx: 140.0, fy: 140.0, cx: 256.0, cy: 256.0, k1: 0.0, k2: 0.0, k3: 0.0, k4: 0.0}
+
+# Ring of radius 0.08 m: position = r*(cos yaw, sin yaw, 0), optical axis radial.
+cameras:
+  - <<: *cam
+    name: cam0
+    mount: {position: [0.080, 0.0, 0.0], rpy_deg: [0.0, 0.0, 0.0]}
+  - <<: *cam
+    name: cam1
+    mount: {position: [0.040, 0.069, 0.0], rpy_deg: [0.0, 0.0, 60.0]}
+  - <<: *cam
+    name: cam2
+    mount: {position: [-0.040, 0.069, 0.0], rpy_deg: [0.0, 0.0, 120.0]}
+  - <<: *cam
+    name: cam3
+    mount: {position: [-0.080, 0.0, 0.0], rpy_deg: [0.0, 0.0, 180.0]}
+  - <<: *cam
+    name: cam4
+    mount: {position: [-0.040, -0.069, 0.0], rpy_deg: [0.0, 0.0, 240.0]}
+  - <<: *cam
+    name: cam5
+    mount: {position: [0.040, -0.069, 0.0], rpy_deg: [0.0, 0.0, 300.0]}

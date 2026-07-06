@@ -115,9 +115,23 @@ Orin Nano Super, 3 cameras first.** The evaluation exists to confirm/refute this
   geometry vocabulary for calibration sanity checks, rig simulation, and later depth work.
 - Example 3-cam rig definition (`rigs/`).
 
-**Phase 1 — Baselines on public data (desktop, ~1–2 weeks)**
+**Phase 0.5 — Unified simulation benchmark (added 2026-07-06)**
+- Isaac Sim + Pegasus setup copied from `swarm_stack/tools/isaac` into `sim/isaac/`;
+  `bench_drone.py` spawns an N-fisheye rig on the drone from `rigs/rig_{2,3,6}cam.yaml`
+  (identical intrinsics across rigs — **camera count is the only variable**), rendered
+  with exact f-theta = ideal kb4 intrinsics (calibration error eliminated as a variable).
+- One recording per rig/trajectory (cams + IMU + `/uav1/ground_truth`);
+  **unsynchronized-camera variants are generated offline** by `bench/skew_bag.py`
+  (deterministic per-camera offsets/jitter) so every candidate sees byte-identical
+  images under controlled timing degradation.
+- `bench/evaluate.py`: ATE, RPE@1s, coverage and dropout gaps (robustness first-class).
+- Matrix: candidates × rigs {2,3,6} × trajectories × skew profiles — see `bench/README.md`.
+
+**Phase 1 — Baselines on public data + sim bring-up (desktop, ~1–2 weeks)**
 - Build Tracks A–C in Docker; run TUM-VI `room1/room4` (A, B, D) and a multi-cam sequence (C).
-- Metrics: ATE/RTE (`evo`), tracking-failure count, CPU load, peak RSS.
+- Bring up the sim benchmark: verify fisheye rendering/orientation, script benchmark
+  trajectories, add GT extraction + rig-yaml→candidate-config generation.
+- Metrics: `bench/evaluate.py` (+ `evo` cross-check), CPU load, peak RSS.
 - Deliverable: comparison table + per-track "gotchas" notes.
 
 **Phase 2 — Own rig, 2–3 cameras (~2–3 weeks)**
@@ -156,7 +170,12 @@ outperformed; after Phase 2 pick ONE core VIO; Phase 3 only hybridizes the winne
 ├── docker/                     ← one Dockerfile per track (A: openvins, B: basalt,
 │                                  C: openmavis, D: hybrid python/torch)
 ├── datasets/download_tumvi.sh  ← TUM-VI calibrated sequences
-├── rigs/rig_3cam_example.yaml  ← 3-camera rig definition (shared vocabulary)
+├── sim/isaac/                  ← Isaac Sim + Pegasus (copied from swarm_stack) +
+│                                  bench_drone.py / fisheye_rig.py rig support
+├── bench/                      ← unified benchmark: record.sh, skew_bag.py,
+│                                  evaluate.py (+ tests); contract in README.md
+├── rigs/                       ← rig_{2,3,6}cam.yaml benchmark rigs (single source
+│                                  of truth) + rig_3cam_real_example.yaml (hardware)
 ├── tools/fisheye/              ← lens models (KB4 / Double Sphere / EUCM) + tests
 └── experiments/
     ├── 01_openvins_tumvi/      ← Track A runner

@@ -1,0 +1,7 @@
+.git
+.env
+.claude
+workspace
+!workspace/px4-rc.mavlink
+!workspace/Livox_Mid360.json
+*.md

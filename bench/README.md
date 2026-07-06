@@ -1,0 +1,81 @@
+# Unified benchmark: same world, same flight, same data — for every candidate
+
+All candidates are quantified in the **exact same environment**: one Isaac Sim
+world, one flown trajectory, one recording per rig. The only variables are
+*candidate*, *camera count* (2/3/6) and *timestamp-skew profile*.
+
+## The contract
+
+```
+                    Isaac Sim (sim/isaac, copied from swarm_stack)
+  RIG_CONFIG=/rigs/rig_{2,3,6}cam.yaml  ->  bench_drone.py spawns the fisheye
+  SIM_ENVIRONMENT=<world>                   rig on the drone (exact f-theta
+                                            intrinsics = ground-truth calib)
+                    |
+        fly trajectory (MRS stack / PX4, same goto script every run)
+                    |
+        bench/record.sh rig.yaml <name>     ROS1 bag: cams + /uav1/imu
+                    |                       + /uav1/ground_truth
+        bench/skew_bag.py                   offline unsync variants
+                    |                       (per-camera offset + jitter)
+        candidate runners (experiments/*)   consume the SAME bag
+                    |
+        bench/evaluate.py gt.txt est.txt    ATE / RPE / coverage / gaps
+```
+
+Key design decisions:
+
+- **Cameras are recorded perfectly synced; unsync is injected offline** by
+  `skew_bag.py`. One recording → any number of deterministic skew profiles,
+  and every candidate sees byte-identical images. This makes the central
+  question of the project ("how much does lack of sync hurt, per candidate?")
+  a controlled, repeatable experiment.
+- **Rig yamls are the single source of truth** (`rigs/rig_{2,3,6}cam.yaml`):
+  the sim spawns cameras from them, `record.sh` derives topics from them, and
+  candidate configs must be generated from them (generator tool is Phase 1
+  work). All three rigs share identical intrinsics/rates — camera count and
+  placement are the only variables.
+- **Ideal equidistant (kb4, k1..k4=0) intrinsics** rendered exactly by Isaac's
+  f-theta camera → calibration error is eliminated as a benchmark variable.
+  (Realistic distortion + calibration noise can be added later as another
+  controlled axis.)
+- **Robustness is a first-class metric**: `evaluate.py` reports coverage and
+  dropout gaps, not just ATE. A candidate that diverges quietly scores worse
+  than one that dies loudly and recovers.
+
+## Metrics (bench/evaluate.py)
+
+| Metric | Meaning |
+|---|---|
+| ATE rmse/mean/median/max | absolute error after SE3 (or Sim3 with `--scale`) alignment |
+| RPE rmse/max @ 1s | local drift, aggressive-motion sensitivity |
+| coverage | fraction of GT time span with estimates (robustness) |
+| gaps / longest_gap | tracking dropouts > 0.5 s |
+| (per runner) CPU %, peak RSS | measured by the candidate runner scripts |
+
+## The matrix
+
+candidates {openvins, basalt*, openmavis, dba-fusion} ×
+rigs {2cam, 3cam, 6cam*} ×
+trajectories {slow_scan, fast_yaw, low_light} ×
+skew {sync, 15ms, 40ms, 15ms+2ms-jitter}
+
+(*) basalt is stereo-only → 2cam column only; openmavis is the only 6cam-ready
+candidate today; openvins 6cam needs a config experiment. Run what fits,
+report the holes honestly.
+
+## Getting ground truth into TUM format
+
+`/uav1/ground_truth` (nav_msgs/Odometry) → TUM text. Extraction helper is
+Phase 1 work alongside the candidate runners (one-liner with `rosbags` — see
+`skew_bag.py` for the API pattern).
+
+## Status
+
+- [x] Isaac setup copied from swarm_stack (`sim/isaac`, provenance in README there)
+- [x] `bench_drone.py` + `fisheye_rig.py` (untested scaffold — needs GPU host bring-up)
+- [x] `skew_bag.py` + `evaluate.py` (unit-tested offline)
+- [ ] Sim bring-up: verify fisheye rendering, camera orientation convention, rates
+- [ ] Scripted benchmark trajectories (MRS goto sequence, identical every run)
+- [ ] GT extraction + candidate config generation from rig yamls
+- [ ] First full matrix row: openvins × 3 rigs × slow_scan × sync

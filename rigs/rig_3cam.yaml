@@ -1,0 +1,30 @@
+# Benchmark rig: 3 fisheye cameras (front stereo + rear) + body-center IMU.
+# Same intrinsics/rates as rig_2cam/rig_6cam — camera count is the variable.
+# See rig_2cam.yaml for conventions.
+
+name: rig_3cam
+imu:
+  topic: /uav1/imu
+  rate_hz: 250
+  gyro_noise_density: 1.0e-4
+  gyro_random_walk: 1.0e-5
+  accel_noise_density: 1.0e-3
+  accel_random_walk: 1.0e-4
+
+camera_defaults: &cam
+  model: kb4
+  resolution: [512, 512]
+  rate_hz: 20
+  fov_deg: 190.0
+  intrinsics: {fx: 140.0, fy: 140.0, cx: 256.0, cy: 256.0, k1: 0.0, k2: 0.0, k3: 0.0, k4: 0.0}
+
+cameras:
+  - <<: *cam
+    name: cam0            # front-left
+    mount: {position: [0.10, 0.05, 0.0], rpy_deg: [0.0, 0.0, 0.0]}
+  - <<: *cam
+    name: cam1            # front-right
+    mount: {position: [0.10, -0.05, 0.0], rpy_deg: [0.0, 0.0, 0.0]}
+  - <<: *cam
+    name: cam2            # rear
+    mount: {position: [-0.10, 0.0, 0.0], rpy_deg: [0.0, 0.0, 180.0]}
