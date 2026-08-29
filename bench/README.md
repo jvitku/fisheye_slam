@@ -122,7 +122,10 @@ GUARD_OPTS="--mem 8G --cpus 8" bench/run_sim_candidate.sh openvins rigs/oakdpro.
 
 Defaults are for a shared workstation (12 GB, half the cores). The 8 GB-VRAM
 laptop this was written on cannot run Isaac Sim with five rendered cameras
-safely — `start_all.sh` says so and stops; `FORCE=1` overrides.
+safely — `start_all.sh` says so and stops; `FORCE=1` overrides. Docker image
+builds go through `docker/build_oakd_lane.sh` (one image at a time under the
+guard); the thermal watchdog did kill a `-j4` nvblox compile at 100 °C on that
+laptop, which is why `docker/nvblox` defaults to `-j2`.
 
 ## Flying the benchmark trajectory
 

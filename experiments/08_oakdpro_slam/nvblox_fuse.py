@@ -23,7 +23,7 @@ import cv2
 import numpy as np
 import yaml
 
-FUSE_BIN = "/opt/nvblox/nvblox/build/executables/fuse_3dmatch"
+FUSE_BIN = "/opt/nvblox/build/executables/fuse_3dmatch"   # docker/nvblox root build
 
 
 def quat_to_R(qx, qy, qz, qw) -> np.ndarray:
@@ -51,19 +51,24 @@ def main() -> None:
         K = ("{fx} 0 {cx}\n0 {fy} {cy}\n0 0 1\n").format(**intr)
         (Path(td) / "camera-intrinsics.txt").write_text(K)
 
-        for line in (args.depth_dir / "poses.txt").read_text().splitlines():
+        # The 3DMatch loader walks frame-000000, 000001, ... and stops at the
+        # first missing file, so renumber contiguously from 0 regardless of the
+        # tracker's own indices (which start at 1 and skip untracked frames).
+        for i, line in enumerate(
+                (args.depth_dir / "poses.txt").read_text().splitlines()):
             f = line.split()
             idx, (x, y, z, qx, qy, qz, qw) = f[0], map(float, f[2:9])
             depth_m = np.load(args.depth_dir / f"{idx}.npy")
             depth_mm = np.nan_to_num(depth_m * 1000.0, posinf=0).astype(np.uint16)
-            cv2.imwrite(str(seq / f"frame-{idx}.depth.png"), depth_mm)
-            # fuse_3dmatch also expects a color frame; feed depth as gray.
-            cv2.imwrite(str(seq / f"frame-{idx}.color.png"),
-                        (np.clip(depth_m / 10.0, 0, 1) * 255).astype(np.uint8))
+            cv2.imwrite(str(seq / f"frame-{i:06d}.depth.png"), depth_mm)
+            # fuse_3dmatch also expects a color frame (3-channel PNG only —
+            # image_loader.cpp checks it); feed depth as gray replicated x3.
+            gray = (np.clip(depth_m / 10.0, 0, 1) * 255).astype(np.uint8)
+            cv2.imwrite(str(seq / f"frame-{i:06d}.color.png"), np.repeat(gray[..., None], 3, axis=2))
             T = np.eye(4)
             T[:3, :3] = quat_to_R(qx, qy, qz, qw)
             T[:3, 3] = [x, y, z]
-            np.savetxt(seq / f"frame-{idx}.pose.txt", T, fmt="%.9f")
+            np.savetxt(seq / f"frame-{i:06d}.pose.txt", T, fmt="%.9f")
 
         subprocess.run(
             [FUSE_BIN, td, "--mesh_output_path", str(args.out_mesh)],

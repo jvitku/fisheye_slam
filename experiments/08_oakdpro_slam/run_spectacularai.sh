@@ -17,7 +17,7 @@ if [ "${1:-}" = "--calib" ]; then
     EXTRA_MOUNTS=(-v "$(realpath "$2"):/data/calib.yaml:ro")
 fi
 
-docker run --rm ${GUARD_DOCKER_ARGS:-} \
+docker run --rm ${GUARD_DOCKER_ARGS:-} --user "$(id -u):$(id -g)" -e HOME=/tmp \
     -v "$(realpath "$BAG"):/data/input.bag:ro" \
     -v "$ROOT/rigs:/rigs:ro" \
     -v "$ROOT/experiments/08_oakdpro_slam:/scripts:ro" \

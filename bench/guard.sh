@@ -123,6 +123,18 @@ preflight() {
     [ $ok = 1 ]
 }
 
+reap_orphans() {   # containers labelled by a guard whose PID no longer exists
+    local line cid label pid
+    while read -r cid label; do
+        [ -n "$cid" ] || continue
+        pid="${label##*-}"
+        if ! kill -0 "$pid" 2>/dev/null; then
+            echo "guard: killing orphaned container $cid (guard $label is gone)" >&2
+            docker kill "$cid" >/dev/null 2>&1 || true
+        fi
+    done < <(docker ps --filter "label=fisheye_guard" --format '{{.ID}} {{.Label "fisheye_guard"}}' 2>/dev/null)
+}
+reap_orphans
 preflight || { echo "guard: refusing to start (override thresholds with --mem/--disk-floor/... if you really mean it)" >&2; exit 1; }
 [ "$CHECK_ONLY" = 1 ] && exit 0
 

@@ -1,25 +1,34 @@
 # OAK-D Pro Option 2 / Track F1 — PyCuVSLAM (ROS-free cuVSLAM Python API).
-# Exploratory: written from upstream docs, not yet built. Needs an NVIDIA GPU
-# (--gpus all) — Orin or x86+CUDA. License: NVIDIA Isaac, free to use,
-# closed source (product-path lane, docs/REPORT.md §2b).
+# Needs an NVIDIA GPU at run time (--gpus all) — Orin or x86 + CUDA.
+# License: NVIDIA Isaac, free to use, closed source (product-path lane,
+# docs/REPORT.md §2b).
 #
-# PyCuVSLAM distributes per-platform wheels from the GitHub repo (no PyPI as
-# of 2026-07): https://github.com/NVlabs/PyCuVSLAM — PIN the wheel/commit on
-# first build (docs/oak_d_pro_slam.md §6 open item).
-FROM nvidia/cuda:12.4.1-runtime-ubuntu22.04
+# PyCuVSLAM ships pre-built wheels on the cuVSLAM GitHub releases page
+# (https://github.com/nvidia-isaac/cuVSLAM/releases): per Ubuntu / Python /
+# CUDA-major / arch. This image = Ubuntu 22.04 + Python 3.10 + cu12 wheel
+# (manylinux_2_35 = glibc 2.35 = 22.04). The wheel needs a CUDA 12 toolkit
+# runtime, so the base is the 12.6.3 runtime image (the release's reference
+# CUDA). Jetson Orin: same tag family with the aarch64 wheel (JetPack 6).
+ARG CUVSLAM_VERSION=17.0.0
+FROM nvidia/cuda:12.6.3-runtime-ubuntu22.04
+ARG CUVSLAM_VERSION
 
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    python3 python3-pip git libgl1 libglib2.0-0 \
+    python3 python3-pip git curl ca-certificates libgl1 libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
 RUN pip3 install --no-cache-dir rosbags numpy opencv-python-headless pyyaml
 
-# Upstream install path (verify against the repo README on first build):
-# wheels live in the repo per python/CUDA version.
-RUN git clone --depth 1 https://github.com/NVlabs/PyCuVSLAM.git /opt/pycuvslam && \
-    pip3 install /opt/pycuvslam || \
-    echo "WARNING: pycuvslam install needs the platform wheel — see repo README"
+# Pinned wheel from the release page (fails loudly if the asset moves).
+RUN set -e; W="cuvslam-${CUVSLAM_VERSION}+cu12-cp310-cp310-manylinux_2_35_x86_64.whl"; \
+    curl -fL --retry 3 -o "/tmp/$W" \
+      "https://github.com/nvidia-isaac/cuVSLAM/releases/download/v${CUVSLAM_VERSION}/$W" && \
+    pip3 install --no-cache-dir "/tmp/$W" && rm "/tmp/$W" && \
+    python3 -c "import cuvslam; print('cuvslam', getattr(cuvslam, '__version__', '?'))"
+
+# Upstream examples / API reference for the runner (experiments/08_oakdpro_slam/cuvslam_track.py).
+RUN git clone --depth 1 https://github.com/nvidia-isaac/PyCuVSLAM.git /opt/pycuvslam
 
 WORKDIR /scripts
 CMD ["bash"]

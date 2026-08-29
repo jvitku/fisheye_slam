@@ -183,13 +183,17 @@ live latency measurements on Orin.
 - [x] Research + this report
 - [x] `rigs/oakdpro.yaml` + pinhole/depth rig support + unit tests
 - [x] Runners + converters in `experiments/08_oakdpro_slam/` (bag-mode, all 3 options)
-- [x] Dockerfiles: `docker/{spectacularai,cuvslam,rtabmap,nvblox}` (exploratory — build on first use, like voxblox)
+- [x] Dockerfiles: `docker/{spectacularai,cuvslam,rtabmap,nvblox}` — **built and smoke-tested 2026-08-29** on the dev laptop (RTX 4070 8 GB) with `docker/build_oakd_lane.sh` (sequential, under `bench/guard.sh`), on a synthetic full-resolution OAK-D contract bag (noise images, so no real tracking — the API/plumbing is what was verified):
+  - cuVSLAM: `cuvslam` **17.0.0** wheel (cu12, cp310) from the GitHub release page; `cuvslam_track.py` rewritten against the wheel's real API (`Tracker.OdometryConfig`/`OdometryMode.Inertial`, `Distortion.Model.Pinhole`, `track()` → `(PoseEstimate, slam_pose)`); rig origin = cam0 optical, output re-expressed at the pod IMU; 12/12 frames tracked in Inertial mode on the GPU
+  - cuVSLAM `--map` → nvblox: depth dump (frames grouped by stamp in any bag order) → `fuse_3dmatch` (upstream root build, renderer/tests/torch off, 3-channel color PNGs, 0-based contiguous frames) → `mesh.ply` (125 k vertices from 12 noise frames)
+  - Spectacular AI: `bag2sai.py` recording accepted by the SDK `Replay`, 9 VIO poses from 12 frames
+  - RTAB-Map: `rgbd_odometry` + `rtabmap` + export pipeline runs headless; `octomap_saver` fixed (`-f` means *full map*, not file); OctoMap service availability in the apt build still to confirm
 - [x] `hw/record_oak.py` recorder (needs a physical OAK-D Pro to validate)
 - [x] Side-by-side with the fisheye pod on one drone: `rigs/pod3_oakdpro.yaml` (composite rig), `bench/split_bag.py`, `bench/compare_rigs.sh` — same flight, same GT, OpenVINS on both + cuVSLAM (bench/README.md "Side-by-side reference")
 - [ ] Sim bring-up of the oakdpro rig (depth topic name VERIFY-IN-SIM; needs the ≥24 GB GPU host)
 - [ ] First matrix row: 3 options × sim day bag
 - [ ] SAI recording-format validation against a real SDK replay (format doc: https://spectacularai.github.io/docs/sdk/recording.html)
-- [ ] PyCuVSLAM wheel/install pin (upstream distributes per-platform wheels)
+- [x] PyCuVSLAM wheel/install pin: `cuvslam==17.0.0+cu12` (ARG `CUVSLAM_VERSION` in `docker/cuvslam/Dockerfile`; Orin = same tag family, aarch64 wheel, JetPack 6)
 - [ ] HW validation pass + live-mode wiring
 - [ ] Projector interleaving (dot↔flood per frame) in `record_oak.py` (v2)
 

@@ -5,6 +5,11 @@
 set -euo pipefail
 source /opt/ros/noetic/setup.bash
 BAG="$1"; OUT="$2"; ODOM="${3:-rtabmap}"
+# Every background node (roscore, camera_info publisher, odometry, rtabmap)
+# inherits this shell's stdout; unless they are killed the container's output
+# pipe never closes and run_rtabmap.sh hangs after "done".
+trap 'kill $(jobs -p) 2>/dev/null; sleep 1; kill -9 $(jobs -p) 2>/dev/null; true' EXIT
+
 
 roscore &
 sleep 3
@@ -45,14 +50,16 @@ rosbag play --clock -d 2 "$BAG"
 sleep 5
 
 # OctoMap out: rtabmap (built with octomap) serves /rtabmap/octomap_binary.
-rosrun octomap_server octomap_saver -f "$OUT/octomap.bt" \
+# octomap_saver <file.bt> uses the octomap_binary service (its -f flag means
+# FULL map via /octomap_full, not "file"). Bounded: never let an export hang.
+timeout 60 rosrun octomap_server octomap_saver "$OUT/octomap.bt" \
     octomap_binary:=/rtabmap/octomap_binary || echo "WARN: octomap export failed"
 
 kill -INT "$RTABMAP_PID"; wait "$RTABMAP_PID" || true
 
 # Dense cloud + poses from the database. poses_format 1 = RGBD-SLAM/TUM
 # (timestamp x y z qx qy qz qw). VERIFY-ON-FIRST-RUN: rtabmap-export flags.
-rtabmap-export --cloud --poses --poses_format 1 \
+timeout 300 rtabmap-export --cloud --poses --poses_format 1 \
     --output_dir "$OUT" "$OUT/rtabmap.db" || echo "WARN: rtabmap-export failed"
 [ -f "$OUT/rtabmap_poses.txt" ] && mv "$OUT/rtabmap_poses.txt" "$OUT/est.tum"
 
