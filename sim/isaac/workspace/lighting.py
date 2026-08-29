@@ -86,39 +86,41 @@ def setup_lighting(stage, mode: str):
         carb.log_warn("lighting: mode=night (ambient only; pod IR dominates)")
 
 
-def attach_pod_ir_light(stage, body_path: str, rig) -> bool:
-    """Attach the pod's IR flood illuminator to the vehicle body.
+def attach_pod_ir_light(stage, body_path: str, rig) -> int:
+    """Attach every pod IR flood illuminator of the rig to the vehicle body.
 
-    Rigidly mounted at rig['illuminator'] (pod-relative mount already resolved
-    to body frame by rig_math.load_rig), emitting a shadow-casting cone along
-    the camera boresight. Returns True if a light was attached.
+    One shadow-casting cone light per rig['illuminators'] entry (pod-relative
+    mounts already resolved to body frame by rig_math.load_rig), emitting
+    along that pod's camera boresight. Composite rigs get one light per
+    member pod (prim <ns>_ir_light): with both devices on the drone both
+    floods are on, exactly as in hardware. Returns the number of lights.
     """
-    ill = rig.get("illuminator")
-    if ill is None:
-        return False
+    n = 0
+    for ill in rig.get("illuminators", []):
+        name = f"{ill['pod_ns']}_ir_light" if "pod_ns" in ill else "pod_ir_light"
+        mount = ill["body_mount"]
+        light = UsdLux.SphereLight.Define(stage, f"{body_path}/{name}")
+        light.CreateRadiusAttr(0.005)
+        light.CreateIntensityAttr(float(ill.get("intensity", 30000.0)))
+        light.CreateColorAttr(Gf.Vec3f(1.0, 1.0, 1.0))  # NIR modeled as white
+        light.CreateNormalizeAttr(True)
 
-    mount = ill["body_mount"]
-    light = UsdLux.SphereLight.Define(stage, f"{body_path}/pod_ir_light")
-    light.CreateRadiusAttr(0.005)
-    light.CreateIntensityAttr(float(ill.get("intensity", 30000.0)))
-    light.CreateColorAttr(Gf.Vec3f(1.0, 1.0, 1.0))  # NIR modeled as white
-    light.CreateNormalizeAttr(True)
+        # Cone shaping: flood beam along the pod boresight.
+        shaping = UsdLux.ShapingAPI.Apply(light.GetPrim())
+        shaping.CreateShapingConeAngleAttr(float(ill.get("cone_half_angle_deg", 60.0)))
+        shaping.CreateShapingConeSoftnessAttr(0.3)
 
-    # Cone shaping: flood beam along the pod boresight.
-    shaping = UsdLux.ShapingAPI.Apply(light.GetPrim())
-    shaping.CreateShapingConeAngleAttr(float(ill.get("cone_half_angle_deg", 60.0)))
-    shaping.CreateShapingConeSoftnessAttr(0.3)
+        xf = UsdGeom.Xformable(light.GetPrim())
+        xf.AddTranslateOp().Set(Gf.Vec3d(*mount["position"]))
+        # Shaped lights emit along -z; pitch -90 maps -z -> body +x, composed with
+        # the mount's own rotation. VERIFY-IN-SIM on first night-mode bring-up.
+        r, p, y = mount["rpy_deg"]
+        xf.AddRotateZYXOp().Set(Gf.Vec3f(r, p - 90.0, y))
 
-    xf = UsdGeom.Xformable(light.GetPrim())
-    xf.AddTranslateOp().Set(Gf.Vec3d(*mount["position"]))
-    # Shaped lights emit along -z; pitch -90 maps -z -> body +x, composed with
-    # the mount's own rotation. VERIFY-IN-SIM on first night-mode bring-up.
-    r, p, y = mount["rpy_deg"]
-    xf.AddRotateZYXOp().Set(Gf.Vec3f(r, p - 90.0, y))
-
-    carb.log_warn(
-        f"lighting: pod IR illuminator at {mount['position']} "
-        f"(cone {ill.get('cone_half_angle_deg', 60.0)} deg, "
-        f"intensity {ill.get('intensity', 30000.0)})"
-    )
-    return True
+        carb.log_warn(
+            f"lighting: IR illuminator '{name}' at {mount['position']} "
+            f"(cone {ill.get('cone_half_angle_deg', 60.0)} deg, "
+            f"intensity {ill.get('intensity', 30000.0)})"
+        )
+        n += 1
+    return n

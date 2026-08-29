@@ -6,7 +6,9 @@
 > `SIM_SCRIPT`, N-fisheye benchmark rig from `RIG_CONFIG`, lidar removed),
 > `workspace/fisheye_rig.py` (rig yaml -> Pegasus cameras + f-theta projection
 > override), `workspace/rig_math.py` (pure-math mount composition, host-tested),
-> `workspace/pod_imu.py` (sensor-pod PX4-FC IMU on /uav1/sensor_pod/imu),
+> `workspace/pod_imu.py` (sensor-pod PX4-FC IMU on /uav1/sensor_pod/imu; one
+> per member pod, /uav1/<ns>/imu, for composite rigs such as
+> `rigs/pod3_oakdpro.yaml` — pod + OAK-D Pro on one drone),
 > compose mounts `../../rigs:/rigs:ro`. The original `px4_drone.py`
 > is kept unmodified as reference (`SIM_SCRIPT=px4_drone.py`). Upstream fixes
 > in swarm_stack should be ported here manually. Sections below describing the

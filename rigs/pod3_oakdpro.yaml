@@ -1,0 +1,32 @@
+# Side-by-side reference rig: the 3-camera fisheye pod AND a Luxonis OAK-D Pro
+# mounted on the SAME drone, so one flight yields one recording with both
+# devices' data — the fisheye pod's SLAM estimate can then be compared against
+# the OAK-D's on identical motion, lighting and ground truth
+# (bench/compare_rigs.sh). This is a COMPOSITE rig: `pods:` lists member pod
+# rigs (each unchanged, single source of truth) with a namespace and an
+# optional mount override; rig_math.load_rig() flattens them.
+#
+# Sim topics (namespaced so the two devices cannot collide):
+#   /uav1/pod_cam{0,1,2}/color/image_raw     fisheye pod cameras
+#   /uav1/pod/imu                            pod PX4-FC IMU (400 Hz)
+#   /uav1/oakd_cam{0,1}/color/image_raw      OAK-D Pro stereo pair
+#   /uav1/oakd_cam0/depth/image_raw          OAK-D Pro depth (ideal RTX depth)
+#   /uav1/oakd/imu                           OAK-D Pro IMU (BMI270 class, 200 Hz)
+#   /uav1/ground_truth                       drone body, from mrs_bridge
+# bench/split_bag.py restores each member's own single-rig contract
+# (/uav1/cam0/..., /uav1/sensor_pod/imu) so every existing runner works
+# unchanged, and writes the ground truth expressed at each device's IMU.
+#
+# Placement: the pod keeps its usual spot (12 cm above body center); the
+# OAK-D Pro sits beside it to starboard at the same height and heading
+# (device is 97 mm wide, pod triangle spans y = +-6 cm, so 13 cm clears it).
+# Both devices' IR flood LEDs are on at night, as they would be in hardware.
+
+name: pod3_oakdpro
+pods:
+  - ns: pod
+    rig: pod_3cam_triangle.yaml       # relative to this file
+    # mount omitted -> the member's own pod.mount ([0, 0, 0.12])
+  - ns: oakd
+    rig: oakdpro.yaml
+    mount: {position: [0.0, -0.13, 0.12], rpy_deg: [0.0, 0.0, 0.0]}

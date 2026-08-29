@@ -14,7 +14,7 @@ ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 BAG="${1:?usage: run_rtabmap.sh <bag> [rtabmap|external]}"
 ODOM="${2:-rtabmap}"
 NAME="$(basename "${BAG%.bag}")"
-OUT="$ROOT/experiments/08_oakdpro_slam/out/rtabmap/$NAME"
+OUT="${OUT_DIR:-$ROOT/experiments/08_oakdpro_slam/out/rtabmap/$NAME}"  # OUT_DIR: bench/compare_rigs.sh
 mkdir -p "$OUT"
 
 NET=()

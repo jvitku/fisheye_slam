@@ -57,6 +57,11 @@ pod's shadow-casting IR light is the dominant source — it enables the cameras
 but its moving shadows make VIO harder, which is what the night rows measure.
 
 ```bash
+# sim (GPU host): fisheye pod + OAK-D Pro side by side, one flight, one table
+RIG_CONFIG=/rigs/pod3_oakdpro.yaml ./sim/isaac/start_all.sh -d
+bench/record.sh rigs/pod3_oakdpro.yaml combo_day 120
+bench/compare_rigs.sh datasets/data/sim/combo_day.bag rigs/pod3_oakdpro.yaml
+
 # sim (GPU host): fisheye benchmark drone with the 3-cam rig
 cd sim/isaac && RIG_CONFIG=/rigs/rig_3cam.yaml ./start_all.sh -d
 

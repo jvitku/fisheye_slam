@@ -6,7 +6,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 BAG="${1:?usage: run_cuvslam.sh <bag> [--map]}"
 NAME="$(basename "${BAG%.bag}")"
-OUT="$ROOT/experiments/08_oakdpro_slam/out/cuvslam/$NAME"
+OUT="${OUT_DIR:-$ROOT/experiments/08_oakdpro_slam/out/cuvslam/$NAME}"  # OUT_DIR: bench/compare_rigs.sh
 mkdir -p "$OUT"
 
 DUMP=""

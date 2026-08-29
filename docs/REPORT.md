@@ -198,6 +198,18 @@ table (see §2b license audit). The evaluation exists to make that choice cheapl
 - Metrics: `bench/evaluate.py` (+ `evo` cross-check), CPU load, peak RSS.
 - Deliverable: comparison table + per-track "gotchas" notes.
 
+**Phase 1.5 — Side-by-side reference + convergence loop (added 2026-08-29)**
+- The fisheye pod and a Luxonis OAK-D Pro fly on the *same* simulated drone
+  (`rigs/pod3_oakdpro.yaml`, composite rig) so one recording yields both
+  devices' data under identical motion, lighting and ground truth.
+- `bench/compare_rigs.sh` splits the bag per device, runs the same estimator
+  (OpenVINS) on both — the rig is the only variable — plus the OAK-D's native
+  stack (cuVSLAM), and evaluates against GT expressed at each device's IMU.
+- Then iterate on the fisheye pod's stack until it matches the OAK-D row.
+  Learned components are explicitly allowed for the *perception* parts
+  (feature matching, reliability, dense depth); geometry/timing stays
+  classical (see the design note in bench/README.md).
+
 **Phase 2 — Own rig, 2–3 cameras (~2–3 weeks)**
 - 2× (then 3×) NoIR wide/fisheye cams + IMU; locked exposure/gain; best-effort software
   timestamping. Calibrate with Basalt/Kalibr (intrinsics → extrinsics → cam-IMU temporal).
@@ -237,9 +249,12 @@ fisheye_slam/
 ├── sim/isaac/                  ← Isaac Sim + Pegasus (copied from swarm_stack) +
 │                                  bench_drone.py / fisheye_rig.py rig support
 ├── bench/                      ← unified benchmark: record.sh, skew_bag.py,
-│                                  evaluate.py (+ tests); contract in README.md
-├── rigs/                       ← rig_{2,3,6}cam.yaml benchmark rigs (single source
-│                                  of truth) + rig_3cam_real_example.yaml (hardware)
+│                                  evaluate.py, gt_extract.py, split_bag.py,
+│                                  gen_openvins_config.py, compare_rigs.sh (+ tests);
+│                                  contract in README.md
+├── rigs/                       ← rig_{2,3,6}cam.yaml benchmark rigs, pod_*.yaml,
+│                                  oakdpro.yaml, pod3_oakdpro.yaml (pod + OAK-D
+│                                  composite) + rig_3cam_real_example.yaml (hardware)
 ├── tools/fisheye/              ← lens models (KB4 / Double Sphere / EUCM) + tests
 └── experiments/
     ├── 01_openvins_tumvi/      ← Track A runner

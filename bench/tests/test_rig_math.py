@@ -159,3 +159,122 @@ def test_depth_flag_defaults_false():
     """Rigs that never mention depth get an explicit depth=False per camera."""
     rig = load_rig(str(ROOT / "rigs" / "rig_2cam.yaml"))
     assert all(c["depth"] is False for c in rig["cameras"])
+
+
+# --- list views + composite rigs (rigs/pod3_oakdpro.yaml) -------------------
+
+from rig_math import (  # noqa: E402
+    R_to_quat_xyzw, imu_sensor_config, pod_imu, quat_xyzw_to_R, recorded_topics,
+)
+
+
+def test_single_rig_list_views():
+    pod = load_rig(str(ROOT / "rigs" / "pod_3cam_triangle.yaml"))
+    assert pod["imus"] == [pod["imu"]] and pod["imu"]["kind"] == "pod"
+    assert pod["illuminators"] == [pod["illuminator"]]
+    assert "composite" not in pod
+    body = load_rig(str(ROOT / "rigs" / "rig_2cam.yaml"))
+    assert body["imus"][0]["kind"] == "body" and body["illuminators"] == []
+
+
+def test_composite_rig_flattens_members():
+    rig = load_rig(str(ROOT / "rigs" / "pod3_oakdpro.yaml"))
+    assert rig["composite"] is True
+    assert [c["name"] for c in rig["cameras"]] == [
+        "pod_cam0", "pod_cam1", "pod_cam2", "oakd_cam0", "oakd_cam1"]
+    assert [c["source_name"] for c in rig["cameras"]] == ["cam0", "cam1", "cam2", "cam0", "cam1"]
+    assert [c["model"] for c in rig["cameras"]] == ["kb4"] * 3 + ["pinhole"] * 2
+    assert [c["depth"] for c in rig["cameras"]] == [False, False, False, True, False]
+    assert [i["topic"] for i in rig["imus"]] == ["/uav1/pod/imu", "/uav1/oakd/imu"]
+    assert all(i["kind"] == "pod" and i["source_topic"] == "/uav1/sensor_pod/imu"
+               for i in rig["imus"])
+    assert [i["rate_hz"] for i in rig["imus"]] == [400, 200]
+    assert [ill["pod_ns"] for ill in rig["illuminators"]] == ["pod", "oakd"]
+    assert [p["ns"] for p in rig["pods"]] == ["pod", "oakd"]
+    assert rig["pods"][1]["name"] == "oakdpro"
+    # `source` keeps the member's own single-rig contract for downstream tools
+    src = rig["pods"][1]["source"]
+    assert [c["name"] for c in src["cameras"]] == ["cam0", "cam1"]
+    assert src["imu"]["topic"] == "/uav1/sensor_pod/imu"
+
+
+def test_composite_mount_override_composes():
+    rig = load_rig(str(ROOT / "rigs" / "pod3_oakdpro.yaml"))
+    cams = {c["name"]: c for c in rig["cameras"]}
+    # member default mount kept for the pod (12 cm above body center)
+    np.testing.assert_allclose(cams["pod_cam2"]["body_mount"]["position"], [0.02, 0.0, 0.189], atol=1e-12)
+    # OAK-D moved to starboard: cam0 (left mono, +3.75 cm) lands at y = -0.13 + 0.0375
+    np.testing.assert_allclose(cams["oakd_cam0"]["body_mount"]["position"], [0.0, -0.0925, 0.12], atol=1e-12)
+    np.testing.assert_allclose(cams["oakd_cam1"]["body_mount"]["position"], [0.0, -0.1675, 0.12], atol=1e-12)
+    # the override is also reflected in the resolved member source + pod entry
+    np.testing.assert_allclose(rig["imus"][1]["body_mount"]["position"], [0.0, -0.13, 0.12], atol=1e-12)
+    np.testing.assert_allclose(rig["pods"][1]["source"]["imu"]["body_mount"]["position"],
+                               [0.0, -0.13, 0.12], atol=1e-12)
+
+
+def test_composite_validation(tmp_path):
+    body = ROOT / "rigs" / "rig_2cam.yaml"
+    pod = ROOT / "rigs" / "pod_2cam.yaml"
+
+    def write(text):
+        f = tmp_path / "combo.yaml"
+        f.write_text(text)
+        return str(f)
+
+    with pytest.raises(ValueError, match="pod rigs"):
+        load_rig(write(f"name: x\npods:\n  - {{ns: a, rig: {body}}}\n"))
+    with pytest.raises(ValueError, match="alphanumeric"):
+        load_rig(write(f"name: x\npods:\n  - {{ns: pod-1, rig: {pod}}}\n"))
+    with pytest.raises(ValueError, match="duplicate"):
+        load_rig(write(f"name: x\npods:\n  - {{ns: a, rig: {pod}}}\n  - {{ns: a, rig: {pod}}}\n"))
+    nested = write(f"name: x\npods:\n  - {{ns: a, rig: {pod}}}\n")
+    outer = tmp_path / "outer.yaml"
+    outer.write_text(f"name: y\npods:\n  - {{ns: b, rig: {nested}}}\n")
+    with pytest.raises(ValueError, match="nested"):
+        load_rig(str(outer))
+    with pytest.raises(ValueError, match="empty"):
+        load_rig(write("name: x\npods: []\n"))
+
+
+def test_recorded_topics():
+    single = load_rig(str(ROOT / "rigs" / "oakdpro.yaml"))
+    assert recorded_topics(single) == [
+        "/uav1/cam0/color/image_raw", "/uav1/cam1/color/image_raw",
+        "/uav1/cam0/depth/image_raw", "/uav1/sensor_pod/imu", "/uav1/ground_truth",
+    ]
+    combo = recorded_topics(load_rig(str(ROOT / "rigs" / "pod3_oakdpro.yaml")))
+    assert "/uav1/oakd_cam0/depth/image_raw" in combo
+    assert "/uav1/pod/imu" in combo and "/uav1/oakd/imu" in combo
+    assert combo.count("/uav1/ground_truth") == 1 and len(combo) == 9
+
+
+def test_imu_sensor_config_from_yaml():
+    rig = load_rig(str(ROOT / "rigs" / "pod3_oakdpro.yaml"))
+    cfg = imu_sensor_config(pod_imu(rig, "oakd"))
+    assert cfg["topic"] == "/uav1/oakd/imu" and cfg["update_rate"] == 200.0
+    np.testing.assert_allclose(cfg["position"], [0.0, -0.13, 0.12])
+    assert cfg["orientation"] == [0.0, 0.0, 0.0]          # [yaw, pitch, roll]
+    assert cfg["gyroscope"] == {"noise_density": 2.4e-4, "random_walk": 2.0e-5}
+    assert cfg["accelerometer"] == {"noise_density": 1.6e-3, "random_walk": 3.0e-4}
+    # the two devices' IMUs differ the way the hardware does
+    assert imu_sensor_config(pod_imu(rig, "pod"))["gyroscope"]["noise_density"] == 1.0e-4
+
+
+def test_pod_imu_selection():
+    combo = load_rig(str(ROOT / "rigs" / "pod3_oakdpro.yaml"))
+    assert pod_imu(combo, "pod")["topic"] == "/uav1/pod/imu"
+    with pytest.raises(ValueError, match="pick a pod"):
+        pod_imu(combo)
+    with pytest.raises(ValueError, match="no pod ns"):
+        pod_imu(combo, "nope")
+    single = load_rig(str(ROOT / "rigs" / "pod_2cam.yaml"))
+    assert pod_imu(single) is single["imu"]
+    with pytest.raises(ValueError):
+        pod_imu(single, "pod")
+
+
+def test_quaternion_roundtrip():
+    for _ in range(200):
+        R = euler_to_R([RNG.uniform(-179, 179), RNG.uniform(-89, 89), RNG.uniform(-179, 179)])
+        np.testing.assert_allclose(quat_xyzw_to_R(R_to_quat_xyzw(R)), R, atol=1e-12)
+    np.testing.assert_allclose(R_to_quat_xyzw(np.eye(3)), [0, 0, 0, 1])

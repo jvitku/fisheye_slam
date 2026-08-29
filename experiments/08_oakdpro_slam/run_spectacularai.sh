@@ -7,7 +7,7 @@ ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 BAG="${1:?usage: run_spectacularai.sh <bag> [--calib file]}"
 shift
 NAME="$(basename "${BAG%.bag}")"
-OUT="$ROOT/experiments/08_oakdpro_slam/out/spectacularai/$NAME"
+OUT="${OUT_DIR:-$ROOT/experiments/08_oakdpro_slam/out/spectacularai/$NAME}"  # OUT_DIR: bench/compare_rigs.sh
 mkdir -p "$OUT"
 
 CALIB_ARGS=(--rig /rigs/oakdpro.yaml)

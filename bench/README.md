@@ -32,9 +32,9 @@ Key design decisions:
   a controlled, repeatable experiment.
 - **Rig yamls are the single source of truth** (`rigs/rig_{2,3,6}cam.yaml`):
   the sim spawns cameras from them, `record.sh` derives topics from them, and
-  candidate configs must be generated from them (generator tool is Phase 1
-  work). All three rigs share identical intrinsics/rates — camera count and
-  placement are the only variables.
+  candidate configs are generated from them (`gen_openvins_config.py`). All
+  three rigs share identical intrinsics/rates — camera count and placement
+  are the only variables.
 - **Ideal equidistant (kb4, k1..k4=0) intrinsics** rendered exactly by Isaac's
   f-theta camera → calibration error is eliminated as a benchmark variable.
   (Realistic distortion + calibration noise can be added later as another
@@ -65,6 +65,41 @@ the body frame by `rig_math.py` (unit-tested on the host).
 Pod **output** = position (winning VIO candidate on pod cams + pod IMU) and a
 dense 3D map (voxblox/nvblox TSDF) — that stage lives in
 `experiments/06_dense_mapping/`.
+
+## Side-by-side reference: the pod and an OAK-D Pro on one drone
+
+`rigs/pod3_oakdpro.yaml` is a **composite rig**: a `pods:` list mounting the
+3-cam fisheye pod and the OAK-D Pro (`rigs/oakdpro.yaml`, unchanged) on the
+same drone, so one flight produces one recording with both devices — same
+motion, same lighting, same ground truth. Sim topics are namespaced per
+member (`/uav1/pod_cam0/...`, `/uav1/pod/imu`, `/uav1/oakd_cam0/...`,
+`/uav1/oakd/imu`); each member keeps its own IMU model (PX4-FC vs BMI270
+noise from the yaml) and its own IR flood LED.
+
+```bash
+# GPU host: both devices on the drone
+RIG_CONFIG=/rigs/pod3_oakdpro.yaml SIM_LIGHTING=day ./sim/isaac/start_all.sh -d
+# fly the benchmark trajectory, record everything
+bench/record.sh rigs/pod3_oakdpro.yaml combo_day 120
+# split -> per-device contract bags + GT at each device's IMU, run OpenVINS on
+# both (same estimator, rig is the only variable) + cuVSLAM on the OAK-D,
+# evaluate, print the table
+bench/compare_rigs.sh datasets/data/sim/combo_day.bag rigs/pod3_oakdpro.yaml
+```
+
+Pieces (all host-side, unit-tested, no ROS install):
+
+| Tool | Does |
+|---|---|
+| `bench/split_bag.py` | composite bag → `combo_day_pod.bag`, `combo_day_oakd.bag` following each member's single-rig contract (`/uav1/cam0/...`, `/uav1/sensor_pod/imu`) so every existing runner works unchanged |
+| `bench/gt_extract.py` | `/uav1/ground_truth` → TUM, **expressed at the pod IMU** (`--rig`, `--pod`): a pod 12 cm above body center at 15° pitch is 3 cm off — the size of the ATE numbers — and SE3 alignment cannot absorb a lever arm |
+| `bench/gen_openvins_config.py` | rig yaml → OpenVINS config dir (N cameras, `T_cam_imu` from the mounts, kb4/equidistant or pinhole, image-circle masks, IMU noise/rate/topic) |
+| `bench/run_sim_candidate.sh` | one candidate × one sim bag × generated config → `bench/results/<name>/<run>/` |
+| `bench/collect_results.py` | now prefers a per-run `gt.txt` (each device has its own frame) |
+
+The convergence loop this enables: iterate on the fisheye pod's stack
+(learned front-end / depth allowed — see the design note on what is geometry
+vs perception) until its row matches the OAK-D row on the same recording.
 
 ## Metrics (bench/evaluate.py)
 
@@ -118,9 +153,9 @@ benchmark yardsticks only; the product lane is cuvslam / permissive hybrid
 
 ## Getting ground truth into TUM format
 
-`/uav1/ground_truth` (nav_msgs/Odometry) → TUM text. Extraction helper is
-Phase 1 work alongside the candidate runners (one-liner with `rosbags` — see
-`skew_bag.py` for the API pattern).
+`python -m bench.gt_extract bag.bag gt.txt [--rig rig.yaml] [--pod ns]` —
+`/uav1/ground_truth` (nav_msgs/Odometry) → TUM, optionally re-expressed at a
+pod's IMU frame (see the side-by-side section for why that matters).
 
 ## Status
 
@@ -129,5 +164,6 @@ Phase 1 work alongside the candidate runners (one-liner with `rosbags` — see
 - [x] `skew_bag.py` + `evaluate.py` (unit-tested offline)
 - [ ] Sim bring-up: verify fisheye rendering, camera orientation convention, rates
 - [ ] Scripted benchmark trajectories (MRS goto sequence, identical every run)
-- [ ] GT extraction + candidate config generation from rig yamls
+- [x] GT extraction (`gt_extract.py`, pod-frame aware) + OpenVINS config generation from rig yamls (`gen_openvins_config.py`)
+- [x] Composite rig (pod + OAK-D Pro side by side) + bag split + one-command comparison (`compare_rigs.sh`)
 - [ ] First full matrix row: openvins × 3 rigs × slow_scan × sync

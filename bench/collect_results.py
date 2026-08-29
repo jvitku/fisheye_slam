@@ -1,8 +1,10 @@
 """Collect candidate runs into the benchmark comparison table.
 
 Walks bench/results/<seq>/<candidate>_<condition>/, converts each run's
-trajectory to TUM if needed, evaluates against <seq>/gt.txt, scrapes
-/usr/bin/time -v stats from run.log, and emits a json + markdown table.
+trajectory to TUM if needed, evaluates against the run's own gt.txt (ground
+truth in that run's sensor frame — bench/compare_rigs.sh) or else the shared
+<seq>/gt.txt, scrapes /usr/bin/time -v stats from run.log, and emits a json +
+markdown table.
 
 Usage: python -m bench.collect_results bench/results/room1 [--json out.json]
 """
@@ -28,7 +30,7 @@ def find_trajectory(run_dir: Path) -> Path | None:
     if ov_state.exists():
         ov_convert(str(ov_state), str(tum))
         return tum
-    for name in ("trajectory.txt", "stamped_traj_estimate.txt"):
+    for name in ("est.tum", "trajectory.txt", "stamped_traj_estimate.txt"):
         cand = run_dir / name
         if cand.exists():
             return cand
@@ -64,15 +66,16 @@ def scrape_time_v(log: Path) -> dict:
 
 
 def collect(results_dir: Path) -> dict:
-    gt = results_dir / "gt.txt"
-    if not gt.exists():
-        raise SystemExit(f"missing {gt}")
+    shared_gt = results_dir / "gt.txt"
     rows = {}
     for run_dir in sorted(p for p in results_dir.iterdir() if p.is_dir()):
         traj = find_trajectory(run_dir)
+        gt = run_dir / "gt.txt" if (run_dir / "gt.txt").exists() else shared_gt
         entry = scrape_time_v(run_dir / "run.log")
         if traj is None:
             entry["status"] = "no trajectory (run failed?)"
+        elif not gt.exists():
+            entry["status"] = f"no ground truth ({run_dir.name}/gt.txt or {shared_gt})"
         else:
             try:
                 entry.update(evaluate(str(gt), str(traj)))

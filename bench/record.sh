@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Record a benchmark bag (all rig cameras + IMU + ground truth) from the ROS1
+# Record a benchmark bag (all rig cameras + IMU(s) + ground truth) from the ROS1
 # side of the Isaac sim. Runs rosbag in a throwaway ros:noetic container on the
 # host network (the ros1-bridge exposes everything on the local roscore).
 #
@@ -12,17 +12,11 @@ DURATION="${3:-120}"
 OUTDIR="$ROOT/datasets/data/sim"
 mkdir -p "$OUTDIR"
 
-TOPICS=$(cd "$ROOT" && uv run python -c "
-import sys, yaml
-rig = yaml.safe_load(open('$RIG'))
-topics = [f\"/uav1/{c['name']}/color/image_raw\" for c in rig['cameras']]
-# depth: true cameras (e.g. oakdpro cam0) also record the depth stream.
-# VERIFY-IN-SIM: topic name published by the Pegasus depth writer.
-topics += [f\"/uav1/{c['name']}/depth/image_raw\"
-           for c in rig['cameras'] if c.get('depth')]
-topics += [rig['imu']['topic'], '/uav1/ground_truth']
-print(' '.join(topics))
-")
+# Topics come from the rig yaml via rig_math (cameras, depth streams of
+# `depth: true` cameras, every IMU — one per pod for composite rigs — and the
+# ground truth). VERIFY-IN-SIM: depth topic name published by the Pegasus
+# depth writer.
+TOPICS=$(cd "$ROOT" && uv run python -m bench.rig_topics "$RIG" | tr '\n' ' ')
 
 echo "Recording $DURATION s of: $TOPICS"
 docker run --rm --network host \

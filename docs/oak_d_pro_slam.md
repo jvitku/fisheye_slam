@@ -185,6 +185,7 @@ live latency measurements on Orin.
 - [x] Runners + converters in `experiments/08_oakdpro_slam/` (bag-mode, all 3 options)
 - [x] Dockerfiles: `docker/{spectacularai,cuvslam,rtabmap,nvblox}` (exploratory — build on first use, like voxblox)
 - [x] `hw/record_oak.py` recorder (needs a physical OAK-D Pro to validate)
+- [x] Side-by-side with the fisheye pod on one drone: `rigs/pod3_oakdpro.yaml` (composite rig), `bench/split_bag.py`, `bench/compare_rigs.sh` — same flight, same GT, OpenVINS on both + cuVSLAM (bench/README.md "Side-by-side reference")
 - [ ] Sim bring-up of the oakdpro rig (depth topic name VERIFY-IN-SIM; needs the ≥24 GB GPU host)
 - [ ] First matrix row: 3 options × sim day bag
 - [ ] SAI recording-format validation against a real SDK replay (format doc: https://spectacularai.github.io/docs/sdk/recording.html)

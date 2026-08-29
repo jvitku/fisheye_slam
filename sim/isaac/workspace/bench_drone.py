@@ -11,9 +11,13 @@ Published (ROS2, bridged to ROS1 by the ros1-bridge container):
                                      unsync variants are generated OFFLINE by
                                      bench/skew_bag.py from the recorded bag)
   /uav1/imu                          body-center IMU in sensor-local FLU
-  /uav1/sensor_pod/imu               pod FC IMU (only for pod rigs — the
-                                     sensor unit's own PX4-FC IMU, rigidly
-                                     mounted at the pod origin)
+  /uav1/sensor_pod/imu               pod FC IMU (pod rigs — the sensor unit's
+                                     own PX4-FC IMU at the pod origin)
+  /uav1/<ns>_<cam>/..., /uav1/<ns>/imu
+                                     composite rigs (rigs/pod3_oakdpro.yaml):
+                                     several pods on one drone, namespaced per
+                                     member; bench/split_bag.py restores each
+                                     member's single-rig contract
   /uav1/ground_truth                 nav_msgs/Odometry (mrs_bridge aggregator)
 """
 
@@ -62,6 +66,7 @@ import carb
 from livox_imu import LivoxIMU
 from pod_imu import PodIMU
 from fisheye_rig import load_rig, make_cameras, apply_fisheye_projections
+from rig_math import imu_sensor_config
 from lighting import setup_lighting, attach_pod_ir_light
 
 UAV_NAME = os.environ.get("UAV_NAME", "uav1")
@@ -78,8 +83,13 @@ class BenchROS2Backend(ROS2Backend):
     Two IMUs (both LivoxIMU-style: sensor-local FLU output, no FRD/NED
     conversion — see swarm_stack tools/isaac CLAUDE.md):
       LivoxIMU -> /uavN/imu             body-center reference IMU
-      PodIMU   -> /uavN/sensor_pod/imu  the sensor unit's own PX4-FC IMU
+      PodIMU   -> one topic per pod IMU (rig imus[kind=pod].topic):
+                  /uavN/sensor_pod/imu for a single pod rig,
+                  /uavN/<ns>/imu per member of a composite rig
     """
+
+    # Pod IMU topics (one per pod IMU); set by BenchApp before the world starts.
+    pod_imu_topics = ()
 
     def initialize_publishers(self, config):
         super().initialize_publishers(config)
@@ -89,23 +99,28 @@ class BenchROS2Backend(ROS2Backend):
         self.bench_imu_pub = self.node.create_publisher(
             Imu, base + "/imu", rclpy.qos.qos_profile_sensor_data,
         )
-        self.pod_imu_pub = self.node.create_publisher(
-            Imu, base + "/sensor_pod/imu", rclpy.qos.qos_profile_sensor_data,
-        )
+        self.pod_imu_pubs = {
+            topic: self.node.create_publisher(Imu, topic, rclpy.qos.qos_profile_sensor_data)
+            for topic in self.pod_imu_topics
+        }
 
     def update_sensor(self, sensor_type, data):
         if sensor_type == "LivoxIMU":
-            self._publish_imu(data, self.bench_imu_pub, "/base_link")
-        elif sensor_type == "PodIMU":
-            self._publish_imu(data, self.pod_imu_pub, "/sensor_pod")
+            self._publish_imu(data, self.bench_imu_pub,
+                              self._namespace + str(self._id) + "/base_link")
+        elif PodIMU.is_pod_type(sensor_type):
+            topic = PodIMU.topic_of(sensor_type)
+            # frame = topic minus the trailing "/imu": /uav1/oakd/imu -> uav1/oakd
+            self._publish_imu(data, self.pod_imu_pubs[topic],
+                              topic.strip("/").rsplit("/", 1)[0])
         else:
             super().update_sensor(sensor_type, data)
 
-    def _publish_imu(self, data, publisher, frame_suffix):
+    def _publish_imu(self, data, publisher, frame_id):
         from sensor_msgs.msg import Imu
         msg = Imu()
         msg.header.stamp = self.node.get_clock().now().to_msg()
-        msg.header.frame_id = self._namespace + str(self._id) + frame_suffix
+        msg.header.frame_id = frame_id
         msg.angular_velocity.x = float(data["angular_velocity"][0])
         msg.angular_velocity.y = float(data["angular_velocity"][1])
         msg.angular_velocity.z = float(data["angular_velocity"][2])
@@ -123,9 +138,11 @@ class BenchApp:
         self.world = self.pg.world
         self._ros2_backend = None
         self.rig = load_rig(RIG_CONFIG)
+        pods = self.rig.get("pods")
         carb.log_warn(
             f"bench_drone: rig '{self.rig.get('name', RIG_CONFIG)}' with "
-            f"{len(self.rig['cameras'])} fisheye cameras"
+            f"{len(self.rig['cameras'])} cameras"
+            + (f" in {len(pods)} pods ({', '.join(p['ns'] for p in pods)})" if pods else "")
         )
 
         self._load_environment()
@@ -147,18 +164,12 @@ class BenchApp:
             "orientation": [0.0, 0.0, 0.0],
         })
 
-        # Sensor-pod FC IMU (only for pod rigs): rigidly mounted at the pod
-        # origin, correct rigid-body offset physics relative to body center.
-        pod_imu = None
-        if "pod" in self.rig:
-            mount = self.rig["imu"]["body_mount"]
-            r, p, y = mount["rpy_deg"]
-            pod_imu = PodIMU(config={
-                "position": list(mount["position"]),
-                # LivoxIMU consumes orientation as ZYX list = [yaw, pitch, roll]
-                "orientation": [y, p, r],
-                "update_rate": float(self.rig["imu"].get("rate_hz", 400)),
-            })
+        # Sensor-pod FC IMUs (pod rigs; one per member of a composite rig):
+        # rigidly mounted at each pod origin with correct rigid-body offset
+        # physics relative to body center, rate + noise from the rig yaml.
+        pod_imu_cfgs = [imu_sensor_config(imu)
+                        for imu in self.rig["imus"] if imu["kind"] == "pod"]
+        pod_imus = [PodIMU(config=cfg) for cfg in pod_imu_cfgs]
 
         mavlink_config = PX4MavlinkBackendConfig({
             "vehicle_id": 0,
@@ -174,12 +185,12 @@ class BenchApp:
             "pub_state": True,
             "pub_tf": False,
         })
+        ros2_backend.pod_imu_topics = [cfg["topic"] for cfg in pod_imu_cfgs]
         self._ros2_backend = ros2_backend
 
         config = MultirotorConfig()
         config.sensors.append(body_imu)
-        if pod_imu is not None:
-            config.sensors.append(pod_imu)
+        config.sensors.extend(pod_imus)
         config.backends = [PX4MavlinkBackend(mavlink_config), ros2_backend]
         config.graphical_sensors = cameras
 
@@ -198,7 +209,7 @@ class BenchApp:
         stage = omni.usd.get_context().get_stage()
         apply_fisheye_projections(stage, "/World/quadrotor/body", self.rig)
 
-        # Benchmark lighting axis + pod IR illuminator (NoIR night operation).
+        # Benchmark lighting axis + pod IR illuminator(s) (NoIR night operation).
         setup_lighting(stage, SIM_LIGHTING)
         ir_on = POD_IR_LIGHT == "on" or (POD_IR_LIGHT == "auto" and SIM_LIGHTING != "day")
         if ir_on:
