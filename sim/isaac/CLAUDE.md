@@ -1,8 +1,8 @@
 # Isaac Sim + Pegasus Simulator Docker Setup
 
 > **Provenance:** copied from `swarm_stack/tools/isaac` at commit
-> `2a5de34a4e92cd2aa7f0317be8dfd7341d7b09cc` (2026-07-06) into the `3d_fisheye`
-> project. 3d_fisheye additions: `workspace/bench_drone.py` (default
+> `2a5de34a4e92cd2aa7f0317be8dfd7341d7b09cc` (2026-07-06) into the `fisheye_slam`
+> project. fisheye_slam additions: `workspace/bench_drone.py` (default
 > `SIM_SCRIPT`, N-fisheye benchmark rig from `RIG_CONFIG`, lidar removed),
 > `workspace/fisheye_rig.py` (rig yaml -> Pegasus cameras + f-theta projection
 > override), `workspace/rig_math.py` (pure-math mount composition, host-tested),
@@ -15,7 +15,7 @@
 ## Goal
 
 MRS stack drone simulation using Isaac Sim + Pegasus Simulator in Docker with ROS2,
-connected to MRS (ROS1/Noetic) via ROS1-ROS2 bridge. In 3d_fisheye this hosts
+connected to MRS (ROS1/Noetic) via ROS1-ROS2 bridge. In fisheye_slam this hosts
 the **unified multi-fisheye benchmark** (see `bench/README.md`): identical
 world + trajectory, camera rigs of 2/3/6 fisheyes defined in `rigs/*.yaml`.
 

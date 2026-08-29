@@ -53,20 +53,28 @@ def make_cameras(rig):
                 "orientation": _pegasus_orientation(mount["rpy_deg"]),
                 "resolution": tuple(cam["resolution"]),
                 "frequency": cam["rate_hz"],
-                # Placeholder pinhole FOV; the prim is rewritten to f-theta by
-                # apply_fisheye_projections() after spawn.
+                # Placeholder pinhole FOV; the prim is rewritten to the rig's
+                # exact projection by apply_fisheye_projections() after spawn.
                 "diagonal_fov": 120.0,
-                "depth": False,
+                # depth: true in the rig yaml (e.g. oakdpro cam0) enables the
+                # Pegasus/Isaac depth writer for this camera — the sim stand-in
+                # for on-device stereo depth (ideal RTX depth; see
+                # docs/oak_d_pro_slam.md §4). VERIFY-IN-SIM: published depth
+                # topic name — bench/record.sh assumes
+                # /uavN/<cam>/depth/image_raw.
+                "depth": cam.get("depth", False),
             })
         )
     return cameras
 
 
 def apply_fisheye_projections(stage, body_path, rig):
-    """Rewrite spawned camera prims to f-theta fisheye projection.
+    """Rewrite spawned camera prims to the rig's exact projection.
 
-    Mirrors the post-spawn attribute-override pattern used for the lidar in
-    px4_drone.py (apply_mid360_fov).
+    kb4 rigs -> f-theta (fisheyePolynomial); pinhole rigs (rigs/oakdpro.yaml)
+    -> exact-focal pinhole via the aperture attributes. Mirrors the post-spawn
+    attribute-override pattern used for the lidar in px4_drone.py
+    (apply_mid360_fov).
     """
     for cam in rig["cameras"]:
         prim_path = f"{body_path}/{cam['name']}"
@@ -86,6 +94,10 @@ def apply_fisheye_projections(stage, body_path, rig):
                 # Attribute may need creation on some Isaac versions
                 carb.log_warn(f"fisheye_rig: attribute {name} missing on {p.GetPath()}")
 
+        if cam["model"] == "pinhole":
+            _apply_pinhole(_set, cam, intr, width, height)
+            continue
+
         _set("cameraProjectionType", "fisheyePolynomial")
         _set("fthetaWidth", float(width))
         _set("fthetaHeight", float(height))
@@ -104,3 +116,29 @@ def apply_fisheye_projections(stage, body_path, rig):
             f"fisheye_rig: {cam['name']} -> f-theta fov={cam.get('fov_deg', 190.0)} "
             f"fx={intr['fx']} ({width}x{height})"
         )
+
+
+def _apply_pinhole(_set, cam, intr, width, height):
+    """Exact-fx pinhole projection via USD camera apertures.
+
+    USD/Isaac pinhole: fx = width * focalLength / horizontalAperture. We keep
+    the default focal length unit scale and derive the apertures so fx/fy are
+    matched exactly; principal-point offsets are expressed via the aperture
+    offsets (0 for the centered oakdpro intrinsics).
+    VERIFY-IN-SIM: aperture-offset sign convention on first bring-up.
+    """
+    focal_mm = 10.0  # arbitrary reference; only ratios matter for projection
+    h_aperture = width * focal_mm / float(intr["fx"])
+    v_aperture = height * focal_mm / float(intr["fy"])
+    _set("cameraProjectionType", "pinhole")
+    _set("focalLength", focal_mm)
+    _set("horizontalAperture", h_aperture)
+    _set("verticalAperture", v_aperture)
+    _set("horizontalApertureOffset",
+         (float(intr["cx"]) - width / 2.0) * focal_mm / float(intr["fx"]))
+    _set("verticalApertureOffset",
+         (height / 2.0 - float(intr["cy"])) * focal_mm / float(intr["fy"]))
+    carb.log_info(
+        f"fisheye_rig: {cam['name']} -> pinhole fx={intr['fx']} fy={intr['fy']} "
+        f"({width}x{height}, depth={'on' if cam.get('depth') else 'off'})"
+    )

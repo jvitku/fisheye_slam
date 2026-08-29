@@ -1,6 +1,6 @@
 # Multi-Fisheye + IMU SLAM — Evaluation Plan & Rationale
 
-*Project: `3d_fisheye` — exploratory evaluation of open-source SLAM/VIO for 2–3 (later 6)
+*Project: `fisheye_slam` — exploratory evaluation of open-source SLAM/VIO for 2–3 (later 6)
 cheap rolling-shutter fisheye cameras + IMU, targeting Pi 5 / Jetson Orin Nano Super.*
 
 ---
@@ -228,7 +228,7 @@ outperformed; after Phase 2 pick ONE core VIO; Phase 3 only hybridizes the winne
 ## 6. Repo map
 
 ```
-3d_fisheye/
+fisheye_slam/
 ├── docs/REPORT.md              ← this file
 ├── candidates/clone.sh         ← shallow-clones all upstream repos into candidates/
 ├── docker/                     ← one Dockerfile per track (A: openvins, B: basalt,
@@ -246,5 +246,9 @@ outperformed; after Phase 2 pick ONE core VIO; Phase 3 only hybridizes the winne
     ├── 02_basalt_tumvi/        ← Track B runner
     ├── 03_openmavis_multicam/  ← Track C notes/runner
     ├── 04_xfeat_lightglue/     ← Track D: fisheye matching demo + degradation eval
-    └── 05_dba_fusion/          ← Track D: hybrid ceiling (desktop GPU)
+    ├── 05_dba_fusion/          ← Track D: hybrid ceiling (desktop GPU)
+    ├── 06_dense_mapping/       ← Track E: pod output stage (TSDF)
+    ├── 07_learned_slam/        ← Track F notes
+    └── 08_oakdpro_slam/        ← Track G: OAK-D Pro device lane — 3 stacks,
+                                   sim ↔ HW bag contract (docs/oak_d_pro_slam.md)
 ```

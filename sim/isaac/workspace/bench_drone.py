@@ -1,4 +1,4 @@
-"""3d_fisheye benchmark drone: N-fisheye-camera + IMU rig in Isaac/Pegasus.
+"""fisheye_slam benchmark drone: N-fisheye-camera + IMU rig in Isaac/Pegasus.
 
 Derived from px4_drone.py (swarm_stack tools/isaac) with the lidar stack
 removed and the camera rig driven by a rig yaml (RIG_CONFIG env, default

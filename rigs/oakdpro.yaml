@@ -1,0 +1,59 @@
+# Luxonis OAK-D Pro modeled as a self-contained sensor pod: hardware-synced
+# global-shutter PINHOLE stereo pair (OV9282 1280x800, baseline 7.5 cm),
+# on-device stereo depth (simulated as ideal RTX depth aligned to cam0), the
+# device IMU at the pod origin, and the device's 850 nm IR flood LED (the
+# night-axis illuminator; the laser DOT projector is deliberately not modeled
+# — dots poison feature tracking and sim depth is ideal anyway).
+#
+# Sim <-> real-HW bag contract lives in docs/oak_d_pro_slam.md §4:
+# identical topics from Isaac (this rig) and from
+# experiments/08_oakdpro_slam/hw/record_oak.py (the physical device).
+#
+# Intrinsics: theoretical from spec-sheet HFOV, same convention as
+# github.com/luxonis/luxonis-isaac-sim: fx = (W/2) / tan(HFOV/2),
+# HFOV = 80 deg, W = 1280 -> fx = 640 / tan(40 deg) = 762.72. Real-HW runs
+# must use the factory calibration dumped by record_oak.py, not these.
+
+name: oakdpro
+pod:
+  # Device mounted on top of the drone body, 12 cm above center (same spot as
+  # the pod rigs so trajectories/lighting are comparable).
+  mount: {position: [0.0, 0.0, 0.12], rpy_deg: [0.0, 0.0, 0.0]}
+
+imu:
+  topic: /uav1/sensor_pod/imu
+  source: px4_fc        # sim: PodIMU rigid at the pod origin. Real device:
+                        # BMI270/BNO086 — ~200 Hz effective through depthai;
+                        # record_oak.py uses DEVICE timestamps (see
+                        # depthai-ros #461 for why host stamps are unusable).
+  rate_hz: 200
+  mount: {position: [0.0, 0.0, 0.0], rpy_deg: [0.0, 0.0, 0.0]}   # pod-relative
+  # BMI270-class numbers (coarser than the pod PX4 FC IMU):
+  gyro_noise_density: 2.4e-4    # rad/s/sqrt(Hz)
+  gyro_random_walk: 2.0e-5
+  accel_noise_density: 1.6e-3   # m/s^2/sqrt(Hz)
+  accel_random_walk: 3.0e-4
+
+# OAK-D Pro IR flood LED (night feature tracking), between the two monos.
+illuminator:
+  type: ir_850nm
+  mount: {position: [0.01, 0.0, 0.0], rpy_deg: [0.0, 0.0, 0.0]}
+  cone_half_angle_deg: 60
+  intensity: 30000
+
+camera_defaults: &cam
+  model: pinhole        # global-shutter OV9282; NOT kb4 — see rig_math.py
+  resolution: [1280, 800]
+  rate_hz: 20           # bench rate (device does up to 60 fps; depth+VIO
+                        # pipelines typically run 20-30)
+  fov_deg: 80.0         # HFOV, spec sheet
+  intrinsics: {fx: 762.72, fy: 762.72, cx: 640.0, cy: 400.0}
+
+cameras:                # pod-relative, both facing pod +x, baseline 0.075 m
+  - <<: *cam
+    name: cam0          # left (depth is aligned to this camera, like the
+    depth: true         # device's on-device stereo depth output)
+    mount: {position: [0.0, 0.0375, 0.0], rpy_deg: [0.0, 0.0, 0.0]}
+  - <<: *cam
+    name: cam1          # right
+    mount: {position: [0.0, -0.0375, 0.0], rpy_deg: [0.0, 0.0, 0.0]}

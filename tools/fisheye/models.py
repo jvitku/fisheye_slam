@@ -1,4 +1,4 @@
-"""Fisheye camera models used across the 3d_fisheye evaluation.
+"""Fisheye camera models used across the fisheye_slam evaluation.
 
 The three model families that matter for this project (see docs/REPORT.md):
 

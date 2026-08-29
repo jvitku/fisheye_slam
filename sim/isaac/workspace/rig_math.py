@@ -70,11 +70,15 @@ def load_rig(path: str) -> dict:
     pod_mount = rig.get("pod", {}).get("mount", IDENTITY_MOUNT)
 
     for cam in rig["cameras"]:
-        if cam["model"] != "kb4":
+        # kb4 (ideal equidistant, k1..k4=0) renders as an exact f-theta match;
+        # pinhole is for global-shutter stereo devices (rigs/oakdpro.yaml).
+        if cam["model"] not in ("kb4", "pinhole"):
             raise ValueError(
-                f"benchmark rigs must use kb4 intrinsics (got '{cam['model']}' "
-                f"for '{cam['name']}') — the sim renders an exact f-theta match"
+                f"benchmark rigs must use kb4 or pinhole intrinsics (got "
+                f"'{cam['model']}' for '{cam['name']}') — the sim renders "
+                f"these exactly"
             )
+        cam["depth"] = bool(cam.get("depth", False))
         cam["body_mount"] = compose_mount(pod_mount, cam["mount"])
 
     imu = rig.get("imu", {})

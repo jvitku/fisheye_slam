@@ -1,6 +1,6 @@
 # Evaluation Round 1 — Day / Night / Hybrid comparison
 
-*2026-07-06 · 3d_fisheye Phase 1 (first executable slice) · autonomous run*
+*2026-07-06 · fisheye_slam Phase 1 (first executable slice) · autonomous run*
 
 ## TL;DR
 

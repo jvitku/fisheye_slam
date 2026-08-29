@@ -16,6 +16,10 @@ TOPICS=$(cd "$ROOT" && uv run python -c "
 import sys, yaml
 rig = yaml.safe_load(open('$RIG'))
 topics = [f\"/uav1/{c['name']}/color/image_raw\" for c in rig['cameras']]
+# depth: true cameras (e.g. oakdpro cam0) also record the depth stream.
+# VERIFY-IN-SIM: topic name published by the Pegasus depth writer.
+topics += [f\"/uav1/{c['name']}/depth/image_raw\"
+           for c in rig['cameras'] if c.get('depth')]
 topics += [rig['imu']['topic'], '/uav1/ground_truth']
 print(' '.join(topics))
 ")

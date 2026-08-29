@@ -1,4 +1,4 @@
-# 3d_fisheye
+# fisheye_slam
 
 Exploratory evaluation of open-source SLAM/VIO for multi-fisheye + IMU rigs
 (2–3 cameras now, 6 later) on cheap rolling-shutter cameras, targeting
@@ -32,6 +32,7 @@ ls experiments/
 | C | [OpenMAVIS](https://github.com/MAVIS-SLAM/OpenMAVIS) | Multi-camera (>2) SLAM with loop closure |
 | D | [XFeat](https://github.com/verlab/accelerated_features) / [LightGlue](https://github.com/cvg/LightGlue) / [DBA-Fusion](https://github.com/GREAT-WHU/DBA-Fusion) | Learned front-end + hybrid ceiling |
 | F | [cuVSLAM](https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_visual_slam) / [AirSLAM](https://github.com/sair-lab/AirSLAM) / XFeat-hybrid | Multi-stereo+IMU on Orin: product-path (cuVSLAM), night-axis yardstick (AirSLAM, GPL), permissive in-house lane |
+| G | [Spectacular AI](https://spectacularai.github.io/docs/sdk/) / cuVSLAM+[nvblox](https://github.com/nvidia-isaac/nvblox) / OpenVINS+[RTAB-Map](http://introlab.github.io/rtabmap/) | OAK-D Pro device lane: VIO + dense map (OctoMap/TSDF), one bag contract for sim & real HW — [docs/oak_d_pro_slam.md](docs/oak_d_pro_slam.md) |
 
 Docker images per track live in `docker/`. All are exploratory — see the
 per-experiment READMEs for status.

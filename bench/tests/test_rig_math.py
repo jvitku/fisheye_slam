@@ -127,7 +127,7 @@ def test_illuminator_resolved_for_both_pods():
     assert "illuminator" not in load_rig(str(ROOT / "rigs" / "rig_2cam.yaml"))
 
 
-def test_load_rig_rejects_non_kb4(tmp_path):
+def test_load_rig_rejects_unknown_model(tmp_path):
     bad = tmp_path / "bad.yaml"
     bad.write_text(
         "name: bad\nimu: {topic: /x}\ncameras:\n"
@@ -135,5 +135,27 @@ def test_load_rig_rejects_non_kb4(tmp_path):
         "     intrinsics: {fx: 1, fy: 1, cx: 0, cy: 0},\n"
         "     mount: {position: [0, 0, 0], rpy_deg: [0, 0, 0]}}\n"
     )
-    with pytest.raises(ValueError, match="kb4"):
+    with pytest.raises(ValueError, match="kb4 or pinhole"):
         load_rig(str(bad))
+
+
+def test_oakdpro_rig():
+    """OAK-D Pro rig: pinhole stereo pod, depth on cam0 only, 7.5 cm baseline."""
+    rig = load_rig(str(ROOT / "rigs" / "oakdpro.yaml"))
+    assert "pod" in rig
+    assert [c["model"] for c in rig["cameras"]] == ["pinhole", "pinhole"]
+    assert [c["depth"] for c in rig["cameras"]] == [True, False]
+    assert rig["illuminator"]["type"] == "ir_850nm"
+    pos = np.array([c["mount"]["position"] for c in rig["cameras"]])
+    assert np.linalg.norm(pos[0] - pos[1]) == pytest.approx(0.075, abs=1e-9)
+    # fx from spec-sheet HFOV: fx = (W/2) / tan(HFOV/2)
+    cam = rig["cameras"][0]
+    w = cam["resolution"][0]
+    fx_expected = (w / 2.0) / np.tan(np.deg2rad(cam["fov_deg"] / 2.0))
+    assert cam["intrinsics"]["fx"] == pytest.approx(fx_expected, rel=1e-3)
+
+
+def test_depth_flag_defaults_false():
+    """Rigs that never mention depth get an explicit depth=False per camera."""
+    rig = load_rig(str(ROOT / "rigs" / "rig_2cam.yaml"))
+    assert all(c["depth"] is False for c in rig["cameras"])

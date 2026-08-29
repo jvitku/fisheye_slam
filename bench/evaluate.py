@@ -1,4 +1,4 @@
-"""Trajectory evaluation for the 3d_fisheye benchmark.
+"""Trajectory evaluation for the fisheye_slam benchmark.
 
 Compares an estimated trajectory against ground truth (both TUM format:
 `t x y z qx qy qz qw` per line) and reports the benchmark metrics:

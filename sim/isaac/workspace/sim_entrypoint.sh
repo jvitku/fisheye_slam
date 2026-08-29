@@ -20,7 +20,7 @@ if [ "${HEADLESS:-false}" = "true" ]; then
     fi
 fi
 
-# SIM_SCRIPT selects the app: bench_drone.py (3d_fisheye multi-fisheye
+# SIM_SCRIPT selects the app: bench_drone.py (fisheye_slam multi-fisheye
 # benchmark rig, default) or px4_drone.py (swarm_stack original, kept as
 # reference).
 exec /isaac-sim/python.sh "/workspace/${SIM_SCRIPT:-bench_drone.py}" "${ARGS[@]}"
