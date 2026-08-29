@@ -84,3 +84,12 @@ def test_messages_are_copied_verbatim_in_order(tmp_path):
         times = [t for _, t, _ in r.messages()]
     assert src_msgs == dst_msgs
     assert times == sorted(times)
+
+
+def test_resplit_overwrites(tmp_path):
+    src = str(tmp_path / "combo.bag")
+    write_combo_bag(src, n_frames=3)
+    first = split_bag(src, COMBO)
+    second = split_bag(src, COMBO)          # must not fail on existing outputs
+    assert first["pod"]["bag"] == second["pod"]["bag"]
+    assert second["pod"]["counts"]["/uav1/cam0/color/image_raw"] == 3

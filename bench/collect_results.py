@@ -28,7 +28,10 @@ def find_trajectory(run_dir: Path) -> Path | None:
         return tum
     ov_state = run_dir / "state_estimate.txt"
     if ov_state.exists():
-        ov_convert(str(ov_state), str(tum))
+        try:
+            ov_convert(str(ov_state), str(tum))
+        except (ValueError, SystemExit):      # header-only file: estimator never initialized
+            return None
         return tum
     for name in ("est.tum", "trajectory.txt", "stamped_traj_estimate.txt"):
         cand = run_dir / name

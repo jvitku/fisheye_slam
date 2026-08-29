@@ -14,7 +14,7 @@ mkdir -p "$OUT"
 
 case "$CAND" in
 openvins)
-    docker run --rm \
+    docker run --rm ${GUARD_DOCKER_ARGS:-} \
         -v "$BAG:/data/input.bag:ro" \
         -v "$ROOT/bench/configs/openvins_tumvi:/config:ro" \
         -v "$ROOT/bench/timer_wrap.py:/timer_wrap.py:ro" \
@@ -32,7 +32,7 @@ openvins)
     ;;
 basalt)
     # image has no python3 -> use the host's /usr/bin/time binary instead
-    docker run --rm \
+    docker run --rm ${GUARD_DOCKER_ARGS:-} \
         -v "$BAG:/data/input.bag:ro" \
         -v /usr/bin/time:/usr/bin/time:ro \
         -v "$OUT:/out" \

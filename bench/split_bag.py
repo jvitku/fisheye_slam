@@ -12,7 +12,8 @@ estimate on that device lives in.
                                                  combo_oakd.bag + combo_oakd.gt.txt
 
 Messages are copied byte-for-byte (only the topic name changes); the shared
-ground truth goes into every output.
+ground truth goes into every output. Existing outputs are overwritten (the
+split is deterministic).
 
 Usage:
     python -m bench.split_bag combo.bag --rig rigs/pod3_oakdpro.yaml
@@ -67,6 +68,7 @@ def split_bag(src: str, rig_path: str, out_dir: str | None = None,
         ns = pod["ns"]
         mapping = topic_map(rig, ns)
         dst = out_base / f"{src_path.stem}_{ns}.bag"
+        dst.unlink(missing_ok=True)   # re-splitting the same recording is routine
         counts: dict[str, int] = {}
         with Reader(src) as reader, Writer(dst) as writer:
             conns = [c for c in reader.connections if c.topic in mapping]

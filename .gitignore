@@ -18,3 +18,6 @@ bench/results/**/state_std.txt
 bench/results/**/state_gt.txt
 bench/results/**/*.ubjson
 bench/results/**/groundtruth.txt
+
+# resource-guard watchdog logs
+bench/results/guard/

@@ -9,7 +9,7 @@ OUT="$ROOT/experiments/01_openvins_tumvi/out/$SEQ"
 [ -f "$BAG" ] || { echo "missing $BAG — run datasets/download_tumvi.sh $SEQ"; exit 1; }
 mkdir -p "$OUT"
 
-docker run --rm \
+docker run --rm ${GUARD_DOCKER_ARGS:-} \
     -v "$BAG:/data/input.bag:ro" \
     -v "$OUT:/out" \
     3dfe/openvins \

@@ -20,7 +20,7 @@ mkdir -p "$OUT"
 NET=()
 [ "$ODOM" = "external" ] && NET=(--network host)
 
-docker run --rm "${NET[@]}" \
+docker run --rm ${GUARD_DOCKER_ARGS:-} "${NET[@]}" \
     -v "$(realpath "$BAG"):/data/input.bag:ro" \
     -v "$ROOT/rigs:/rigs:ro" \
     -v "$ROOT/experiments/08_oakdpro_slam:/scripts:ro" \

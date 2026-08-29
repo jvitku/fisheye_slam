@@ -24,7 +24,7 @@ def convert(src: str, dst: str) -> int:
             t, qx, qy, qz, qw, px, py, pz = (float(x) for x in v[:8])
             rows.append([t, px, py, pz, qx, qy, qz, qw])
     if not rows:
-        raise SystemExit(f"{src}: no state rows")
+        raise ValueError(f"{src}: no state rows (estimator never initialized?)")
     np.savetxt(dst, np.asarray(rows), fmt="%.9f")
     return len(rows)
 

@@ -10,6 +10,11 @@
 #   results land in bench/results/<results_name>/ (default: the bag's stem)
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+# Heavy job: always run under the resource guard (bench/guard.sh) unless a
+# guard is already active (GUARD_ID set) — see its header for the limits.
+if [ -z "${GUARD_ID:-}" ]; then
+    exec "$ROOT/bench/guard.sh" ${GUARD_OPTS:-} -- "$(realpath "$0")" "$@"
+fi
 BAG="$(realpath "${1:?usage: compare_rigs.sh <combo.bag> <composite_rig.yaml> [results_name]}")"
 RIG="$(realpath "${2:?composite rig yaml required}")"
 NAME="${3:-$(basename "${BAG%.bag}")}"

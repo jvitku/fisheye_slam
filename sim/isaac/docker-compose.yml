@@ -41,6 +41,12 @@ services:
       - ../../rigs:/rigs:ro
     deploy:
       resources:
+        # Hard caps so the sim cannot take the host down (bench/guard.sh
+        # does the preflight + watchdog; these are the container-side limits).
+        limits:
+          cpus: "${ISAAC_CPUS:-16}"
+          memory: "${ISAAC_MEM:-20G}"
+          pids: 8192
         reservations:
           devices:
             - driver: nvidia
@@ -64,6 +70,11 @@ services:
       - ./bridge_entrypoint.sh:/bridge_entrypoint.sh:ro
       - ./bridge_config.yaml:/bridge_config.yaml:ro
       - ./fastdds_udp_only.xml:/fastdds_udp_only.xml:ro
+    deploy:
+      resources:
+        limits:
+          cpus: "4"
+          memory: "4G"
     depends_on:
       - isaac-sim
 

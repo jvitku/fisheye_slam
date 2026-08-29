@@ -12,7 +12,7 @@ mkdir -p "$OUT"
 DUMP=""
 [ "${2:-}" = "--map" ] && DUMP="--dump-depth"
 
-docker run --rm --gpus all \
+docker run --rm ${GUARD_DOCKER_ARGS:-} --gpus all \
     -v "$(realpath "$BAG"):/data/input.bag:ro" \
     -v "$ROOT/rigs:/rigs:ro" \
     -v "$ROOT/experiments/08_oakdpro_slam:/scripts:ro" \
@@ -25,7 +25,7 @@ if [ -n "$DUMP" ]; then
     # nvblox fusion of the dumped depth + tracked poses -> mesh.ply.
     # The fuser wrapper converts depth/*.npy + poses.txt into the 3dmatch
     # layout consumed by nvblox's fuse_3dmatch example. VERIFY-ON-FIRST-RUN.
-    docker run --rm --gpus all \
+    docker run --rm ${GUARD_DOCKER_ARGS:-} --gpus all \
         -v "$OUT:/out" \
         -v "$ROOT/experiments/08_oakdpro_slam:/scripts:ro" \
         -v "$ROOT/rigs:/rigs:ro" \

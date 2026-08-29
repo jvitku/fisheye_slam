@@ -94,12 +94,48 @@ Pieces (all host-side, unit-tested, no ROS install):
 | `bench/split_bag.py` | composite bag → `combo_day_pod.bag`, `combo_day_oakd.bag` following each member's single-rig contract (`/uav1/cam0/...`, `/uav1/sensor_pod/imu`) so every existing runner works unchanged |
 | `bench/gt_extract.py` | `/uav1/ground_truth` → TUM, **expressed at the pod IMU** (`--rig`, `--pod`): a pod 12 cm above body center at 15° pitch is 3 cm off — the size of the ATE numbers — and SE3 alignment cannot absorb a lever arm |
 | `bench/gen_openvins_config.py` | rig yaml → OpenVINS config dir (N cameras, `T_cam_imu` from the mounts, kb4/equidistant or pinhole, image-circle masks, IMU noise/rate/topic) |
-| `bench/run_sim_candidate.sh` | one candidate × one sim bag × generated config → `bench/results/<name>/<run>/` |
+| `bench/run_sim_candidate.sh` | one candidate × one sim bag × generated config → `bench/results/<name>/<run>/`. OpenVINS: 1–2 cameras use the deterministic serial bag reader; **3+ cameras use the live node + `rosbag play`** (`ros1_serial_msckf` supports only 1–2 cams), real-time by default (`BAG_RATE`) |
 | `bench/collect_results.py` | now prefers a per-run `gt.txt` (each device has its own frame) |
 
 The convergence loop this enables: iterate on the fisheye pod's stack
 (learned front-end / depth allowed — see the design note on what is geometry
 vs perception) until its row matches the OAK-D row on the same recording.
+
+## Resource guards (don't kill the workstation)
+
+Everything heavy runs under **`bench/guard.sh`** — `compare_rigs.sh` and
+`run_sim_candidate.sh` re-exec themselves under it, `sim/isaac/start_all.sh`
+runs its preflight, and every `docker run` in the runners appends
+`$GUARD_DOCKER_ARGS` (memory / cpus / pids caps + a label the guard can kill).
+
+```bash
+bench/guard.sh --mem 16G --cpus 12 --disk-floor 20G -- bench/compare_rigs.sh combo.bag rigs/pod3_oakdpro.yaml
+bench/guard.sh --check --vram-need 7G          # preflight only
+GUARD_OPTS="--mem 8G --cpus 8" bench/run_sim_candidate.sh openvins rigs/oakdpro.yaml x.bag out/
+```
+
+| Stage | What it does |
+|---|---|
+| preflight | refuses to start when free disk (repo + docker root), available RAM, free VRAM (`--vram-need`), CPU package temperature or load average say the host can't afford it |
+| limits | host processes in a systemd user scope with `MemoryMax`, no swap, pinned to the first `--cpus` cores, `nice`/`ionice`; containers via `--memory --memory-swap --cpus --pids-limit`; the Isaac compose file caps the sim at `ISAAC_MEM`/`ISAAC_CPUS` (20G / 16) |
+| watchdog | every 5 s: kills the job (scope + labelled containers) if available RAM, free disk or free VRAM drop below the floors, the CPU package reaches `--temp-max` (90 °C), or the run exceeds `--timeout` (4 h). Log: `bench/results/guard/<id>.log` |
+
+Defaults are for a shared workstation (12 GB, half the cores). The 8 GB-VRAM
+laptop this was written on cannot run Isaac Sim with five rendered cameras
+safely — `start_all.sh` says so and stops; `FORCE=1` overrides.
+
+## Flying the benchmark trajectory
+
+`bench/fly_trajectory.py` streams PX4 offboard setpoints (LOCAL_NED, 20 Hz)
+along a time-parametrized path so every recording gets the same commanded
+flight: `slow_scan` (lawn-mower survey, 0.6 m/s) or `fast_yaw` (figure-8,
+1.5 m/s, continuous yaw). PX4 SITL publishes its offboard link to UDP 14540
+on the host, which the tool listens on.
+
+```bash
+bench/record.sh rigs/pod3_oakdpro.yaml combo_day 150 &
+uv run python -m bench.fly_trajectory --pattern slow_scan --duration 120
+```
 
 ## Metrics (bench/evaluate.py)
 
@@ -163,7 +199,8 @@ pod's IMU frame (see the side-by-side section for why that matters).
 - [x] `bench_drone.py` + `fisheye_rig.py` (untested scaffold — needs GPU host bring-up)
 - [x] `skew_bag.py` + `evaluate.py` (unit-tested offline)
 - [ ] Sim bring-up: verify fisheye rendering, camera orientation convention, rates
-- [ ] Scripted benchmark trajectories (MRS goto sequence, identical every run)
+- [x] Scripted benchmark trajectories (`fly_trajectory.py`, PX4 offboard; VERIFY-IN-SIM)
+- [x] Resource guard for every heavy step (`guard.sh`)
 - [x] GT extraction (`gt_extract.py`, pod-frame aware) + OpenVINS config generation from rig yamls (`gen_openvins_config.py`)
 - [x] Composite rig (pod + OAK-D Pro side by side) + bag split + one-command comparison (`compare_rigs.sh`)
 - [ ] First full matrix row: openvins × 3 rigs × slow_scan × sync

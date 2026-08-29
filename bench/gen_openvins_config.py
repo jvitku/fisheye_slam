@@ -151,9 +151,10 @@ verbosity: "INFO" # ALL, DEBUG, INFO, WARNING, ERROR, SILENT
 
 use_fej: true
 integration: "rk4"
-# cameras are paired (0,1), (2,3), ...; an odd last camera tracks mono.
-# (comments on their own lines: OpenCV's yaml reader keeps trailing text in
-# string values)
+# OpenVINS: 2 cameras + use_stereo = stereo tracking; MORE than 2 cameras =
+# every camera is tracked mono and the features are fused in the one state
+# ("binocular"). (Comments on their own lines: OpenCV's yaml reader keeps
+# trailing text in string values.)
 use_stereo: {use_stereo}
 max_cameras: {max_cameras}
 

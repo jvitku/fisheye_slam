@@ -19,7 +19,7 @@ mkdir -p "$OUTDIR"
 TOPICS=$(cd "$ROOT" && uv run python -m bench.rig_topics "$RIG" | tr '\n' ' ')
 
 echo "Recording $DURATION s of: $TOPICS"
-docker run --rm --network host \
+docker run --rm ${GUARD_DOCKER_ARGS:-} --network host \
     -v "$OUTDIR:/rec" \
     -e "ROS_MASTER_URI=${ROS_MASTER_URI:-http://localhost:11311}" \
     ros:noetic-ros-core \
