@@ -1,5 +1,15 @@
 [
  {
+  "run": "cuvslam_stereo",
+  "seq": "exp14_basement_2",
+  "ate_se3_cm": 46.48537642823641,
+  "max_cm": 80.3478119757029,
+  "ate_sim3_cm": 16.5891303922859,
+  "scale": 0.9496593056070086,
+  "coverage": 1.0,
+  "ms_per_frame": null
+ },
+ {
   "run": "openvins_5cam",
   "seq": "exp14_basement_2",
   "ate_se3_cm": 7.616411714365781,
