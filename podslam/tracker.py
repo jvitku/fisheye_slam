@@ -170,7 +170,10 @@ class Tracker:
                 if pair is None or n_new >= self.cfg.max_landmarks_per_kf:
                     continue
                 c, m = pair
-                p_imu, _ = stereo_verify(self.rig, 0, c, cam0.bearings[n], feats.cams[c].bearings[m], cam0.px[n], feats.cams[c].px[m], max_px=3.0)
+                b0, bc = cam0.bearings[n], feats.cams[c].bearings[m]
+                if not (be.can_observe(b0) and be.can_observe(bc)):   # both rays must become factors
+                    continue
+                p_imu, _ = stereo_verify(self.rig, 0, c, b0, bc, cam0.px[n], feats.cams[c].px[m], max_px=3.0)
                 if p_imu is None:
                     continue
                 p_w = T_W_I[:3, :3] @ p_imu + T_W_I[:3, 3]
@@ -178,12 +181,24 @@ class Tracker:
                 be.add_landmark(j, p_w, t)
                 self.track_to_lm[tid] = j
                 n_new += 1
-                n_f = int(be.add_observation(k, 0, j, cam0.bearings[n], t))
-                n_f += int(be.add_observation(k, c, j, feats.cams[c].bearings[m], t))
-                if n_f < 2:                 # one ray cannot fix a point: never send it
-                    be.drop_pending_landmark(j); self.track_to_lm.pop(tid, None); n_new -= 1
+                be.add_observation(k, 0, j, b0, t)
+                be.add_observation(k, c, j, bc, t)
+                continue
+            p_w = be.landmark(j)
+            if p_w is not None and not self._in_front(p_w, T_W_I):
+                # the optimiser pushed it behind us (usually a wrong stereo match): retire it
+                self.track_to_lm.pop(tid, None); be.retire_landmark(j)
                 continue
             be.add_observation(k, 0, j, cam0.bearings[n], t)
             for c in range(1, len(feats.cams)):
                 if tid in by_cam[c]:
                     be.add_observation(k, c, j, feats.cams[c].bearings[by_cam[c][tid]], t)
+
+    def _in_front(self, p_w, T_W_I, min_z=0.15) -> bool:
+        T_I_W = np.linalg.inv(T_W_I)
+        p_i = T_I_W[:3, :3] @ p_w + T_I_W[:3, 3]
+        for cam in self.rig.cameras:
+            T_c_i = cam.T_cam_imu
+            if (T_c_i[:3, :3] @ p_i + T_c_i[:3, 3])[2] > min_z:
+                return True
+        return False

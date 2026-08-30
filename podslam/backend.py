@@ -7,6 +7,8 @@ re-initialised — on solver trouble we rebuild the graph around the last good
 estimate (podslam requirement #1 from the cuVSLAM diagnosis)."""
 from __future__ import annotations
 
+import re
+
 import numpy as np
 
 MAX_THETA_DEG = 80.0    # projection factors only inside this half-angle (perspective division)
@@ -36,6 +38,8 @@ class Backend:
         self.landmark_obs = {}        # landmark id -> number of factors
         self.kf_t = {}                # keyframe index -> time
         self.n_resets = 0
+        self.n_dropped = 0
+        self.n_retired = 0
 
     # ------------------------------------------------------------------ setup
     def _new_smoother(self):
@@ -89,8 +93,12 @@ class Backend:
         self.landmark_obs[j] = 0
         self._stamp(self.L(j), t)
 
+    def can_observe(self, bearing) -> bool:
+        """Projection factors need a perspective division: finite bearing inside the half-angle."""
+        return bool(np.all(np.isfinite(bearing)) and bearing[2] > self.cz)
+
     def add_observation(self, k: int, cam: int, j: int, bearing, t: float) -> bool:
-        if not np.all(np.isfinite(bearing)) or bearing[2] <= self.cz:
+        if not self.can_observe(bearing):
             return False
         m = np.array([bearing[0] / bearing[2], bearing[1] / bearing[2]])
         self.graph.add(self.gtsam.GenericProjectionFactorCal3_S2(m, self.px_noise[cam], self.X(k), self.L(j), self.K, self.body_P_sensor[cam]))
@@ -100,10 +108,24 @@ class Backend:
         return True
 
     def drop_pending_landmark(self, j: int):
-        """A landmark added this round but with too few observations: never send it."""
-        if self.values.exists(self.L(j)):
-            self.values.erase(self.L(j))
+        """A landmark added this round but with too few observations: never send it —
+        remove its value AND every pending factor that references it."""
+        key = self.L(j)
+        if self.values.exists(key):
+            self.values.erase(key)
+        if any(key in self.graph.at(i).keys() for i in range(self.graph.size())):
+            g = self.gtsam.NonlinearFactorGraph()
+            for i in range(self.graph.size()):
+                f = self.graph.at(i)
+                if key not in f.keys():
+                    g.add(f)
+            self.graph = g
         self.landmark_t.pop(j, None); self.landmark_obs.pop(j, None)
+
+    def retire_landmark(self, j: int):
+        """Stop observing landmark j (it stays in the smoother until the lag marginalises it)."""
+        self.landmark_t.pop(j, None); self.landmark_obs.pop(j, None)
+        self.n_retired += 1
 
     # ---------------------------------------------------------------- solve
     def optimize(self, k: int, t: float):
@@ -112,16 +134,27 @@ class Backend:
         # guard: a brand-new landmark must arrive with >= 2 projection factors
         for j in [j for j, n in self.landmark_obs.items() if n < 2 and self.values.exists(self.L(j))]:
             self.drop_pending_landmark(j)
-        try:
-            self.smoother.update(self.graph, self.values, self.stamps)
-            self.estimate = self.smoother.calculateEstimate()
-        except Exception as e:      # IndeterminantLinearSystem etc.: rebuild around the last estimate
-            self.n_resets += 1
-            if self.verbose:
-                print(f"[backend] smoother failure at kf {k}: {type(e).__name__}: {str(e)[:120]} -> soft reset")
-            self._soft_reset(k, t)
-        finally:
-            self.graph = g.NonlinearFactorGraph(); self.values = g.Values(); self.stamps = self.gu.FixedLagSmootherKeyTimestampMap()
+        for attempt in range(4):
+            try:
+                self.smoother.update(self.graph, self.values, self.stamps)
+                self.estimate = self.smoother.calculateEstimate()
+                break
+            except Exception as e:      # IndeterminantLinearSystem etc.
+                m = re.search(r"Symbol: l(\d+)", str(e))
+                pending = m is not None and self.values.exists(self.L(int(m.group(1))))
+                if pending and attempt < 3:
+                    # the offender is a landmark we are adding right now: drop it and retry
+                    j = int(m.group(1))
+                    if self.verbose:
+                        print(f"[backend] kf {k}: dropping pending landmark l{j} ({type(e).__name__}) and retrying")
+                    self.drop_pending_landmark(j); self.n_dropped += 1
+                    continue
+                self.n_resets += 1
+                if self.verbose:
+                    print(f"[backend] smoother failure at kf {k}: {type(e).__name__}: {str(e)[:120]} -> soft reset")
+                self._soft_reset(k, t)
+                break
+        self.graph = g.NonlinearFactorGraph(); self.values = g.Values(); self.stamps = self.gu.FixedLagSmootherKeyTimestampMap()
         # forget marginalised landmarks
         cutoff = t - self.lag_s
         for j in [j for j, tj in self.landmark_t.items() if tj < cutoff]:

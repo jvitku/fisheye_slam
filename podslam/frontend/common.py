@@ -19,7 +19,7 @@ def triangulate_rays(o0, d0, o1, d1):
 
 
 def stereo_verify(rig, cam_i, cam_j, b_i, b_j, px_i, px_j, max_px=2.0, min_depth=0.2, max_depth=40.0,
-                  min_parallax_deg=0.5):
+                  min_parallax_deg=1.0):
     """Triangulate a cam_i/cam_j bearing pair in the IMU frame; accept if both
     depths are positive, the rays are not (near-)parallel — a point with no
     parallax has no depth information and makes the solver's linear system
