@@ -158,13 +158,49 @@ else
 fi
 JOB=$!
 
+job_pids() {   # every PID of the job. Authoritative: the scope's cgroup. Fallback (no
+               # systemd): the process tree under $JOB. Hard safety: never PID 1/2, never
+               # ourselves, never more than 512 PIDs (a runaway walk must not become a kill -9 of the machine).
+    local cg pids frontier next parents
+    cg=$(systemctl --user show -p ControlGroup --value "$SCOPE" 2>/dev/null || true)
+    if [ -n "$cg" ] && [ -r "/sys/fs/cgroup$cg/cgroup.procs" ]; then
+        pids=$(cat "/sys/fs/cgroup$cg/cgroup.procs" 2>/dev/null | tr '\n' ' ')
+    else
+        pids="$JOB"; frontier="$JOB"
+        while [ -n "${frontier// /}" ]; do
+            parents=$(echo $frontier | tr ' ' ',' | sed 's/,*$//; s/^,*//')
+            [ -n "$parents" ] || break
+            next=$(pgrep -P "$parents" 2>/dev/null | tr '\n' ' ' || true)
+            [ -n "${next// /}" ] || break
+            pids="$pids $next"; frontier="$next"
+            [ "$(echo $pids | wc -w)" -le 512 ] || { echo "guard: process tree too large, refusing to walk further" >&2; break; }
+        done
+    fi
+    for pid in $pids; do
+        case "$pid" in ''|*[!0-9]*) continue;; esac
+        [ "$pid" -gt 2 ] && [ "$pid" != "$$" ] && [ "$pid" != "$PPID" ] && echo "$pid"
+    done | sort -u
+}
+
 kill_job() {   # $1 = reason
     echo "guard[$GUARD_ID]: KILLING job — $1" | tee -a "$LOG" >&2
     docker ps -q --filter "label=fisheye_guard=$GUARD_ID" 2>/dev/null | xargs -r docker kill >/dev/null 2>&1 || true
-    systemctl --user kill --signal=SIGTERM "$SCOPE" 2>/dev/null || kill -TERM "$JOB" 2>/dev/null || true
+    local pids
+    pids=$(job_pids)
+    systemctl --user kill --signal=SIGTERM "$SCOPE" 2>/dev/null || true
+    [ -z "$pids" ] || kill -TERM $pids 2>/dev/null || true
     sleep 5
-    systemctl --user kill --signal=SIGKILL "$SCOPE" 2>/dev/null || kill -KILL "$JOB" 2>/dev/null || true
+    pids=$(job_pids)
+    systemctl --user kill --signal=SIGKILL "$SCOPE" 2>/dev/null || true
+    [ -z "$pids" ] || kill -KILL $pids 2>/dev/null || true
     docker ps -q --filter "label=fisheye_guard=$GUARD_ID" 2>/dev/null | xargs -r docker kill >/dev/null 2>&1 || true
+    sleep 1
+    pids=$(job_pids | grep -v "^$JOB$" || true)
+    if [ -n "$pids" ] && kill -0 $pids 2>/dev/null; then
+        echo "guard[$GUARD_ID]: WARNING — processes survived the kill: $(echo $pids | tr '\n' ' ')" | tee -a "$LOG" >&2
+    else
+        echo "guard[$GUARD_ID]: job tree is gone" | tee -a "$LOG" >&2
+    fi
 }
 trap 'kill_job "interrupted"; exit 130' INT TERM
 
