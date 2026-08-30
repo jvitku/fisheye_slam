@@ -141,12 +141,14 @@ class Backend:
                 break
             except Exception as e:      # IndeterminantLinearSystem etc.
                 m = re.search(r"Symbol: l(\d+)", str(e))
-                pending = m is not None and self.values.exists(self.L(int(m.group(1))))
-                if pending and attempt < 3:
-                    # the offender is a landmark we are adding right now: drop it and retry
+                if m is not None and attempt < 3:
+                    # the offender is a landmark: if it is new, drop it; if it already lives
+                    # in the smoother, stop feeding it (remove its pending factors) — retry
+                    # either way before giving up on the graph
                     j = int(m.group(1))
                     if self.verbose:
-                        print(f"[backend] kf {k}: dropping pending landmark l{j} ({type(e).__name__}) and retrying")
+                        print(f"[backend] kf {k}: landmark l{j} made the system singular ({type(e).__name__}); "
+                              f"{'dropping' if self.values.exists(self.L(j)) else 'retiring'} it and retrying")
                     self.drop_pending_landmark(j); self.n_dropped += 1
                     continue
                 self.n_resets += 1

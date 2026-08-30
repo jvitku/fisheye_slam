@@ -12,6 +12,9 @@ BAG="$ROOT/datasets/data/tumvi/room1_${COND}.bag"
 OUT="$ROOT/bench/results/room1_sweep/podslam_${NAME}_${COND}"
 [ -f "$BAG" ] || { echo "missing $BAG"; exit 1; }
 mkdir -p "$OUT"
+# Thermal budget on a laptop: podslam is single-threaded by design; keep the
+# BLAS/OpenCV pools from fanning out (PODSLAM_THREADS is read by track_bag).
+export OMP_NUM_THREADS="${PODSLAM_THREADS:-2}" OPENBLAS_NUM_THREADS="${PODSLAM_THREADS:-2}" MKL_NUM_THREADS="${PODSLAM_THREADS:-2}" PODSLAM_THREADS="${PODSLAM_THREADS:-2}"
 (cd "$ROOT" && uv run python bench/timer_wrap.py uv run python -m podslam.track_bag "$BAG" "$OUT" \
     --rig rigs/tumvi_room1.yaml --stats "$OUT/frames.csv" "$@") > "$OUT/run.log" 2>&1 \
     || { echo "FAILED $NAME/$COND"; tail -8 "$OUT/run.log"; exit 1; }

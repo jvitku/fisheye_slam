@@ -62,6 +62,12 @@ def main(argv=None) -> int:
     args = ap.parse_args(argv)
     args.out.mkdir(parents=True, exist_ok=True)
 
+    try:                                   # thermal budget: OpenCV's pool stays small unless asked
+        import os
+        import cv2
+        cv2.setNumThreads(int(os.environ.get("PODSLAM_THREADS", "2")))
+    except Exception:
+        pass
     rig = load_rig(args.rig)
     cfg = TrackerConfig(frontend=args.frontend, frontend_cfg={"max_features": args.max_features},
                         preprocess=args.preprocess, masks=args.masks, circle_mask=not args.no_circle_mask,

@@ -32,6 +32,7 @@ ls experiments/
 | C | [OpenMAVIS](https://github.com/MAVIS-SLAM/OpenMAVIS) | Multi-camera (>2) SLAM with loop closure |
 | D | [XFeat](https://github.com/verlab/accelerated_features) / [LightGlue](https://github.com/cvg/LightGlue) / [DBA-Fusion](https://github.com/GREAT-WHU/DBA-Fusion) | Learned front-end + hybrid ceiling |
 | F | [cuVSLAM](https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_visual_slam) / [AirSLAM](https://github.com/sair-lab/AirSLAM) / XFeat-hybrid | Multi-stereo+IMU on Orin: product-path (cuVSLAM), night-axis yardstick (AirSLAM, GPL), permissive in-house lane |
+| **F2 → podslam** | [`podslam/`](podslam/) | **The in-house, permissively licensed VIO** (OpenCV + GTSAM/BSD, learned front-end/conditioning/mask seams) built 2026-08-30 to replace the closed cuVSLAM core — [docs/podslam.md](docs/podslam.md), rationale in [docs/CUVSLAM_DIAGNOSIS_2026-08-30.md](docs/CUVSLAM_DIAGNOSIS_2026-08-30.md) |
 | G | [Spectacular AI](https://spectacularai.github.io/docs/sdk/) / cuVSLAM+[nvblox](https://github.com/nvidia-isaac/nvblox) / OpenVINS+[RTAB-Map](http://introlab.github.io/rtabmap/) | OAK-D Pro device lane: VIO + dense map (OctoMap/TSDF), one bag contract for sim & real HW — [docs/oak_d_pro_slam.md](docs/oak_d_pro_slam.md) |
 
 Docker images per track live in `docker/`. All are exploratory — see the

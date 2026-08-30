@@ -1,2 +1,0 @@
-tracked 2763/2821 frames (924 keyframes, 24 soft resets) -> /home/jarda/workspace/fisheye_slam/bench/results/room1_sweep/podslam_klt_day/est.tum
-BENCH_STATS wall_s=76.2 cpu_s=132.7 cpu_percent=174 maxrss_mb=227.1
