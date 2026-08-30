@@ -95,6 +95,7 @@ class Rig:
     cameras: list
     imu: Imu
     ground_truth_topic: str = "/uav1/ground_truth"
+    px_sigma: float = 1.5             # feature measurement noise for this rig [px] (720x540 Alphasense: 3.0)
 
     def T_cam_cam(self, i: int, j: int) -> np.ndarray:
         """T_ci_cj: camera j optical -> camera i optical."""
@@ -142,5 +143,7 @@ def load_rig(path: str) -> Rig:
         accel_scale=float(imu_yaml.get("accel_scale", 1.0)),
         T_body_imu=T_body_imu,
     )
-    return Rig(name=raw.get("name", Path(path).stem), cameras=cameras, imu=imu,
+    return Rig(
+        px_sigma=float(raw.get("px_sigma", 1.5)),
+        name=raw.get("name", Path(path).stem), cameras=cameras, imu=imu,
                ground_truth_topic=f"{prefix}/ground_truth")

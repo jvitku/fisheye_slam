@@ -115,5 +115,21 @@
    "transition": 0
   },
   "commit": "db94855"
+ },
+ {
+  "when": "2026-08-30 20:37",
+  "change": "Hilti round 3: the scale gap was the vision/IMU weighting. px_sigma is a rig property now (rigs/*.yaml px_sigma; Hilti 3.0 for KLT on 720x540 under strong distortion, TUM-VI 1.5): stereo 14.9 -> 8.9 cm SE3 (scale 0.983 -> 0.994), five cameras 15.4 -> 10.9 cm SE3 / 6.1 Sim3 (OpenVINS stereo 5.4, 5-cam 7.6 / 6.6). Rejected after measurement: ZNCC epipolar seeding + estimator depth feedback for stereo matches (14.9, kept as option), residual-driven adaptive px_sigma (converges to 0.5-0.9 px: converged residuals do not contain calibration/distortion error; off), 50-deg observation cone (14.2), time-offset magnitude (+-1 cm; Kalibr sign confirmed, wrong sign 20.9). OpenVINS's 1.1-deg rotation residual equals ours -> ground-truth frame offset, not a tilt bias.",
+  "next": "TUM-VI regression check of the day's front-end/anchor changes; Hilti exp18 (second dense-GT sequence) for generalisation; cuVSLAM on Hilti; C++/Jetson port plan.",
+  "ate": {
+   "day": 8.77,
+   "night": 16.2,
+   "transition": 14.54
+  },
+  "resets": {
+   "day": 0,
+   "night": 0,
+   "transition": 0
+  },
+  "commit": "2430b2f"
  }
 ]

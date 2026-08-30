@@ -37,6 +37,11 @@ class Frontend(ABC):
         self.rig = rig
         self.config = config or {}
 
+    def set_depths(self, depths: dict) -> None:
+        """Estimator feedback: track id -> depth in the tracking camera (m); used as the
+        stereo initial guess instead of the front-end's own (self-reinforcing) estimate."""
+        return None
+
     @abstractmethod
     def process(self, t_ns: int, images: list, masks: list | None,
                 dR_imu: np.ndarray | None) -> FrameFeatures:

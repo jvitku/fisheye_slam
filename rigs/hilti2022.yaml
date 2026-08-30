@@ -12,6 +12,7 @@
 # kind of term).
 
 name: hilti2022
+px_sigma: 3.0        # KLT on 720x540 under this distortion: 1.5 px over-trusts vision (14.9 -> 8.9 cm)
 imu:
   topic: /alphasense/imu
   rate_hz: 400

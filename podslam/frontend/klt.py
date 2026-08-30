@@ -136,6 +136,43 @@ class KltFrontend(Frontend):
         live = set(ids.tolist()); self.depth = {k: v for k, v in self.depth.items() if k in live}
         return FrameFeatures(t_ns=t_ns, cams=cams, n_new=n_new)
 
+    def set_depths(self, depths):
+        for i, d in depths.items():
+            if np.isfinite(d) and d > 0.05:
+                self.depth[int(i)] = float(d)
+
+    def _epipolar_seed(self, img0, img_j, px0, b0, T_cj_c0, cam_j, sel, half=4):
+        """Depth seed per selected feature: max ZNCC over candidate depths along the
+        epipolar curve in cam_j (9x9 patches, integer positions)."""
+        n = len(px0); out = np.full(n, np.nan)
+        idx = np.nonzero(sel)[0]
+        if len(idx) == 0:
+            return out
+        cands = np.asarray(self.cfg.get("stereo_zncc_depths", (0.4, 0.55, 0.75, 1.0, 1.35, 1.8, 2.4, 3.2, 4.3, 5.8, 8.0, 11.0, 16.0, 25.0)))
+        h, w = img0.shape
+        yy, xx = np.mgrid[-half:half + 1, -half:half + 1]
+        def patches(img, pts):                                  # (m, 81) float32, NaN outside
+            xs = np.rint(pts[:, 0]).astype(int)[:, None, None] + xx; ys = np.rint(pts[:, 1]).astype(int)[:, None, None] + yy
+            ok = (xs.min((1, 2)) >= 0) & (xs.max((1, 2)) < w) & (ys.min((1, 2)) >= 0) & (ys.max((1, 2)) < h)
+            p = np.zeros((len(pts), (2 * half + 1) ** 2), np.float32)
+            if ok.any():
+                p[ok] = img[ys[ok], xs[ok]].reshape(int(ok.sum()), -1).astype(np.float32)
+            p -= p.mean(1, keepdims=True); p /= (np.linalg.norm(p, axis=1, keepdims=True) + 1e-6)
+            return p, ok
+        p0, ok0 = patches(img0, px0[idx])
+        best = np.full(len(idx), -1.0); best_d = np.full(len(idx), np.nan)
+        for d in cands:
+            p_cj = (T_cj_c0[:3, :3] @ (b0[idx] * d).T).T + T_cj_c0[:3, 3]
+            pj, valid = cam_j.model.project(p_cj)
+            pj = np.where(valid[:, None], pj, -1e4)
+            pjp, okj = patches(img_j, pj)
+            sc = np.where(ok0 & okj, (p0 * pjp).sum(1), -1.0)
+            better = sc > best
+            best[better] = sc[better]; best_d[better] = d
+        good = best >= float(self.cfg.get("stereo_zncc_min", 0.6))
+        out[idx[good]] = best_d[good]
+        return out
+
     def _stereo(self, j, img_j, mask_j, img0, px0, ids, b0):
         if len(px0) == 0:
             return CamObs()
@@ -148,6 +185,13 @@ class KltFrontend(Frontend):
         # few fixed depths, keep the forward/backward-consistent match with the
         # lowest LK error, then verify it geometrically (stereo_verify).
         known = np.array([self.depth.get(int(i), np.nan) for i in ids])
+        # New features (no depth yet): seed the depth by a coarse ZNCC search along the
+        # epipolar curve instead of a fixed default.  Measured on Hilti exp14: LK from a
+        # 3 m guess converges to matches biased towards the guess (+8 % depth < 1.5 m,
+        # -4 % > 3 m -> +2 % trajectory scale).
+        if self.cfg.get("stereo_zncc", True) and (~np.isfinite(known)).any():
+            seed = self._epipolar_seed(img0, img_j, px0, b0, T_cj_c0, cam_j, ~np.isfinite(known))
+            known = np.where(np.isfinite(known), known, seed)
         hyps = [np.where(np.isfinite(known), known, self.cfg["default_depth"])]
         # extra fixed-depth hypotheses are OFF by default: choosing among them by LK error
         # picks photometrically-best but geometrically-wrong matches on repetitive texture

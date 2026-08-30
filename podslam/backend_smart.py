@@ -32,7 +32,8 @@ import numpy as np
 class SmartBackend:
     def __init__(self, rig, lag_s=3.0, px_sigma=1.5, huber_k=1.345, max_iters=6,
                  outlier_thr_sigma=0.0, max_landmark_dist=40.0, abs_err_tol=1e-2, marg_mode="all",
-                 chi2_gate=5.0, min_obs_prior=4, epi=False, max_window_kf=32, verbose=False):
+                 chi2_gate=5.0, min_obs_prior=4, epi=False, max_window_kf=32, max_obs_angle_deg=80.0,
+                 px_sigma_adapt=True, verbose=False):
         import gtsam
         from gtsam.symbol_shorthand import B, V, X
         self.gtsam = gtsam
@@ -46,12 +47,20 @@ class SmartBackend:
         self.cam_set = gtsam.CameraSetPinholePoseCal3_S2()
         for c in rig.cameras:
             self.cam_set.push_back(gtsam.PinholePoseCal3_S2(gtsam.Pose3(c.T_imu_cam), self.K))
-        self.cz = np.cos(np.deg2rad(80.0))
+        self.cz = np.cos(np.deg2rad(float(max_obs_angle_deg)))   # observation cone about the optical axis
         # measurement noise in normalized coordinates: pixel sigma / focal length
         sig = float(np.mean([px_sigma / c.fx for c in rig.cameras]))
         # smart factors need an isotropic model; robustness to wrong associations comes
         # from the factor's dynamic outlier rejection (reprojection error threshold)
         self.noise = gtsam.noiseModel.Isotropic.Sigma(2, sig)
+        # Adaptive pixel noise: after each solve the median whitened error per measurement
+        # of the live factors is compared with its expectation (chi2 with 2 dof, halved:
+        # median 0.69) and sigma is nudged so the residual statistics match.  The right
+        # sigma is rig- and condition-specific (TUM-VI 512x512 ~1.5 px; Hilti 720x540 KLT
+        # under fisheye distortion ~3 px: 14.9 -> 8.9 cm when set by hand).
+        self.px_sigma_adapt = bool(px_sigma_adapt)
+        self.px_sigma = float(px_sigma)
+        self.inv_f = sig / float(px_sigma)
         p = gtsam.SmartProjectionParams()
         p.setLinearizationMode(gtsam.LinearizationMode.HESSIAN)
         p.setDegeneracyMode(gtsam.DegeneracyMode.ZERO_ON_DEGENERACY)
@@ -314,6 +323,24 @@ class SmartBackend:
             for j in outliers:
                 self.drop_pending_landmark(j)
             self.n_outliers += len(outliers)
+            if self.px_sigma_adapt and len(factors) >= 20:
+                errs = []
+                for j, f in factors.items():
+                    try:
+                        n_m = len(f.measured())
+                        if n_m < 6:
+                            continue                                # the implicit landmark absorbs 3 dof
+                        dof = 2 * n_m - 3                           # residual dof of one landmark's block
+                        e = f.error(result) / (0.5 * dof)           # error = 0.5*chi2 -> per-dof ratio
+                        if np.isfinite(e) and e > 0:
+                            errs.append(e)
+                    except Exception:
+                        pass
+                if len(errs) >= 20:
+                    ratio = float(np.median(errs)) / 0.93           # chi2_k/k median for k ~ 9-40 dof
+                    target = float(np.clip(self.px_sigma * np.sqrt(ratio), 0.5, 6.0))
+                    self.px_sigma = 0.9 * self.px_sigma + 0.1 * target        # slow, stable
+                    self.noise = g.noiseModel.Isotropic.Sigma(2, self.px_sigma * self.inv_f)
         else:
             self.n_failed_solves += 1
         # slide: marginalise the keyframes that fell out of the lag window

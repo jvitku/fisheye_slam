@@ -41,6 +41,9 @@ class TrackerConfig:
     kf_rot_deg: float = 0.0
     kf_parallax_px: float = 0.0
     max_window_kf: int = 32               # keyframe-count cap of the sliding window (cost bound)
+    max_obs_angle_deg: float = 80.0       # smart backend: observations further off-axis are not used
+    px_sigma_adapt: bool = False          # residual-driven sigma converges to 0.5-0.9 px (residuals at the
+                                          # converged solution do not see calibration/distortion errors): off
     kf_min_track_ratio: float = 0.6       # ...or earlier when tracks fall below this share
     lag_s: float = 4.0
     px_sigma: float = 1.5
@@ -150,7 +153,8 @@ class Tracker:
         T = np.eye(4); T[:3, :3] = r["R_W_I"]
         if self.cfg.backend == "smart":
             self.backend = SmartBackend(self.rig, lag_s=self.cfg.lag_s, px_sigma=self.cfg.px_sigma, marg_mode=self.cfg.marg_mode, epi=self.cfg.smart_epi,
-                                        max_window_kf=self.cfg.max_window_kf, verbose=self.cfg.verbose)
+                                        max_window_kf=self.cfg.max_window_kf, max_obs_angle_deg=self.cfg.max_obs_angle_deg,
+                                        px_sigma_adapt=self.cfg.px_sigma_adapt, verbose=self.cfg.verbose)
         else:
             self.backend = Backend(self.rig, lag_s=self.cfg.lag_s, px_sigma=self.cfg.px_sigma, verbose=self.cfg.verbose)
         self.k = 0
@@ -169,6 +173,29 @@ class Tracker:
         self.px_at_kf = {int(i): p for i, p in zip(feats.cams[0].ids, feats.cams[0].px)}
         self.initialized = True
 
+    def _feed_depths(self, feats, T_W_I):
+        """Give the front-end the estimator's landmark depths (tracking camera frame) as
+        the next stereo initial guesses."""
+        be = self.backend
+        cam0 = self.rig.cameras[0]
+        T_c_w = np.linalg.inv(T_W_I @ cam0.T_imu_cam)
+        depths = {}
+        for i in feats.cams[0].ids:
+            j = self.track_to_lm.get(int(i))
+            if j is None:
+                continue
+            p_w = be.landmark(j)
+            if p_w is None:
+                continue
+            p_w = np.asarray(p_w, dtype=float).reshape(-1)
+            if p_w.shape != (3,) or not np.all(np.isfinite(p_w)):
+                continue
+            z = float(T_c_w[2, :3] @ p_w + T_c_w[2, 3])
+            if 0.1 < z < 100.0:
+                depths[int(i)] = z
+        if depths:
+            self.frontend.set_depths(depths)
+
     def _parallax_since_kf(self, feats) -> float:
         cam0 = feats.cams[0]
         if not self.px_at_kf or len(cam0) == 0:
@@ -183,6 +210,7 @@ class Tracker:
         self.backend.add_keyframe(k, t, self.pim.pim, predicted, k - 1)
         self._add_landmarks_and_factors(k, t, feats, predicted.pose().matrix())
         T_est, v, b = self.backend.optimize(k, t)
+        self._feed_depths(feats, T_est)
         self.bias = b
         self.gyro_bias = np.asarray(b.gyroscope())
         self.kf_navstate = gtsam.NavState(gtsam.Pose3(T_est), v)
