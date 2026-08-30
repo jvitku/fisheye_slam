@@ -371,5 +371,21 @@
    "transition": 0
   },
   "commit": "5afc2a0"
+ },
+ {
+  "when": "2026-08-31 00:00",
+  "change": "C++ port validated on four benchmark rows, equal-or-better vs the Python oracle on identical data: room1 day 7.7 (Py 8.8), night 15.9 (16.2), transition 13.3 (14.5), room2 day 11.8 (12.0) cm ATE vs GT - full coverage, zero failed solves, identical-to-2-percent event counts, ~35 ms/frame single-core unthrottled (82/74/60 at the 60-percent thermal quota). Ops lesson: the g++ template-instantiation phase and AVX-512 spikes trip the 97 C sustained guard on this laptop - skip-build mode + docker cpu quota 0.6 + OPENCV_CPU_DISABLE=AVX512_SKX keep runs at 59 C.",
+  "next": "Hilti exp14 5-camera row in C++ (dump with rig/kf-every passthrough), then the Orin cross-build; sim renders still blocked on the GPU host.",
+  "ate": {
+   "day": 8.77,
+   "night": 16.2,
+   "transition": 14.54
+  },
+  "resets": {
+   "day": 0,
+   "night": 0,
+   "transition": 0
+  },
+  "commit": "40bd5da"
  }
 ]
