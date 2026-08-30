@@ -355,5 +355,21 @@
    "transition": 0
   },
   "commit": "25600b9"
+ },
+ {
+  "when": "2026-08-30 23:33",
+  "change": "C++ port full-day validation: the native tracker runs the whole room1 day flight (2761/2763 frames, 923 keyframes - exactly Python's count, stats within 2 percent) and scores 7.7 cm ATE vs ground truth where Python scores 8.8 - equal-or-better within the documented chaotic front-end band - at 35.6 ms/frame on one laptop core (Python: 42-48). The Orin budget (50 ms x 3 cams) now looks comfortable before any CUDA work.",
+  "next": "Remaining port work: the other benchmark rows via dumps, bag/ROS2 I/O, the Orin cross-build; sim renders still blocked on the GPU host (NGC login).",
+  "ate": {
+   "day": 8.77,
+   "night": 16.2,
+   "transition": 14.54
+  },
+  "resets": {
+   "day": 0,
+   "night": 0,
+   "transition": 0
+  },
+  "commit": "5afc2a0"
  }
 ]
