@@ -15,7 +15,8 @@
 //     midpoint triangulation + reprojection verification (stereo.hpp, parity-proven)
 #include <opencv2/imgproc.hpp>
 #include <opencv2/video/tracking.hpp>
-#include <opencv2/calib3d.hpp>
+#include <opencv2/geometry.hpp>   // OpenCV 5: calib3d split; findEssentialMat lives in geometry
+#include <opencv2/features.hpp>   // OpenCV 5: features2d renamed; goodFeaturesToTrack lives here
 
 #include <cmath>
 #include <cstdio>
@@ -139,8 +140,11 @@ struct KltFrontend {
                 c.emplace_back(bc[i][0] / bc[i][2], bc[i][1] / bc[i][2]);
             }
             cv::Mat mask;
-            cv::Mat E = cv::findEssentialMat(p, c, 1.0, cv::Point2d(0, 0), cv::RANSAC, 0.999,
-                                             ransac_thr_norm, mask);
+            // OpenCV 5 signature: camera matrices instead of focal/pp (identity K == focal 1, pp 0,
+            // which is exactly what the Python call passes)
+            const cv::Mat K = cv::Mat::eye(3, 3, CV_64F);
+            cv::Mat E = cv::findEssentialMat(p, c, K, cv::noArray(), K, cv::noArray(),
+                                             cv::RANSAC, 0.999, ransac_thr_norm, mask);
             if (!mask.empty())
                 for (size_t k = 0; k < idx.size(); ++k) keep[idx[k]] = mask.at<uint8_t>(int(k)) != 0;
         }
@@ -293,6 +297,7 @@ static bool load_rig_lines(const char* golden_path, std::vector<Kb4>& cams, std:
 }
 
 int main(int argc, char** argv) {
+    cv::setNumThreads(1);                       // the Python dump runs with cv2.setNumThreads(1)
     const char* dir = argc > 1 ? argv[1] : "/tmp/frontend_golden";
     const char* rig = argc > 2 ? argv[2] : "podslam-cpp/tests/data/backend_golden.txt";
     KltFrontend fe;
