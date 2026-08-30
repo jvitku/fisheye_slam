@@ -339,5 +339,21 @@
    "transition": 0
   },
   "commit": "a65df1f"
+ },
+ {
+  "when": "2026-08-30 23:27",
+  "change": "C++ port step 4 core: the complete tracker (static initialiser, per-frame flow, keyframe policy, landmark lifecycle with in_front retirement) assembled in C++ from the parity-proven front-end and window; end-to-end on the 400-frame dump it tracks 341/343 frames with 114 keyframes and lands 1.06 cm RMSE / 2.6 cm max from the Python trajectory - the residual is the documented chaotic front-end divergence, every deterministic layer beneath is exact. Remaining for Jetson: full-sequence dump runs on all benchmark rows, timing, Orin build.",
+  "next": "Full-sequence C++ runs (room1 x3, room2, exp14, exp18) + wall-clock timing vs Python; then the Orin build. Sim renders still blocked on the GPU host.",
+  "ate": {
+   "day": 8.77,
+   "night": 16.2,
+   "transition": 14.54
+  },
+  "resets": {
+   "day": 0,
+   "night": 0,
+   "transition": 0
+  },
+  "commit": "25600b9"
  }
 ]
