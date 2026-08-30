@@ -227,5 +227,21 @@
    "transition": 0
   },
   "commit": "aeb0d5d"
+ },
+ {
+  "when": "2026-08-30 21:56",
+  "change": "Cross-sequence enhancer test (honest split: trained on room1 frames only, evaluated on room2 night): 25.8 -> 18.5 cm ATE, max error 81 -> 41 cm, RPE med 9.1 -> 6.8 cm, outlier landmarks 1735 -> 1047, 0 resets. The learned night conditioning generalises across sequences (the earlier room1-night gain, 16.2 -> 13.7, used a room2-trained model - also a clean split). GPU cost unchanged: 3.6 ms/frame, applied per bag by bench/enhance_bag.py.",
+  "next": "Next: keyframe-template (Basalt-style) tracking as the long-track lever, or the C++ skeleton (docs/CPP_PORT_PLAN.md); hourly cycle continues.",
+  "ate": {
+   "day": 8.77,
+   "night": 16.2,
+   "transition": 14.54
+  },
+  "resets": {
+   "day": 0,
+   "night": 0,
+   "transition": 0
+  },
+  "commit": "404d30c"
  }
 ]
