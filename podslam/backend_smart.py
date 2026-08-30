@@ -284,7 +284,8 @@ class SmartBackend:
             graph.add(f); factors[j] = f
         self.n_active_lm = len(factors)
         params = g.LevenbergMarquardtParams()
-        params.setMaxIterations(self.max_iters)
+        import os as _os2
+        params.setMaxIterations(int(_os2.environ.get("PODSLAM_PARITY_ITERS", self.max_iters)))
         # The marginal prior carries a large constant error term, so a *relative*
         # decrease test stops LM after one iteration long before the state has
         # converged (that was a 1 cm/keyframe lag).  Stop on the absolute decrease.

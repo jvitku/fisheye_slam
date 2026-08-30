@@ -43,7 +43,8 @@ using Camera = gtsam::PinholePose<gtsam::Cal3_S2>;
 using SmartRig = gtsam::SmartProjectionRigFactor<Camera>;
 
 struct Obs { int k, cam; long j; double mx, my; };
-struct KfRec { int k; double t; double T[12]; double vel[3]; double bias[6]; std::vector<Obs> obs; };
+struct Retire { long j; };
+struct KfRec { int k; double t; double T[12]; double vel[3]; double bias[6]; std::vector<Obs> obs; std::vector<long> retire; };
 
 struct Window {
     // ---- configuration (mirrors backend_smart defaults)
@@ -246,6 +247,7 @@ int main(int argc, char** argv) {
     const char* path = argc > 1 ? argv[1] : "podslam-cpp/tests/data/backend_golden.txt";
     const double lag_override = argc > 2 ? std::atof(argv[2]) : 0.0;
     const bool parity_iters = argc > 3 && std::atoi(argv[3]) != 0;
+    const int iters_override = argc > 4 ? std::atoi(argv[4]) : 0;
     std::ifstream in(path);
     if (!in) { std::printf("cannot open %s\n", path); return 1; }
     std::vector<std::array<double, 20>> rig_rows;
@@ -257,6 +259,7 @@ int main(int argc, char** argv) {
     bool have_init = false;
     double init_state[22];   // t, T(12), vel(3), bias(6)
     std::vector<Obs> pending;
+    std::vector<long> pending_retire;
     std::string line;
     while (std::getline(in, line)) {
         std::istringstream ss(line);
@@ -267,12 +270,14 @@ int main(int argc, char** argv) {
         else if (tag == "F") { double t; ss >> t; frames.push_back(t); }
         else if (tag == "S") { for (auto& x : init_state) ss >> x; have_init = true; }
         else if (tag == "O") { Obs o{}; ss >> o.k >> o.cam >> o.j >> o.mx >> o.my; pending.push_back(o); }
+        else if (tag == "D") { long j; ss >> j; pending_retire.push_back(j); }
         else if (tag == "K") {
             KfRec kf{}; ss >> kf.k >> kf.t;
             for (auto& x : kf.T) ss >> x;
             for (auto& x : kf.vel) ss >> x;
             for (auto& x : kf.bias) ss >> x;
             kf.obs.swap(pending);
+            kf.retire.swap(pending_retire);
             kfs.push_back(std::move(kf));
         }
     }
@@ -284,6 +289,7 @@ int main(int argc, char** argv) {
     if (lag_override > 0) win.lag_s = lag_override;
     if (lag_override > 0) win.max_window_kf = 100000;
     if (parity_iters) win.abs_err_tol = 0.0;
+    if (iters_override > 0) win.max_iters = iters_override;
     // IMU preintegration params (mirrors podslam/imu.py; accel_scale already applied in the dump)
     auto pp = gtsam::PreintegratedCombinedMeasurements::Params::MakeSharedU(9.81);
     const double kg = imu_p[6], ka = imu_p[5], kaw = imu_p[7], kgw = imu_p[8];
@@ -300,6 +306,7 @@ int main(int argc, char** argv) {
     gtsam::imuBias::ConstantBias bias(bv0);
     win.initialize(kfs[0].k, kfs[0].t, gtsam::Pose3(T0), v0, bias);
     for (const auto& o : kfs[0].obs) win.add_observation(o, kfs[0].t);
+    for (long j : kfs[0].retire) { win.lm_meas.erase(j); win.landmark_t.erase(j); }
     win.optimize(kfs[0].k, kfs[0].t);
 
     auto& [p0, vel0, b0] = win.kf_state[kfs[0].k];
@@ -345,6 +352,7 @@ int main(int argc, char** argv) {
         gtsam::NavState pred = pim.predict(nav, cur_bias);
         win.add_keyframe(kf.k, kf.t, pim, pred, cur_bias);
         for (const auto& o : kf.obs) win.add_observation(o, kf.t);
+        for (long j : kf.retire) { win.lm_meas.erase(j); win.landmark_t.erase(j); }
         win.optimize(kf.k, kf.t);
         auto& [ps, vs, bs] = win.kf_state[kf.k];
         gtsam::Matrix4 Tg = gtsam::Matrix4::Identity();

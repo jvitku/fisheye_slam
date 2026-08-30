@@ -87,6 +87,14 @@ def main(argv=None) -> int:
 
     SmartBackend.initialize = initialize
 
+    orig_retire = SmartBackend.retire_landmark
+
+    def retire_landmark(self, j):
+        pending_obs.append(["D", int(j)])
+        return orig_retire(self, j)
+
+    SmartBackend.retire_landmark = retire_landmark
+
     orig_opt = SmartBackend.optimize
 
     def optimize(self, k, t):
@@ -135,7 +143,10 @@ def main(argv=None) -> int:
             f.write(f"S {rec['init'][0] - t_base:.9f} " + " ".join(f"{x:.12g}" for x in rec["init"][1:]) + "\n")
         for kf in rec["kf"]:
             for o in kf["obs"]:
-                f.write("O " + " ".join(f"{x:.12g}" for x in o) + "\n")
+                if o and o[0] == "D":
+                    f.write(f"D {o[1]}\n")
+                else:
+                    f.write("O " + " ".join(f"{x:.12g}" for x in o) + "\n")
             T = kf["T_W_I"][:12]
             f.write(f"K {kf['k']} {kf['t'] - t_base:.9f} " + " ".join(f"{x:.12g}" for x in [*T, *kf["vel"], *kf["bias"]]) + "\n")
     print(f"wrote {a.out}: {len(rec['imu'])} imu samples, {len(rec['kf'])} keyframes")
