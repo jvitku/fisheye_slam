@@ -86,6 +86,7 @@ class Imu:
     accel_noise_density: float
     accel_random_walk: float
     T_body_imu: np.ndarray = field(default_factory=lambda: np.eye(4))
+    accel_scale: float = 1.0          # accelerometer scale-factor correction (measured |a| at rest vs local g)
 
 
 @dataclass
@@ -138,6 +139,7 @@ def load_rig(path: str) -> Rig:
         gyro_random_walk=float(imu_yaml.get("gyro_random_walk", 2.2e-5)),
         accel_noise_density=float(imu_yaml.get("accel_noise_density", 2.8e-3)),
         accel_random_walk=float(imu_yaml.get("accel_random_walk", 8.6e-4)),
+        accel_scale=float(imu_yaml.get("accel_scale", 1.0)),
         T_body_imu=T_body_imu,
     )
     return Rig(name=raw.get("name", Path(path).stem), cameras=cameras, imu=imu,

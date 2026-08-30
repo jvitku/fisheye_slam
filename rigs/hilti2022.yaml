@@ -4,16 +4,22 @@
 # calibration from the dataset (calibration/calib_3_cam*-camchain-imucam.yaml):
 # `equidistant` = KB4, T_cam_imu = IMU -> camera optical frame, per-camera time shift
 # (camera clock - IMU clock, ~1.9 ms).  Ground truth is in the IMU frame (TUM format).
-# IMU noise: BMI085 datasheet-class values (the estimator inflates them anyway).
+# IMU noise: Allan deviation of the dataset's own 89-min static recording
+# (calibration/imu_noise_calibration.bag, bench notes 2026-08-30): gyro 1.75e-4 rad/s/sqrt(Hz),
+# gyro walk ~5e-6, accel 9.5e-4 m/s^2/sqrt(Hz), accel walk ~2e-4.  The accelerometer norm at
+# rest is 9.641 m/s^2 in that recording and 9.663 in exp14 (Oxford g = 9.812): a -1.7 % scale
+# factor, corrected by accel_scale before integration (Basalt's calibration carries the same
+# kind of term).
 
 name: hilti2022
 imu:
   topic: /alphasense/imu
   rate_hz: 400
-  gyro_noise_density: 0.00024
-  gyro_random_walk: 2.0e-05
-  accel_noise_density: 0.0015
-  accel_random_walk: 5.0e-05
+  gyro_noise_density: 0.000175
+  gyro_random_walk: 5.0e-06
+  accel_noise_density: 0.00095
+  accel_random_walk: 0.0002
+  accel_scale: 1.0177
 
 cameras:
   - name: cam0

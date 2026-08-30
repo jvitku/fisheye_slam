@@ -101,6 +101,9 @@ def main(argv=None) -> int:
 
     pending: dict[int, dict] = {}
     shift_ns = int(round(rig.cameras[0].time_shift_s * 1e9))
+    acc_k = float(rig.imu.accel_scale)
+    if acc_k != 1.0:
+        print(f"accelerometer scale correction x{acc_k:.4f}")
     if shift_ns:
         print(f"camera->IMU time shift {shift_ns / 1e6:.2f} ms applied to image stamps")
     n_frames = n_ok = n_kf = 0
@@ -135,7 +138,7 @@ def main(argv=None) -> int:
             msg = TS.deserialize_ros1(raw, conn.msgtype)
             if conn.topic == imu_topic:
                 g, a = msg.angular_velocity, msg.linear_acceleration
-                tracker.register_imu(stamp_ns(msg), [g.x, g.y, g.z], [a.x, a.y, a.z])
+                tracker.register_imu(stamp_ns(msg), [g.x, g.y, g.z], [a.x * acc_k, a.y * acc_k, a.z * acc_k])
                 continue
             # image stamps into the IMU clock (Kalibr timeshift_cam_imu, per rig); the
             # estimate is written with the shifted stamp so it aligns with IMU-frame GT
