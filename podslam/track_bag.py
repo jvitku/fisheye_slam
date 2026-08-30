@@ -55,6 +55,7 @@ def main(argv=None) -> int:
     ap.add_argument("--kf-every", type=int, default=3)
     ap.add_argument("--lag", type=float, default=4.0)
     ap.add_argument("--px-sigma", type=float, default=1.5)
+    ap.add_argument("--backend", default="smart", choices=("smart", "explicit"))
     ap.add_argument("--max-features", type=int, default=300)
     ap.add_argument("--stats", type=Path, default=None)
     ap.add_argument("--max-frames", type=int, default=0)
@@ -71,7 +72,7 @@ def main(argv=None) -> int:
     rig = load_rig(args.rig)
     cfg = TrackerConfig(frontend=args.frontend, frontend_cfg={"max_features": args.max_features},
                         preprocess=args.preprocess, masks=args.masks, circle_mask=not args.no_circle_mask,
-                        kf_every=args.kf_every, lag_s=args.lag, px_sigma=args.px_sigma, verbose=args.verbose)
+                        kf_every=args.kf_every, lag_s=args.lag, px_sigma=args.px_sigma, backend=args.backend, verbose=args.verbose)
     tracker = Tracker(rig, cfg)
     cam_topics = {c.topic: i for i, c in enumerate(rig.cameras)}
     imu_topic = rig.imu.topic
@@ -121,8 +122,10 @@ def main(argv=None) -> int:
                 break
         flush(None)
     tum.close(); stats.close()
-    resets = tracker.backend.n_resets if tracker.backend else 0
-    print(f"tracked {n_ok}/{n_frames} frames ({n_kf} keyframes, {resets} soft resets) -> {args.out / 'est.tum'}")
+    be = tracker.backend
+    resets = be.n_resets if be else 0
+    extra = f", {be.n_failed_solves} failed solves" if be is not None and hasattr(be, "n_failed_solves") else ""
+    print(f"tracked {n_ok}/{n_frames} frames ({n_kf} keyframes, {resets} soft resets{extra}) -> {args.out / 'est.tum'}")
     return 0
 
 

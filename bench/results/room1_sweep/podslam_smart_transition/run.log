@@ -1,0 +1,2 @@
+tracked 2763/2821 frames (925 keyframes, 0 soft resets, 0 failed solves) -> /home/jarda/workspace/fisheye_slam/bench/results/room1_sweep/podslam_smart_transition/est.tum
+BENCH_STATS wall_s=174.8 cpu_s=174.8 cpu_percent=100 maxrss_mb=173.5

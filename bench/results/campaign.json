@@ -1,0 +1,47 @@
+[
+ {
+  "when": "2026-08-30 16:10",
+  "change": "podslam v0: KLT front-end, GTSAM fixed-lag smoother, explicit landmarks; state-only soft reset on solver failure",
+  "next": "remove the reset path",
+  "ate": {
+   "day": 19.6,
+   "night": 16.5,
+   "transition": 22.6
+  },
+  "resets": {
+   "day": 11,
+   "night": 26,
+   "transition": 14
+  },
+  "commit": "0a7b23c"
+ },
+ {
+  "when": "2026-08-30 16:30",
+  "change": "graph rebuild from memory (keyframes + IMU + landmark factors, minus the offending landmark) instead of state-only reset; smoother timestamp bookkeeping fixed",
+  "next": "factor-level reprojection gating (reject wrong associations before they enter the graph); covariance-based rebuild prior; smart rig factors if exposed",
+  "ate": {
+   "day": 17.4,
+   "night": 22.1,
+   "transition": 29.6
+  },
+  "resets": {
+   "day": 0,
+   "night": 4,
+   "transition": 2
+  },
+  "rebuilds": {
+   "day": 10,
+   "night": 39,
+   "transition": 27
+  },
+  "commit": "HEAD"
+ },
+ {
+  "when": "2026-08-30 17:00",
+  "change": "Smart-factor backend fixed: gtsam's Python wrapper binds setLandmarkDistanceThreshold/setDynamicOutlierRejectionThreshold as bool, so 40.0 -> True -> 1 m and every landmark beyond 1 m was FAR_POINT (error 0, IMU-only drift). Disabled both (False) and gate in podslam instead. Synthetic 29.2 -> 1.10 cm; room1 day 12.2 / night 25.7 / transition 19.4 cm with 0 resets and 0 failed solves in every condition (explicit backend: 17.4/22.1/29.6 with 10-39 rebuilds). RPE p95 6.6 cm vs cuVSLAM 21.6.",
+  "next": "Late-flight drift (last-20 s 19/45/36 cm) is now the whole error: night conditioning (clahe/nlmeans), feature quality gate at night (detector saturates at 300 tracks on noise), then marginalization prior and keyframe policy.",
+  "ate": {},
+  "resets": {},
+  "commit": "0a7b23c"
+ }
+]

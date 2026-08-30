@@ -1,2 +1,72 @@
-tracked 2763/2821 frames (924 keyframes, 14 soft resets) -> /home/jarda/workspace/fisheye_slam/bench/results/room1_sweep/podslam_klt_transition/est.tum
-BENCH_STATS wall_s=116.8 cpu_s=116.8 cpu_percent=100 maxrss_mb=213.7
+[backend] kf 245: smoother failure (RuntimeError: Indeterminant linear system detected while working near var); rebuilding without [7593]
+[backend] kf 245: rebuilt the smoother from memory: 27 keyframes, 1415 landmarks (dropped [7593])
+[backend] kf 273: smoother failure (RuntimeError: Indeterminant linear system detected while working near var); rebuilding without [8829]
+[backend] kf 273: rebuilt the smoother from memory: 27 keyframes, 1154 landmarks (dropped [8829])
+[backend] kf 274: smoother failure (RuntimeError: Indeterminant linear system detected while working near var); rebuilding without [7911]
+[backend] kf 274: rebuilt the smoother from memory: 27 keyframes, 1170 landmarks (dropped [7911])
+[backend] kf 474: smoother failure (RuntimeError: Indeterminant linear system detected while working near var); rebuilding without [19259]
+[backend] kf 474: rebuilt the smoother from memory: 28 keyframes, 2705 landmarks (dropped [19259])
+[backend] kf 475: smoother failure (RuntimeError: Indeterminant linear system detected while working near var); rebuilding without [19243]
+[backend] kf 475: rebuilt the smoother from memory: 28 keyframes, 2743 landmarks (dropped [19243])
+[backend] kf 476: smoother failure (RuntimeError: Indeterminant linear system detected while working near var); rebuilding without [19152]
+[backend] kf 476: rebuilt the smoother from memory: 28 keyframes, 2755 landmarks (dropped [19152])
+[backend] kf 477: smoother failure (RuntimeError: Indeterminant linear system detected while working near var); rebuilding without [19242]
+[backend] kf 477: rebuilt the smoother from memory: 28 keyframes, 2686 landmarks (dropped [19242])
+[backend] kf 510: smoother failure (RuntimeError: Indeterminant linear system detected while working near var); rebuilding without [22684]
+[backend] kf 510: rebuilt the smoother from memory: 27 keyframes, 2775 landmarks (dropped [22684])
+[backend] kf 520: smoother failure (RuntimeError: Indeterminant linear system detected while working near var); rebuilding without [22418]
+[backend] kf 520: rebuilt the smoother from memory: 27 keyframes, 2720 landmarks (dropped [22418])
+[backend] kf 521: smoother failure (RuntimeError: Indeterminant linear system detected while working near var); rebuilding without [20284]
+[backend] kf 521: rebuilt the smoother from memory: 27 keyframes, 2704 landmarks (dropped [20284])
+[backend] kf 540: smoother failure (RuntimeError: Indeterminant linear system detected while working near var); rebuilding without [25184]
+[backend] kf 540: rebuilt the smoother from memory: 27 keyframes, 2514 landmarks (dropped [25184])
+[backend] kf 549: smoother failure (RuntimeError: Indeterminant linear system detected while working near var); rebuilding without [26091]
+[backend] kf 549: rebuilt the smoother from memory: 27 keyframes, 2794 landmarks (dropped [26091])
+[backend] kf 550: smoother failure (RuntimeError: Indeterminant linear system detected while working near var); rebuilding without [26106]
+[backend] kf 550: rebuilt the smoother from memory: 27 keyframes, 2825 landmarks (dropped [26106])
+[backend] kf 552: smoother failure (RuntimeError: Indeterminant linear system detected while working near var); rebuilding without [26081]
+[backend] kf 552: rebuilt the smoother from memory: 27 keyframes, 2874 landmarks (dropped [26081])
+[backend] kf 556: smoother failure (RuntimeError: Indeterminant linear system detected while working near var); rebuilding without [26671]
+[backend] kf 556: rebuilt the smoother from memory: 27 keyframes, 2954 landmarks (dropped [26671])
+[backend] kf 575: smoother failure (RuntimeError: Indeterminant linear system detected while working near var); rebuilding without [28659]
+[backend] kf 575: rebuilt the smoother from memory: 27 keyframes, 2598 landmarks (dropped [28659])
+[backend] kf 576: smoother failure (RuntimeError: Indeterminant linear system detected while working near var); rebuilding without [26929]
+[backend] kf 576: rebuilt the smoother from memory: 27 keyframes, 2542 landmarks (dropped [26929])
+[backend] kf 577: smoother failure (RuntimeError: Indeterminant linear system detected while working near var); rebuilding without [28914]
+[backend] kf 577: rebuilt the smoother from memory: 27 keyframes, 2548 landmarks (dropped [28914])
+[backend] kf 675: smoother failure (RuntimeError: Indeterminant linear system detected while working near var); rebuilding without [38565]
+[backend] kf 675: rebuild failed (RuntimeError: Indeterminant linear system detected while working near var)
+[backend] kf 675: smoother failure (RuntimeError: Attempting to add a key-value pair with key "b649", key alre); rebuilding without [38565]
+[backend] kf 675: rebuild failed (RuntimeError: Indeterminant linear system detected while working near var)
+[backend] kf 675: smoother failure (RuntimeError: Attempting to add a key-value pair with key "b649", key alre); rebuilding without [38565]
+[backend] kf 675: rebuild failed (RuntimeError: Indeterminant linear system detected while working near var)
+[backend] kf 675: smoother failure (RuntimeError: Attempting to add a key-value pair with key "b649", key alre); rebuilding without [38565]
+[backend] kf 675: rebuild failed (RuntimeError: Indeterminant linear system detected while working near var)
+[backend] kf 682: smoother failure (RuntimeError: Indeterminant linear system detected while working near var); rebuilding without [39746]
+[backend] kf 682: rebuilt the smoother from memory: 27 keyframes, 793 landmarks (dropped [39746])
+[backend] kf 684: smoother failure (RuntimeError: Indeterminant linear system detected while working near var); rebuilding without [39906]
+[backend] kf 684: rebuilt the smoother from memory: 27 keyframes, 1031 landmarks (dropped [39906])
+[backend] kf 794: smoother failure (RuntimeError: Indeterminant linear system detected while working near var); rebuilding without [49554]
+[backend] kf 794: rebuilt the smoother from memory: 27 keyframes, 2589 landmarks (dropped [49554])
+[backend] kf 795: smoother failure (RuntimeError: Indeterminant linear system detected while working near var); rebuilding without [46073]
+[backend] kf 795: rebuild failed (RuntimeError: Indeterminant linear system detected while working near var)
+[backend] kf 795: smoother failure (RuntimeError: Attempting to add a key-value pair with key "b769", key alre); rebuilding without [46073]
+[backend] kf 795: rebuild failed (RuntimeError: Indeterminant linear system detected while working near var)
+[backend] kf 795: smoother failure (RuntimeError: Attempting to add a key-value pair with key "b769", key alre); rebuilding without [46073]
+[backend] kf 795: rebuild failed (RuntimeError: Indeterminant linear system detected while working near var)
+[backend] kf 795: smoother failure (RuntimeError: Attempting to add a key-value pair with key "b769", key alre); rebuilding without [46073]
+[backend] kf 795: rebuild failed (RuntimeError: Indeterminant linear system detected while working near var)
+[backend] kf 820: smoother failure (RuntimeError: Indeterminant linear system detected while working near var); rebuilding without [52334]
+[backend] kf 820: rebuilt the smoother from memory: 27 keyframes, 2661 landmarks (dropped [52334])
+[backend] kf 855: smoother failure (RuntimeError: Indeterminant linear system detected while working near var); rebuilding without [55727]
+[backend] kf 855: rebuilt the smoother from memory: 27 keyframes, 2808 landmarks (dropped [55727])
+[backend] kf 884: smoother failure (RuntimeError: Indeterminant linear system detected while working near var); rebuilding without [58485]
+[backend] kf 884: rebuilt the smoother from memory: 27 keyframes, 2562 landmarks (dropped [58485])
+[backend] kf 886: smoother failure (RuntimeError: Indeterminant linear system detected while working near var); rebuilding without [57379]
+[backend] kf 886: rebuilt the smoother from memory: 27 keyframes, 2568 landmarks (dropped [57379])
+[backend] kf 895: smoother failure (RuntimeError: Indeterminant linear system detected while working near var); rebuilding without [59462]
+[backend] kf 895: rebuilt the smoother from memory: 27 keyframes, 2503 landmarks (dropped [59462])
+[backend] kf 902: smoother failure (RuntimeError: Indeterminant linear system detected while working near var); rebuilding without [60077]
+[backend] kf 902: rebuilt the smoother from memory: 27 keyframes, 2474 landmarks (dropped [60077])
+tracked 2763/2821 frames (923 keyframes, 2 soft resets) -> /home/jarda/workspace/fisheye_slam/bench/results/room1_sweep/podslam_klt_transition/est.tum
+BENCH_STATS wall_s=130.0 cpu_s=129.9 cpu_percent=100 maxrss_mb=221.4

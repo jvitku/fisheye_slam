@@ -85,8 +85,11 @@ def main(argv=None) -> int:
     for d in sorted(Path(args.dir).iterdir()):
         if not d.is_dir():
             continue
-        r = analyze(gt, d / "est.tum") if (d / "est.tum").exists() and (d / "est.tum").stat().st_size > 0 else {"status": "no trajectory"}
-        r.update(stats(d))
+        try:
+            r = analyze(gt, d / "est.tum") if (d / "est.tum").exists() and (d / "est.tum").stat().st_size > 0 else {"status": "no trajectory"}
+            r.update(stats(d))
+        except Exception as e:                       # a truncated run must not hide the others
+            r = {"status": f"error: {type(e).__name__}"}
         rows[d.name] = r
     f = lambda v, p=1: "—" if v is None else f"{v:.{p}f}"
     print("| run | ATE | max | first20 | last20 | rot20° | RPE med | RPE p95 | cov | tracked | obs0 | obs0 p5 | ms/frame | wall |")

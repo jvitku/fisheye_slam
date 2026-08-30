@@ -1,2 +1,22 @@
-tracked 2763/2821 frames (924 keyframes, 11 soft resets) -> /home/jarda/workspace/fisheye_slam/bench/results/room1_sweep/podslam_klt_day/est.tum
-BENCH_STATS wall_s=84.2 cpu_s=84.2 cpu_percent=100 maxrss_mb=218.8
+[backend] kf 245: smoother failure (RuntimeError: Indeterminant linear system detected while working near var); rebuilding without [7593]
+[backend] kf 245: rebuilt the smoother from memory: 27 keyframes, 1415 landmarks (dropped [7593])
+[backend] kf 273: smoother failure (RuntimeError: Indeterminant linear system detected while working near var); rebuilding without [8829]
+[backend] kf 273: rebuilt the smoother from memory: 27 keyframes, 1154 landmarks (dropped [8829])
+[backend] kf 274: smoother failure (RuntimeError: Indeterminant linear system detected while working near var); rebuilding without [7911]
+[backend] kf 274: rebuilt the smoother from memory: 27 keyframes, 1170 landmarks (dropped [7911])
+[backend] kf 503: smoother failure (RuntimeError: Indeterminant linear system detected while working near var); rebuilding without [18714]
+[backend] kf 503: rebuilt the smoother from memory: 27 keyframes, 1390 landmarks (dropped [18714])
+[backend] kf 559: smoother failure (RuntimeError: Indeterminant linear system detected while working near var); rebuilding without [20502]
+[backend] kf 559: rebuilt the smoother from memory: 28 keyframes, 1817 landmarks (dropped [20502])
+[backend] kf 603: smoother failure (RuntimeError: Indeterminant linear system detected while working near var); rebuilding without [23663]
+[backend] kf 603: rebuilt the smoother from memory: 28 keyframes, 1730 landmarks (dropped [23663])
+[backend] kf 616: smoother failure (RuntimeError: Indeterminant linear system detected while working near var); rebuilding without [23948]
+[backend] kf 616: rebuilt the smoother from memory: 27 keyframes, 1377 landmarks (dropped [23948])
+[backend] kf 716: smoother failure (RuntimeError: Indeterminant linear system detected while working near var); rebuilding without [28359]
+[backend] kf 716: rebuilt the smoother from memory: 27 keyframes, 905 landmarks (dropped [28359])
+[backend] kf 824: smoother failure (RuntimeError: Indeterminant linear system detected while working near var); rebuilding without [32700]
+[backend] kf 824: rebuilt the smoother from memory: 27 keyframes, 1162 landmarks (dropped [32700])
+[backend] kf 903: smoother failure (RuntimeError: Indeterminant linear system detected while working near var); rebuilding without [36010]
+[backend] kf 903: rebuilt the smoother from memory: 27 keyframes, 1287 landmarks (dropped [36010])
+tracked 2763/2821 frames (924 keyframes, 0 soft resets) -> /home/jarda/workspace/fisheye_slam/bench/results/room1_sweep/podslam_klt_day/est.tum
+BENCH_STATS wall_s=92.1 cpu_s=92.1 cpu_percent=100 maxrss_mb=219.1

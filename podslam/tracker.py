@@ -16,6 +16,7 @@ from dataclasses import dataclass, field
 import numpy as np
 
 from .backend import Backend
+from .backend_smart import SmartBackend
 from .conditioning import build_conditioner, build_mask_provider
 from .frontend import build_frontend
 from .frontend.common import stereo_verify
@@ -33,6 +34,8 @@ class TrackerConfig:
     kf_min_track_ratio: float = 0.6       # ...or earlier when tracks fall below this share
     lag_s: float = 4.0
     px_sigma: float = 1.5
+    backend: str = "smart"                # smart (bearing-only smart rig factors, window LM) | explicit (fixed-lag iSAM2)
+    mono_landmarks: bool = True           # smart backend: every track becomes a landmark (parallax over time)
     min_landmark_obs: int = 2
     max_landmarks_per_kf: int = 120
     verbose: bool = False
@@ -113,7 +116,9 @@ class Tracker:
     # ------------------------------------------------------------- internals
     @property
     def _n_lm(self) -> int:
-        return len(self.backend.landmark_t) if self.backend else 0
+        if self.backend is None:
+            return 0
+        return getattr(self.backend, "n_valid_lm", len(self.backend.landmark_t))
 
     def _initialize(self, t, imgs, ms):
         import gtsam
@@ -121,7 +126,10 @@ class Tracker:
         self.gyro_bias = r["gyro_bias"]
         self.bias = gtsam.imuBias.ConstantBias(np.zeros(3), self.gyro_bias)
         T = np.eye(4); T[:3, :3] = r["R_W_I"]
-        self.backend = Backend(self.rig, lag_s=self.cfg.lag_s, px_sigma=self.cfg.px_sigma, verbose=self.cfg.verbose)
+        if self.cfg.backend == "smart":
+            self.backend = SmartBackend(self.rig, lag_s=self.cfg.lag_s, px_sigma=self.cfg.px_sigma, verbose=self.cfg.verbose)
+        else:
+            self.backend = Backend(self.rig, lag_s=self.cfg.lag_s, px_sigma=self.cfg.px_sigma, verbose=self.cfg.verbose)
         self.k = 0
         self.backend.initialize(0, t, T, np.zeros(3), self.bias)
         self.kf_navstate = gtsam.NavState(gtsam.Pose3(T), np.zeros(3))
@@ -165,8 +173,19 @@ class Tracker:
             if j is not None and not be.landmark_alive(j, t):
                 self.track_to_lm.pop(tid, None); j = None
             if j is None:
-                # new landmark only if stereo-observed now (metric depth)
                 pair = next(((c, by_cam[c][tid]) for c in range(1, len(feats.cams)) if tid in by_cam[c]), None)
+                if self.cfg.backend == "smart" and self.cfg.mono_landmarks:
+                    # smart factors triangulate themselves: any track is a landmark
+                    if n_new >= self.cfg.max_landmarks_per_kf * 3 or not be.can_observe(cam0.bearings[n]):
+                        continue
+                    j = self.next_lm; self.next_lm += 1
+                    be.add_landmark(j, None, t); self.track_to_lm[tid] = j; n_new += 1
+                    be.add_observation(k, 0, j, cam0.bearings[n], t)
+                    for c in range(1, len(feats.cams)):
+                        if tid in by_cam[c]:
+                            be.add_observation(k, c, j, feats.cams[c].bearings[by_cam[c][tid]], t)
+                    continue
+                # explicit backend: new landmark only if stereo-observed now (metric depth)
                 if pair is None or n_new >= self.cfg.max_landmarks_per_kf:
                     continue
                 c, m = pair
@@ -195,6 +214,9 @@ class Tracker:
                     be.add_observation(k, c, j, feats.cams[c].bearings[by_cam[c][tid]], t)
 
     def _in_front(self, p_w, T_W_I, min_z=0.15) -> bool:
+        p_w = np.asarray(p_w, dtype=float).reshape(-1)
+        if p_w.shape != (3,) or not np.all(np.isfinite(p_w)):
+            return True                       # unknown point: nothing to retire on
         T_I_W = np.linalg.inv(T_W_I)
         p_i = T_I_W[:3, :3] @ p_w + T_I_W[:3, 3]
         for cam in self.rig.cameras:
