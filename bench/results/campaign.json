@@ -179,5 +179,37 @@
    "transition": 0
   },
   "commit": "c7770a0"
+ },
+ {
+  "when": "2026-08-30 21:44",
+  "change": "Track-churn round: measured why the median landmark lives one keyframe (600-frame instrumentation): 56 % of temporal track deaths are the 1 px forward/backward check, 27 % LK status, mostly age<=3. Relaxing fb to 2 px (the OpenVINS/Basalt-class setting) made BOTH benchmarks worse (day 8.8 -> 13.6, exp14 stereo 8.3 -> 9.3): the strict gate is buying measurement quality, churn is its price - rejected. Longer tracks need better tracking (keyframe-template patch alignment, Basalt-style), not looser gates.",
+  "next": "Add TUM-VI room2 as a third real sequence (tar already on disk); C++/Jetson port plan; hourly cycle continues.",
+  "ate": {
+   "day": 8.77,
+   "night": 16.2,
+   "transition": 14.54
+  },
+  "resets": {
+   "day": 0,
+   "night": 0,
+   "transition": 0
+  },
+  "commit": "f2c25fd"
+ },
+ {
+  "when": "2026-08-30 21:47",
+  "change": "Third real sequence: TUM-VI room2 (converted from the on-disk tar, same rig yaml, frozen settings): 12.0 cm ATE (max 29), RPE med 4.3 cm, 0 resets, 0 failed solves, coverage 0.98. Generalisation across sequences within the same rig holds without touching anything (room1 8.8, room2 12.0; OpenVINS-class published numbers on room2 are ~7-10 cm).",
+  "next": "C++/Jetson port plan; keyframe-template patch tracking (Basalt-style) as the long-track lever; hourly cycle continues.",
+  "ate": {
+   "day": 8.77,
+   "night": 16.2,
+   "transition": 14.54
+  },
+  "resets": {
+   "day": 0,
+   "night": 0,
+   "transition": 0
+  },
+  "commit": "f2c25fd"
  }
 ]

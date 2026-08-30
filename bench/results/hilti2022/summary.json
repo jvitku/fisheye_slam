@@ -220,6 +220,16 @@
   "ms_per_frame": 45.03378378378378
  },
  {
+  "run": "podslam_stereo_fb2",
+  "seq": "exp14_basement_2",
+  "ate_se3_cm": 9.287754399296738,
+  "max_cm": 20.207549653709965,
+  "ate_sim3_cm": 6.634827934591665,
+  "scale": 0.9920823123330658,
+  "coverage": 0.9901591072752005,
+  "ms_per_frame": 38.00675675675676
+ },
+ {
   "run": "podslam_stereo_mh",
   "seq": "exp14_basement_2",
   "ate_se3_cm": 21.49251245580006,
