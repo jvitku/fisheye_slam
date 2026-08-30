@@ -9,7 +9,7 @@
 name: hilti2022
 imu:
   topic: /alphasense/imu
-  rate_hz: 200
+  rate_hz: 400
   gyro_noise_density: 0.00024
   gyro_random_walk: 2.0e-05
   accel_noise_density: 0.0015

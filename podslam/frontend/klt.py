@@ -141,19 +141,38 @@ class KltFrontend(Frontend):
             return CamObs()
         cam_j = self.rig.cameras[j]
         T_cj_c0 = self.rig.T_cam_cam(j, 0)
-        depths = np.array([self.depth.get(int(i), self.cfg["default_depth"]) for i in ids])
-        p_c0 = b0 * depths[:, None]
-        p_cj = (T_cj_c0[:3, :3] @ p_c0.T).T + T_cj_c0[:3, 3]
-        guess, gvalid = cam_j.model.project(p_cj)
-        guess = guess.astype(np.float32)
-        guess[~gvalid] = px0[~gvalid]
-        nxt, st, _ = cv2.calcOpticalFlowPyrLK(img0, img_j, px0.astype(np.float32), guess.copy(),
-                                              flags=cv2.OPTFLOW_USE_INITIAL_FLOW, **self.lk)
-        back, st2, _ = cv2.calcOpticalFlowPyrLK(img_j, img0, nxt, px0.astype(np.float32).copy(),
-                                                flags=cv2.OPTFLOW_USE_INITIAL_FLOW, **self.lk)
-        fb = np.linalg.norm(back - px0, axis=1)
-        ok = (st.ravel() == 1) & (st2.ravel() == 1) & (fb < self.cfg["fb_err_px"] * 1.5)
-        ok &= self._inside(nxt, img_j.shape, mask_j)
+        # Multi-hypothesis initial guess along the epipolar curve: LK only converges
+        # from a guess within its pyramid reach (~40 px), and a single default depth
+        # biases the matches towards it (Hilti exp14: +5 % scale, 27 cm ATE with a
+        # 1.5 m default).  Run LK from the track's last depth (if known) and from a
+        # few fixed depths, keep the forward/backward-consistent match with the
+        # lowest LK error, then verify it geometrically (stereo_verify).
+        known = np.array([self.depth.get(int(i), np.nan) for i in ids])
+        hyps = [np.where(np.isfinite(known), known, self.cfg["default_depth"])]
+        # extra fixed-depth hypotheses are OFF by default: choosing among them by LK error
+        # picks photometrically-best but geometrically-wrong matches on repetitive texture
+        # (TUM-VI room1 posters/checkerboards: day 8.8 -> 13.7 cm); no gain on Hilti either
+        hyps += [np.full(len(ids), float(d)) for d in self.cfg.get("stereo_depths", ())]
+        best_nxt = np.zeros((len(ids), 2), np.float32); best_err = np.full(len(ids), np.inf, np.float32)
+        px0f = px0.astype(np.float32)
+        for depths in hyps:
+            p_c0 = b0 * depths[:, None]
+            p_cj = (T_cj_c0[:3, :3] @ p_c0.T).T + T_cj_c0[:3, 3]
+            guess, gvalid = cam_j.model.project(p_cj)
+            guess = guess.astype(np.float32)
+            guess[~gvalid] = px0f[~gvalid]
+            nxt_h, st, err = cv2.calcOpticalFlowPyrLK(img0, img_j, px0f, guess.copy(),
+                                                      flags=cv2.OPTFLOW_USE_INITIAL_FLOW, **self.lk)
+            back, st2, _ = cv2.calcOpticalFlowPyrLK(img_j, img0, nxt_h, px0f.copy(),
+                                                    flags=cv2.OPTFLOW_USE_INITIAL_FLOW, **self.lk)
+            fb = np.linalg.norm(back - px0f, axis=1)
+            ok_h = (st.ravel() == 1) & (st2.ravel() == 1) & (fb < self.cfg["fb_err_px"] * 1.5)
+            ok_h &= self._inside(nxt_h, img_j.shape, mask_j)
+            e = np.where(ok_h, err.ravel(), np.inf).astype(np.float32)
+            better = e < best_err
+            best_nxt[better] = nxt_h[better]; best_err[better] = e[better]
+        nxt = best_nxt
+        ok = np.isfinite(best_err)
         out_ids, out_px, out_b = [], [], []
         if ok.any():
             bj, vj = self._bearings(cam_j, nxt[ok])

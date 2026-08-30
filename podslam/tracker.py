@@ -51,6 +51,7 @@ class TrackerConfig:
     marg_mode: str = "all"          # smart backend: 'ended' | 'all' | 'pin' (see backend_smart)
     smart_epi: bool = False           # smart backend: nonlinear landmark refinement (gtsam throws inside LM: keep off)
     imu_noise_scale: tuple = (5.7, 1.8, 1.2, 4.5)   # estimator-side IMU noise inflation (see imu.Preintegrator)
+    init_acc_bias_sigma: float = 0.1  # prior sigma of the accelerometer bias at init [m/s^2] (BMI085-class IMUs: ~0.3)
     verbose: bool = False
 
 
@@ -150,7 +151,7 @@ class Tracker:
         else:
             self.backend = Backend(self.rig, lag_s=self.cfg.lag_s, px_sigma=self.cfg.px_sigma, verbose=self.cfg.verbose)
         self.k = 0
-        self.backend.initialize(0, t, T, np.zeros(3), self.bias)
+        self.backend.initialize(0, t, T, np.zeros(3), self.bias, sigmas=(1e-3, 0.01, 0.1, self.cfg.init_acc_bias_sigma, 0.01))
         self.kf_navstate = gtsam.NavState(gtsam.Pose3(T), np.zeros(3))
         self.pim.reset(self.bias, t)
         feats = self.frontend.process(int(t * 1e9), imgs, ms, None)

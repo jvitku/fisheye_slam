@@ -49,9 +49,9 @@ def build_conditioner(spec: str | None):
             steps.append(lambda img, hh=hh: cv2.fastNlMeansDenoising(img, None, hh, 7, 21))
         elif name == "enhance":
             import torch
-            model = torch.jit.load(p[0]).eval()
             dev = "cuda" if torch.cuda.is_available() else "cpu"
-            model = model.to(dev)
+            model = torch.jit.load(p[0], map_location=dev).eval().to(dev)   # traced on cuda, runs on either
+            torch.set_num_threads(max(1, int(__import__("os").environ.get("PODSLAM_THREADS", "1"))))
             def run(img, model=model, dev=dev):
                 with torch.no_grad():
                     x = torch.from_numpy(img).float().to(dev)[None, None] / 255.0
@@ -82,9 +82,9 @@ def build_mask_provider(spec: str | None):
             fns.append(lambda img, thr=thr, k=k: 255 - cv2.dilate((img > thr).astype(np.uint8) * 255, k))
         elif name == "learned":
             import torch
-            model = torch.jit.load(p[0]).eval()
             dev = "cuda" if torch.cuda.is_available() else "cpu"
-            model = model.to(dev)
+            model = torch.jit.load(p[0], map_location=dev).eval().to(dev)   # traced on cuda, runs on either
+            torch.set_num_threads(max(1, int(__import__("os").environ.get("PODSLAM_THREADS", "1"))))
             def run(img, model=model, dev=dev):
                 with torch.no_grad():
                     x = torch.from_numpy(img).float().to(dev)[None, None] / 255.0
