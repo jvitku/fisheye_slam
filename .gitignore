@@ -25,3 +25,6 @@ podslam-cpp/gtsam-install/
 podslam-cpp/gtsam-src/
 podslam-cpp/gtsam-build/
 podslam-cpp/build/
+podslam-cpp/opencv-install/
+podslam-cpp/opencv-src/
+podslam-cpp/opencv-build/
