@@ -289,7 +289,11 @@ class SmartBackend:
         # decrease test stops LM after one iteration long before the state has
         # converged (that was a 1 cm/keyframe lag).  Stop on the absolute decrease.
         params.setRelativeErrorTol(0.0)
-        params.setAbsoluteErrorTol(float(self.abs_err_tol))
+        # PODSLAM_PARITY=1: run all max_iters every solve (tolerance 0) so the C++ port
+        # can be compared iterate-for-iterate (the absolute stop is knife-edge sensitive
+        # to last-bit rounding across builds)
+        import os as _os
+        params.setAbsoluteErrorTol(0.0 if _os.environ.get("PODSLAM_PARITY") else float(self.abs_err_tol))
         params.setVerbosityLM("SILENT")
         try:
             opt = g.LevenbergMarquardtOptimizer(graph, values, params)

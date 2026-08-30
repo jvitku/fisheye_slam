@@ -1,0 +1,6 @@
+# Toolchain-only image for compiling podslam-cpp against the mounted GTSAM install
+# (podslam-cpp/gtsam-install, built by the pinned 4.3a2 container build).
+FROM ubuntu:22.04
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update -qq && apt-get install -y -qq --no-install-recommends \
+    g++ make cmake libboost-all-dev libtbb-dev libeigen3-dev && rm -rf /var/lib/apt/lists/*

@@ -21,3 +21,7 @@ bench/results/**/groundtruth.txt
 
 # resource-guard watchdog logs
 bench/results/guard/
+podslam-cpp/gtsam-install/
+podslam-cpp/gtsam-src/
+podslam-cpp/gtsam-build/
+podslam-cpp/build/
