@@ -30,6 +30,16 @@
   "ms_per_frame": null
  },
  {
+  "run": "openvins_stereo",
+  "seq": "exp18_corridor_lower_gallery_2",
+  "ate_se3_cm": 7.166233729912664,
+  "max_cm": 14.606384931962365,
+  "ate_sim3_cm": 5.947408518759521,
+  "scale": 1.0068088899514605,
+  "coverage": 1.0,
+  "ms_per_frame": null
+ },
+ {
   "run": "podslam_accb03",
   "seq": "exp14_basement_2",
   "ate_se3_cm": 22.64566204957501,
@@ -98,6 +108,16 @@
   "scale": 0.9924541093641553,
   "coverage": 0.9898203509391446,
   "ms_per_frame": 69.51672862453532
+ },
+ {
+  "run": "podslam_cam5_v3",
+  "seq": "exp18_corridor_lower_gallery_2",
+  "ate_se3_cm": 11.09469152218969,
+  "max_cm": 28.27635924569864,
+  "ate_sim3_cm": 10.433121850697777,
+  "scale": 0.9945759940264208,
+  "coverage": 1.0,
+  "ms_per_frame": 66.68190127970749
  },
  {
   "run": "podslam_cone50",
@@ -238,6 +258,16 @@
   "scale": 0.9933746947564671,
   "coverage": 0.9901591072752005,
   "ms_per_frame": 43.108108108108105
+ },
+ {
+  "run": "podslam_stereo_v3",
+  "seq": "exp18_corridor_lower_gallery_2",
+  "ate_se3_cm": 13.338009677049916,
+  "max_cm": 55.48826709361274,
+  "ate_sim3_cm": 13.184284118149872,
+  "scale": 0.9970903751036314,
+  "coverage": 1.0,
+  "ms_per_frame": 39.762340036563074
  },
  {
   "run": "podslam_zncc",

@@ -147,5 +147,21 @@
    "transition": 0
   },
   "commit": "243a249"
+ },
+ {
+  "when": "2026-08-30 21:29",
+  "change": "Generalisation check on Hilti exp18 (second dense-GT sequence, 109 s corridor, frozen settings): podslam stereo 13.3 cm SE3 / 13.2 Sim3 (scale 0.997 - the scale treatment generalised; the residual is corridor drift), five cameras 11.1 / 10.4 with max error 55 -> 28 cm (the extra cameras genuinely help where forward parallax is poor); 0 resets, full coverage, 40 / 67 ms per frame. OpenVINS stereo on the same sequence 7.2 cm. Speed: vectorised the stereo triangulation check (80 k Python calls -> one batch): 48 -> 33 ms/frame, bit-identical trajectories; LM solve is now 53 % of frame time (the C++ port target).",
+  "next": "OpenVINS 5-cam exp18 baseline (running); online extrinsic/time-offset refinement as the remaining OpenVINS-gap item; C++/Jetson port plan with the new profile.",
+  "ate": {
+   "day": 8.77,
+   "night": 16.2,
+   "transition": 14.54
+  },
+  "resets": {
+   "day": 0,
+   "night": 0,
+   "transition": 0
+  },
+  "commit": "1977708"
  }
 ]
