@@ -323,5 +323,21 @@
    "transition": 0
   },
   "commit": "b9f3f83"
+ },
+ {
+  "when": "2026-08-30 23:21",
+  "change": "C++ port step 3 validated: the KLT front-end transcription reaches functional parity - teacher-forced (golden previous state per frame) 0.69 % unmatched / 1.25 % extra features, worst matched 0.49 px over 144 frames. Toolchain lesson: the cv2 wheel is OpenCV 5.0.0 + IPP 2026.0 while ubuntu 22.04 ships 4.5.4; OpenCV 5 renamed features2d->features and moved findEssentialMat to the new geometry module; even version+IPP-matched builds differ by threshold-edge corners (116 vs 115, identical leading corners) so free-running sets diverge chaotically - the per-frame criterion is the honest one. All three port layers now validated: lenses bit-exact, window at nanometres, front-end functionally equivalent.",
+  "next": "Port step 4: C++ tracker shell + bag runner end-to-end on the benchmark rows; Orin build. Sim renders still blocked on the GPU host.",
+  "ate": {
+   "day": 8.77,
+   "night": 16.2,
+   "transition": 14.54
+  },
+  "resets": {
+   "day": 0,
+   "night": 0,
+   "transition": 0
+  },
+  "commit": "a65df1f"
  }
 ]
