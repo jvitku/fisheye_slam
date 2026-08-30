@@ -44,6 +44,16 @@ def main(argv=None) -> int:
 
     fb = open(out / "frames.bin", "wb")
     ft = open(out / "tracks.txt", "w")
+    fi = open(out / "imu.txt", "w")
+
+    from podslam.tracker import Tracker
+    orig_reg = Tracker.register_imu
+
+    def register(self, t_ns, gyro, accel):
+        fi.write(f"{t_ns} " + " ".join(f"{float(x):.12g}" for x in [*gyro, *accel]) + "\n")
+        return orig_reg(self, t_ns, gyro, accel)
+
+    Tracker.register_imu = register
 
     orig = KltFrontend.process
 
@@ -64,7 +74,9 @@ def main(argv=None) -> int:
 
     KltFrontend.process = process
     track_bag.main([a.bag, str(out / "run"), "--rig", a.rig, "--max-frames", str(a.max_frames)])
-    fb.close(); ft.close()
+    fb.close(); ft.close(); fi.close()
+    import shutil
+    shutil.copy(Path(a.outdir) / "run" / "est.tum", out / "python_est.tum")
     print(f"wrote {out}/frames.bin ({(out / 'frames.bin').stat().st_size / 1e6:.0f} MB) and tracks.txt")
     return 0
 

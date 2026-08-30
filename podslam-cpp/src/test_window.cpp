@@ -60,6 +60,7 @@ struct Window {
     std::map<int, gtsam::CombinedImuFactor::shared_ptr> imu_factor;
     std::map<long, std::vector<Obs>> lm_meas;
     std::map<long, double> landmark_t;
+    std::map<long, std::array<double, 3>> lm_point;   // last valid triangulation (for _in_front)
     std::vector<gtsam::NonlinearFactor::shared_ptr> prior_factors;
     std::set<int> graph_keys;
     int n_absorbed = 0, n_rejected = 0, n_outliers = 0, n_marginalized = 0, n_failed = 0;
@@ -118,6 +119,12 @@ struct Window {
             X(k - 1), V(k - 1), X(k), V(k), B(k - 1), B(k), pim);
     }
 
+    double cz_obs = std::cos(80.0 * M_PI / 180.0);
+
+    bool can_observe(double bx, double by, double bz) const {
+        return std::isfinite(bx) && std::isfinite(by) && std::isfinite(bz) && bz > cz_obs;
+    }
+
     void add_observation(const Obs& o, double t) {
         lm_meas[o.j].push_back(o);
         landmark_t[o.j] = t;
@@ -173,7 +180,7 @@ struct Window {
                 if (lf && lf->size() > 0)
                     prior_factors.push_back(std::make_shared<gtsam::LinearContainerFactor>(lf, values));
         }
-        for (long j : consumed) { lm_meas.erase(j); landmark_t.erase(j); }
+        for (long j : consumed) { lm_meas.erase(j); landmark_t.erase(j); lm_point.erase(j); }
         for (int k : gone) {
             graph_keys.erase(k); kf_state.erase(k); imu_factor.erase(k); kf_t.erase(k);
         }
@@ -215,8 +222,12 @@ struct Window {
             std::vector<long> outliers;
             for (auto& [j, f] : factors) {
                 try {
-                    if (f->error(result) / std::max<size_t>(1, f->measured().size()) > chi2_gate)
+                    if (f->error(result) / std::max<size_t>(1, f->measured().size()) > chi2_gate) {
                         outliers.push_back(j);
+                    } else if (f->isValid()) {
+                        auto pt = f->point();
+                        if (pt) lm_point[j] = {pt->x(), pt->y(), pt->z()};
+                    }
                 } catch (...) {}
             }
             for (long j : outliers) { lm_meas.erase(j); landmark_t.erase(j); }
@@ -243,6 +254,7 @@ struct Window {
     }
 };
 
+#ifndef PODSLAM_NO_MAIN
 int main(int argc, char** argv) {
     const char* path = argc > 1 ? argv[1] : "podslam-cpp/tests/data/backend_golden.txt";
     const double lag_override = argc > 2 ? std::atof(argv[2]) : 0.0;
@@ -380,3 +392,5 @@ int main(int argc, char** argv) {
     std::puts(rc == 0 ? "window parity: OK" : "window parity: FAILED");
     return rc;
 }
+
+#endif  // PODSLAM_NO_MAIN

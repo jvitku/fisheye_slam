@@ -296,6 +296,7 @@ static bool load_rig_lines(const char* golden_path, std::vector<Kb4>& cams, std:
     return !cams.empty();
 }
 
+#ifndef PODSLAM_NO_MAIN
 int main(int argc, char** argv) {
     cv::setNumThreads(1);                       // the Python dump runs with cv2.setNumThreads(1)
     const char* dir = argc > 1 ? argv[1] : "/tmp/frontend_golden";
@@ -394,3 +395,5 @@ int main(int argc, char** argv) {
     std::puts(rc == 0 ? "frontend parity: OK" : "frontend parity: FAILED");
     return rc;
 }
+
+#endif  // PODSLAM_NO_MAIN
