@@ -259,5 +259,21 @@
    "transition": 0
   },
   "commit": "fb1be32"
+ },
+ {
+  "when": "2026-08-30 22:11",
+  "change": "Consolidation verification at HEAD (e88b28f): all three room1 conditions reproduce the claimed numbers exactly (day 8.8, night 16.2, transition 14.5; identical ATE/RPE/coverage columns) and run ~13 % faster after the vectorised stereo check (42/60/52 ms per frame). The committed defaults are the numbers on the page - nothing depends on uncommitted state.",
+  "next": "C++ skeleton (docs/CPP_PORT_PLAN.md step 1) as the structural lever available on this machine; sim renders still blocked on the GPU host.",
+  "ate": {
+   "day": 8.77,
+   "night": 16.2,
+   "transition": 14.54
+  },
+  "resets": {
+   "day": 0,
+   "night": 0,
+   "transition": 0
+  },
+  "commit": "e88b28f"
  }
 ]

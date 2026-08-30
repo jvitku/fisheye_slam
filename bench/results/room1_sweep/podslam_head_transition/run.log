@@ -1,0 +1,2 @@
+tracked 2763/2821 frames (934 keyframes, 0 soft resets, 0 failed solves, 1370 outlier landmarks, prior absorbed/rejected 20308/0, 906 marginalised, px_sigma 1.50) -> /home/jarda/workspace/fisheye_slam/bench/results/room1_sweep/podslam_head_transition/est.tum
+BENCH_STATS wall_s=150.1 cpu_s=148.5 cpu_percent=99 maxrss_mb=165.3
