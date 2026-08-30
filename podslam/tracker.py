@@ -42,6 +42,7 @@ class TrackerConfig:
     kf_parallax_px: float = 0.0
     max_window_kf: int = 32               # keyframe-count cap of the sliding window (cost bound)
     max_obs_angle_deg: float = 80.0       # smart backend: observations further off-axis are not used
+    depth_feedback: bool = False          # estimator landmark depths as stereo guesses: no gain on Hilti, hurts TUM-VI
     px_sigma_adapt: bool = False          # residual-driven sigma converges to 0.5-0.9 px (residuals at the
                                           # converged solution do not see calibration/distortion errors): off
     kf_min_track_ratio: float = 0.6       # ...or earlier when tracks fall below this share
@@ -55,7 +56,8 @@ class TrackerConfig:
     smart_epi: bool = False           # smart backend: nonlinear landmark refinement (gtsam throws inside LM: keep off)
     imu_noise_scale: tuple = (5.7, 1.8, 1.2, 4.5)   # estimator-side IMU noise inflation (see imu.Preintegrator)
     init_acc_bias_sigma: float = 0.1  # prior sigma of the accelerometer bias at init [m/s^2] (BMI085-class IMUs: ~0.3)
-    init_tilt_sigma: float = 0.05     # prior sigma of the first pose's roll/pitch [rad]: gravity from the static
+    init_tilt_sigma: float = 0.01     # prior sigma of the first pose's roll/pitch [rad]; 0.05 helped Hilti's Sim3 but
+                                      # cost 8.8 -> 12.2 cm on TUM-VI day (bisected): keep tight.  Gravity from the static
                                       # accelerometer mean carries the accel bias (0.17 m/s^2 = 1 deg on the Hilti
                                       # BMI085); roll/pitch are observable, only yaw/position need the hard anchor
     verbose: bool = False
@@ -210,7 +212,8 @@ class Tracker:
         self.backend.add_keyframe(k, t, self.pim.pim, predicted, k - 1)
         self._add_landmarks_and_factors(k, t, feats, predicted.pose().matrix())
         T_est, v, b = self.backend.optimize(k, t)
-        self._feed_depths(feats, T_est)
+        if self.cfg.depth_feedback:
+            self._feed_depths(feats, T_est)
         self.bias = b
         self.gyro_bias = np.asarray(b.gyroscope())
         self.kf_navstate = gtsam.NavState(gtsam.Pose3(T_est), v)

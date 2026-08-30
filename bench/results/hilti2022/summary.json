@@ -80,6 +80,16 @@
   "ms_per_frame": 73.16661034133153
  },
  {
+  "run": "podslam_cam5_v3",
+  "seq": "exp14_basement_2",
+  "ate_se3_cm": 9.396331293180442,
+  "max_cm": 23.17051468544788,
+  "ate_sim3_cm": 7.067720328969301,
+  "scale": 0.9924541093641553,
+  "coverage": 0.9898203509391446,
+  "ms_per_frame": 69.51672862453532
+ },
+ {
   "run": "podslam_cone50",
   "seq": "exp14_basement_2",
   "ate_se3_cm": 14.160117534972457,
@@ -208,6 +218,16 @@
   "scale": 0.9829911086073753,
   "coverage": 0.9901591072752005,
   "ms_per_frame": 43.04054054054054
+ },
+ {
+  "run": "podslam_stereo_v3",
+  "seq": "exp14_basement_2",
+  "ate_se3_cm": 8.327625480847924,
+  "max_cm": 18.56947708551436,
+  "ate_sim3_cm": 6.312613880893069,
+  "scale": 0.9933746947564671,
+  "coverage": 0.9901591072752005,
+  "ms_per_frame": 43.108108108108105
  },
  {
   "run": "podslam_zncc",

@@ -189,7 +189,7 @@ class KltFrontend(Frontend):
         # epipolar curve instead of a fixed default.  Measured on Hilti exp14: LK from a
         # 3 m guess converges to matches biased towards the guess (+8 % depth < 1.5 m,
         # -4 % > 3 m -> +2 % trajectory scale).
-        if self.cfg.get("stereo_zncc", True) and (~np.isfinite(known)).any():
+        if self.cfg.get("stereo_zncc", False) and (~np.isfinite(known)).any():   # off: no gain (Hilti), hurts TUM-VI
             seed = self._epipolar_seed(img0, img_j, px0, b0, T_cj_c0, cam_j, ~np.isfinite(known))
             known = np.where(np.isfinite(known), known, seed)
         hyps = [np.where(np.isfinite(known), known, self.cfg["default_depth"])]

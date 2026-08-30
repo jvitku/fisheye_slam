@@ -131,5 +131,21 @@
    "transition": 0
   },
   "commit": "2430b2f"
+ },
+ {
+  "when": "2026-08-30 21:08",
+  "change": "Bisect + consolidation. TUM-VI day had regressed 8.8 -> 12.2 through the afternoon's front-end/anchor experiments; bisected with worktrees (82923ff/70d53c4/db94855 all 8.8) and by switches: the 0.05 rad roll/pitch anchor (-> 12.2), estimator depth feedback and ZNCC stereo seeding (-> 11.1 together) were the causes; all three reverted to the tight/off defaults, day back at 8.8 exactly. With those defaults plus the rig-level px_sigma and the measured IMU model, Hilti exp14: stereo 8.3 cm SE3 / 6.3 Sim3, five cameras 9.4 cm SE3 / 7.1 Sim3 (OpenVINS 5.4 / 3.9 and 7.6 / 6.6). Hilti 5-cam runs at 70 ms/frame in Python, stereo 43.",
+  "next": "cuVSLAM on Hilti as the closed reference; Hilti exp18 (second dense-GT sequence, 8.7 GB) for generalisation; then C++/Jetson port plan and per-IMU noise handling as a rig property.",
+  "ate": {
+   "day": 8.77,
+   "night": 16.2,
+   "transition": 14.54
+  },
+  "resets": {
+   "day": 0,
+   "night": 0,
+   "transition": 0
+  },
+  "commit": "243a249"
  }
 ]
