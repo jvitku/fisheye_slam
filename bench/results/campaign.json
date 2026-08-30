@@ -275,5 +275,37 @@
    "transition": 0
   },
   "commit": "e88b28f"
+ },
+ {
+  "when": "2026-08-30 22:12",
+  "change": "C++ port started (docs/CPP_PORT_PLAN.md step 1): podslam-cpp/ with the KB4 lens model as a dependency-free C++17 header and golden parity tests against the Python reference - 1000 samples across the TUM-VI and Hilti calibrations, max 1.7e-9 px / 4e-12 bearing difference, zero validity mismatches. The Python harness is the oracle for every ported stage, per the plan.",
+  "next": "Port step 2: the sliding-window backend on native GTSAM (needs a GTSAM C++ build - pin the wheel's version); meanwhile the hourly cycle continues.",
+  "ate": {
+   "day": 8.77,
+   "night": 16.2,
+   "transition": 14.54
+  },
+  "resets": {
+   "day": 0,
+   "night": 0,
+   "transition": 0
+  },
+  "commit": "d7d6cf9"
+ },
+ {
+  "when": "2026-08-30 22:15",
+  "change": "C++ port bricks 2-3: DoubleSphere + EUCM headers (parity 1e-9 px) and the stereo triangulation/verification (parity 3e-8 m, zero gate mismatches on 400 pairs) - the whole lens/geometry layer of the front-end is now dependency-free C++17 with the Python harness as the oracle. Port blocker found: no cmake/boost/GTSAM-C++ headers on the host or in the docker images - the native window solve (port step 2) needs either 'sudo apt install cmake libboost-all-dev libtbb-dev' + a pinned GTSAM source build, or a dev docker image; flagged to the user.",
+  "next": "Continue C++ bricks that need no GTSAM (IMU-predicted flow, detector gate math); GTSAM build once the toolchain decision is made; hourly cycle continues.",
+  "ate": {
+   "day": 8.77,
+   "night": 16.2,
+   "transition": 14.54
+  },
+  "resets": {
+   "day": 0,
+   "night": 0,
+   "transition": 0
+  },
+  "commit": "a137f1c"
  }
 ]
