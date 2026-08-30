@@ -243,5 +243,21 @@
    "transition": 0
   },
   "commit": "404d30c"
+ },
+ {
+  "when": "2026-08-30 22:02",
+  "change": "Keyframe-template (Basalt-style) track re-alignment implemented behind a flag (kf_template) and rejected after measurement: day 8.8 -> 15.1, exp14 stereo 8.3 -> 9.8. The naive template correction (<= 2 px accept, no illumination/affine compensation) injects more bias on fisheye patches than the frame-to-frame drift it removes; a proper version needs warped patches (C++ territory). Two accuracy probes rejected in a row: the Python estimator/front-end is at a stable local optimum; remaining levers are structural (C++ port, sim renders, loop closure).",
+  "next": "Hourly cycle continues with consolidation: full benchmark re-verification at HEAD, then C++ skeleton or sim renders when the GPU host is available.",
+  "ate": {
+   "day": 8.77,
+   "night": 16.2,
+   "transition": 14.54
+  },
+  "resets": {
+   "day": 0,
+   "night": 0,
+   "transition": 0
+  },
+  "commit": "fb1be32"
  }
 ]

@@ -1,0 +1,5 @@
+using cameras ['cam0', 'cam1']
+accelerometer scale correction x1.0177
+camera->IMU time shift 1.91 ms applied to image stamps
+tracked 2924/2960 frames (496 keyframes, 0 soft resets, 0 failed solves, 744 outlier landmarks, prior absorbed/rejected 7774/0, 469 marginalised, px_sigma 3.00) -> /home/jarda/workspace/fisheye_slam/bench/results/hilti2022/podslam_stereo_tmpl_exp14_basement_2/est.tum
+BENCH_STATS wall_s=123.8 cpu_s=120.9 cpu_percent=98 maxrss_mb=218.9

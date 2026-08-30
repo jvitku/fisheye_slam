@@ -37,6 +37,8 @@ class KltFrontend(Frontend):
         self.prev_b = np.zeros((0, 3), np.float64)
         self.ids = np.zeros(0, np.int64)
         self.depth = {}                     # id -> last stereo depth (m)
+        self.tmpl = {}                      # id -> (template image, px at template)
+        self.tmpl_imgs = {}                 # id(img) -> retained reference frames
         self.next_id = 0
 
     # --- helpers -----------------------------------------------------------
@@ -107,6 +109,8 @@ class KltFrontend(Frontend):
             ok = (st.ravel() == 1) & (st2.ravel() == 1) & (fb < self.cfg["fb_err_px"])
             ok &= self._inside(nxt, img0.shape, mask0)
             px, ids, bprev = nxt[ok], self.ids[ok], self.prev_b[ok]
+            if self.cfg.get("kf_template", False) and len(px):
+                px = self._refine_against_templates(img0, px, ids)
             b, bvalid = self._bearings(self.cam0, px)
             px, ids, bprev, b = px[bvalid], ids[bvalid], bprev[bvalid], b[bvalid]
             if len(px) >= 8:
@@ -135,6 +139,41 @@ class KltFrontend(Frontend):
         self.prev_img, self.prev_px, self.prev_b, self.ids = img0, px.astype(np.float32), b, ids
         live = set(ids.tolist()); self.depth = {k: v for k, v in self.depth.items() if k in live}
         return FrameFeatures(t_ns=t_ns, cams=cams, n_new=n_new)
+
+    def _refine_against_templates(self, img0, px, ids):
+        """Basalt-style drift correction: re-align each track against the patch from the
+        frame where it was (re-)anchored, instead of pure frame-to-frame chaining.
+        Small corrections only (<= tmpl_max_corr px); a large deviation or a failed
+        match re-anchors the template at the current frame."""
+        max_corr = float(self.cfg.get("tmpl_max_corr", 2.0))
+        reanchor_px = float(self.cfg.get("tmpl_reanchor_px", 45.0))
+        groups = {}
+        for n, tid in enumerate(ids):
+            tid = int(tid)
+            t = self.tmpl.get(tid)
+            if t is None or np.linalg.norm(px[n] - t[1]) > reanchor_px:
+                self.tmpl[tid] = (self.tmpl_imgs.setdefault(id(img0), img0), px[n].copy())
+                continue
+            groups.setdefault(id(t[0]), []).append(n)
+        for img_id, idxs in sorted(groups.items(), key=lambda kv: -len(kv[1]))[:5]:
+            idxs = np.asarray(idxs)
+            ref = self.tmpl_imgs.get(img_id)
+            if ref is None:
+                continue
+            ref_px = np.stack([self.tmpl[int(ids[n])][1] for n in idxs]).astype(np.float32)
+            out, st, _ = cv2.calcOpticalFlowPyrLK(ref, img0, ref_px, px[idxs].copy().astype(np.float32),
+                                                  flags=cv2.OPTFLOW_USE_INITIAL_FLOW, **self.lk)
+            corr = np.linalg.norm(out - px[idxs], axis=1)
+            good = (st.ravel() == 1) & (corr <= max_corr)
+            px[idxs[good]] = out[good]
+            for n in idxs[~good]:                       # template no longer matches: re-anchor
+                self.tmpl[int(ids[n])] = (self.tmpl_imgs.setdefault(id(img0), img0), px[n].copy())
+        # forget templates of dead tracks and unreferenced images
+        live = set(int(i) for i in ids)
+        self.tmpl = {t: v for t, v in self.tmpl.items() if t in live}
+        used = {id(v[0]) for v in self.tmpl.values()} | {id(img0)}
+        self.tmpl_imgs = {k2: v for k2, v in self.tmpl_imgs.items() if k2 in used}
+        return px
 
     def set_depths(self, depths):
         for i, d in depths.items():
