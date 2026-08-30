@@ -302,6 +302,7 @@ int main(int argc, char** argv) {
     cv::setNumThreads(1);
     const char* dir = argc > 1 ? argv[1] : "/tmp/frontend_golden";
     const char* rig = argc > 2 ? argv[2] : "podslam-cpp/tests/data/backend_golden.txt";
+    const int kf_every_arg = argc > 3 ? std::atoi(argv[3]) : 0;
 
     Tracker tr;
     if (!load_rig_lines(rig, tr.fe.cams, tr.fe.T_imu_cam)) { std::printf("no rig\n"); return 1; }
@@ -322,6 +323,7 @@ int main(int argc, char** argv) {
             }
         }
     }
+    if (kf_every_arg > 0) tr.kf_every = kf_every_arg;
     tr.setup();
 
     // IMU rows (t_ns gx gy gz ax ay az) and frames.bin interleaved by time

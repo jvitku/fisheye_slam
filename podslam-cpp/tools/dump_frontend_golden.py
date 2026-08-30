@@ -36,6 +36,7 @@ def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("bag"); ap.add_argument("rig"); ap.add_argument("outdir")
     ap.add_argument("--max-frames", type=int, default=200)
+    ap.add_argument("--extra", default="", help="extra track_bag args, comma-separated (e.g. --cams,cam0:cam1,--kf-every,6)")
     a = ap.parse_args(argv)
     out = Path(a.outdir); out.mkdir(parents=True, exist_ok=True)
 
@@ -73,7 +74,8 @@ def main(argv=None) -> int:
         return ff
 
     KltFrontend.process = process
-    track_bag.main([a.bag, str(out / "run"), "--rig", a.rig, "--max-frames", str(a.max_frames)])
+    extra = [x.replace(":", ",") for x in a.extra.split(",") if x] if a.extra else []
+    track_bag.main([a.bag, str(out / "run"), "--rig", a.rig, "--max-frames", str(a.max_frames)] + extra)
     fb.close(); ft.close(); fi.close()
     import shutil
     shutil.copy(Path(a.outdir) / "run" / "est.tum", out / "python_est.tum")
