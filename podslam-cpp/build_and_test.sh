@@ -5,4 +5,8 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 mkdir -p podslam-cpp/build
 g++ -O2 -std=c++17 -Wall -Ipodslam-cpp/include podslam-cpp/tests/test_kb4.cpp -o podslam-cpp/build/test_kb4
+g++ -O2 -std=c++17 -Wall -Ipodslam-cpp/include podslam-cpp/tests/test_ds_eucm.cpp -o podslam-cpp/build/test_ds_eucm
+podslam-cpp/build/test_ds_eucm
 podslam-cpp/build/test_kb4
+g++ -O2 -std=c++17 -Wall -Ipodslam-cpp/include podslam-cpp/tests/test_ds_eucm.cpp -o podslam-cpp/build/test_ds_eucm
+podslam-cpp/build/test_ds_eucm
