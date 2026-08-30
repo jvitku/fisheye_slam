@@ -211,5 +211,21 @@
    "transition": 0
   },
   "commit": "f2c25fd"
+ },
+ {
+  "when": "2026-08-30 21:52",
+  "change": "room2 night proxy (same degradation model, frozen settings): 25.8 cm ATE (max 81), RPE med 9.1 cm, 0 resets, coverage 0.98 - the night hit is sequence-dependent (room1 night 16.2 plain). The room2-trained enhancer cannot be scored on room2 (training domain); training a room1-trained enhancer for the honest cross-sequence test.",
+  "next": "Cross-sequence enhancer test on room2 night; then keyframe-template tracking or the C++ skeleton per the port plan (docs/CPP_PORT_PLAN.md).",
+  "ate": {
+   "day": 8.77,
+   "night": 16.2,
+   "transition": 14.54
+  },
+  "resets": {
+   "day": 0,
+   "night": 0,
+   "transition": 0
+  },
+  "commit": "aeb0d5d"
  }
 ]

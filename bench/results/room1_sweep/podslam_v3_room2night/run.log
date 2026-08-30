@@ -1,0 +1,2 @@
+tracked 2824/2882 frames (964 keyframes, 0 soft resets, 0 failed solves, 1735 outlier landmarks, prior absorbed/rejected 18745/0, 934 marginalised, px_sigma 1.50) -> bench/results/room1_sweep/podslam_v3_room2night/est.tum
+BENCH_STATS wall_s=175.8 cpu_s=175.7 cpu_percent=100 maxrss_mb=171.3
