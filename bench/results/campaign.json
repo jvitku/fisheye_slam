@@ -83,5 +83,21 @@
    "transition": 0
   },
   "commit": "ff38069"
+ },
+ {
+  "when": "2026-08-30 19:48",
+  "change": "ML + multi-camera round. (1) Learned low-light enhancer (0.12 M-param U-Net, trained 81 s on room2 with the night degradation model, pairs generated on the GPU): room1 night 16.2 -> 13.7 cm, first-20 s 21 -> 11 cm, yaw drift 1.0 -> 0.1 deg/min, tracker 69 -> 39 ms/frame; applied once per bag on the GPU (bench/enhance_bag.py, 3.7 ms/frame). (2) Hilti-Oxford 2022 exp14 (5 cameras, mm 6-DoF GT) online: podslam stereo 21.1 / 3-cam 23.3 cm SE3 (Sim3 7-8 cm, scale 0.975) vs OpenVINS stereo 5.4 cm (scale 1.005, same Kalibr calibration; its online calibration moved it < 0.3 deg / 4 mm / 0.2 %). Datasheet IMU weighting is better on this rig (13.9 cm) - the Basalt inflation is TUM-VI-specific. Two-pass stereo (re-init from own depth) 21.1 -> 19.1. Guard: kill only after 15 s of sustained over-temperature (single-sample spikes killed 4 jobs).",
+  "next": "Hilti scale/tilt gap (2.5 % / 1.2 deg) vs OpenVINS: per-IMU noise setting or online residual-based weighting; online camera-IMU extrinsic/time-offset refinement; 5-camera podslam row and OpenVINS 5-cam at 0.2x playback; then the C++/Jetson port plan.",
+  "ate": {
+   "day": 8.77,
+   "night": 16.2,
+   "transition": 14.54
+  },
+  "resets": {
+   "day": 0,
+   "night": 0,
+   "transition": 0
+  },
+  "commit": "70d53c4"
  }
 ]

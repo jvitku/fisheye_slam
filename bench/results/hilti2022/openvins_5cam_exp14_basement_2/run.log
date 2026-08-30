@@ -1,0 +1,1067 @@
+Setting printing level to: INFO
+parameter T_imu_cam not found, trying T_cam_imu instead (will return T_imu_cam still)!
+parameter T_imu_cam not found, trying T_cam_imu instead (will return T_imu_cam still)!
+parameter T_imu_cam not found, trying T_cam_imu instead (will return T_imu_cam still)!
+parameter T_imu_cam not found, trying T_cam_imu instead (will return T_imu_cam still)!
+parameter T_imu_cam not found, trying T_cam_imu instead (will return T_imu_cam still)!
+parameter T_imu_cam not found, trying T_cam_imu instead (will return T_imu_cam still)!
+parameter T_imu_cam not found, trying T_cam_imu instead (will return T_imu_cam still)!
+parameter T_imu_cam not found, trying T_cam_imu instead (will return T_imu_cam still)!
+parameter T_imu_cam not found, trying T_cam_imu instead (will return T_imu_cam still)!
+parameter T_imu_cam not found, trying T_cam_imu instead (will return T_imu_cam still)!
+subscribing to IMU: /alphasense/imu
+subscribing to cam (mono): /alphasense/cam0/image_raw
+subscribing to cam (mono): /alphasense/cam1/image_raw
+subscribing to cam (mono): /alphasense/cam2/image_raw
+subscribing to cam (mono): /alphasense/cam3/image_raw
+subscribing to cam (mono): /alphasense/cam4/image_raw
+[34m[TIME]: 0.0022 seconds total (463.8 hz, 1.36 ms behind)
+[0m[34m[TIME]: 0.0017 seconds total (584.1 hz, 1.36 ms behind)
+[0m[34m[TIME]: 0.0015 seconds total (676.1 hz, 1.36 ms behind)
+[0m[34m[TIME]: 0.0020 seconds total (511.0 hz, 1.36 ms behind)
+[0m[34m[TIME]: 0.0017 seconds total (585.8 hz, 1.36 ms behind)
+[0m[34m[TIME]: 0.0050 seconds total (200.8 hz, 0.11 ms behind)
+[0m[33m[init]: not enough feats to compute disp: 0,0 < 15
+[0m[34m[TIME]: 0.0012 seconds total (844.6 hz, 0.11 ms behind)
+[0m[33m[init]: not enough feats to compute disp: 0,0 < 15
+[0m[34m[TIME]: 0.0032 seconds total (315.5 hz, 0.11 ms behind)
+[0m[33m[init]: not enough feats to compute disp: 0,0 < 15
+[0m[34m[TIME]: 0.0010 seconds total (980.4 hz, 0.11 ms behind)
+[0m[33m[init]: not enough feats to compute disp: 0,0 < 15
+[0m[34m[TIME]: 0.0010 seconds total (1014.2 hz, 0.11 ms behind)
+[0m[33m[init]: not enough feats to compute disp: 0,0 < 15
+[0m[34m[TIME]: 0.0049 seconds total (205.3 hz, 0.13 ms behind)
+[0m[33m[init]: not enough feats to compute disp: 0,0 < 15
+[0m[34m[TIME]: 0.0011 seconds total (890.5 hz, 0.13 ms behind)
+[0m[33m[init]: not enough feats to compute disp: 0,0 < 15
+[0m[34m[TIME]: 0.0039 seconds total (254.1 hz, 0.13 ms behind)
+[0m[33m[init]: not enough feats to compute disp: 0,0 < 15
+[0m[34m[TIME]: 0.0007 seconds total (1362.4 hz, 0.13 ms behind)
+[0m[33m[init]: not enough feats to compute disp: 0,0 < 15
+[0m[34m[TIME]: 0.0007 seconds total (1474.9 hz, 0.13 ms behind)
+[0m[33m[init]: not enough feats to compute disp: 0,0 < 15
+[0m[34m[TIME]: 0.0034 seconds total (298.4 hz, 0.14 ms behind)
+[0m[33m[init]: not enough feats to compute disp: 0,74 < 15
+[0m[34m[TIME]: 0.0007 seconds total (1426.5 hz, 0.14 ms behind)
+[0m[33m[init]: not enough feats to compute disp: 0,74 < 15
+[0m[34m[TIME]: 0.0026 seconds total (387.6 hz, 0.14 ms behind)
+[0m[33m[init]: not enough feats to compute disp: 0,74 < 15
+[0m[34m[TIME]: 0.0006 seconds total (1538.5 hz, 0.14 ms behind)
+[0m[33m[init]: not enough feats to compute disp: 0,74 < 15
+[0m[34m[TIME]: 0.0005 seconds total (1862.2 hz, 0.14 ms behind)
+[0m[33m[init]: not enough feats to compute disp: 0,74 < 15
+[0m[34m[TIME]: 0.0042 seconds total (238.9 hz, 0.15 ms behind)
+[0m[33m[init]: not enough feats to compute disp: 0,74 < 15
+[0m[34m[TIME]: 0.0008 seconds total (1333.3 hz, 0.15 ms behind)
+[0m[33m[init]: not enough feats to compute disp: 0,74 < 15
+[0m[34m[TIME]: 0.0030 seconds total (336.1 hz, 0.15 ms behind)
+[0m[33m[init]: not enough feats to compute disp: 0,74 < 15
+[0m[34m[TIME]: 0.0007 seconds total (1522.1 hz, 0.15 ms behind)
+[0m[33m[init]: not enough feats to compute disp: 0,74 < 15
+[0m[34m[TIME]: 0.0005 seconds total (1851.9 hz, 0.15 ms behind)
+[0m[33m[init]: not enough feats to compute disp: 0,74 < 15
+[0m[34m[TIME]: 0.0037 seconds total (273.2 hz, 0.16 ms behind)
+[0m[33m[init]: not enough feats to compute disp: 0,74 < 15
+[0m[34m[TIME]: 0.0012 seconds total (841.8 hz, 0.16 ms behind)
+[0m[33m[init]: not enough feats to compute disp: 0,74 < 15
+[0m[34m[TIME]: 0.0009 seconds total (1071.8 hz, 0.16 ms behind)
+[0m[33m[init]: not enough feats to compute disp: 0,74 < 15
+[0m[34m[TIME]: 0.0010 seconds total (997.0 hz, 0.16 ms behind)
+[0m[33m[init]: not enough feats to compute disp: 0,74 < 15
+[0m[34m[TIME]: 0.0010 seconds total (1015.2 hz, 0.16 ms behind)
+[0m[33m[init]: not enough feats to compute disp: 0,74 < 15
+[0m[34m[TIME]: 0.0048 seconds total (207.4 hz, 0.17 ms behind)
+[0m[33m[init]: not enough feats to compute disp: 0,74 < 15
+[0m[34m[TIME]: 0.0008 seconds total (1177.9 hz, 0.17 ms behind)
+[0m[33m[init]: not enough feats to compute disp: 0,74 < 15
+[0m[34m[TIME]: 0.0009 seconds total (1052.6 hz, 0.17 ms behind)
+[0m[33m[init]: not enough feats to compute disp: 0,74 < 15
+[0m[34m[TIME]: 0.0007 seconds total (1406.5 hz, 0.17 ms behind)
+[0m[33m[init]: not enough feats to compute disp: 0,74 < 15
+[0m[34m[TIME]: 0.0006 seconds total (1615.5 hz, 0.17 ms behind)
+[0m[33m[init]: not enough feats to compute disp: 0,74 < 15
+[0m[34m[TIME]: 0.0041 seconds total (241.1 hz, 0.18 ms behind)
+[0m[33m[init]: not enough feats to compute disp: 0,74 < 15
+[0m[34m[TIME]: 0.0008 seconds total (1201.9 hz, 0.18 ms behind)
+[0m[33m[init]: not enough feats to compute disp: 0,74 < 15
+[0m[34m[TIME]: 0.0039 seconds total (253.2 hz, 0.18 ms behind)
+[0m[33m[init]: not enough feats to compute disp: 0,74 < 15
+[0m[34m[TIME]: 0.0010 seconds total (978.5 hz, 0.18 ms behind)
+[0m[33m[init]: not enough feats to compute disp: 0,74 < 15
+[0m[34m[TIME]: 0.0007 seconds total (1492.5 hz, 0.18 ms behind)
+[0m[33m[init]: not enough feats to compute disp: 0,74 < 15
+[0m[34m[TIME]: 0.0041 seconds total (241.4 hz, 0.19 ms behind)
+[0m[33m[init]: not enough feats to compute disp: 0,74 < 15
+[0m[34m[TIME]: 0.0007 seconds total (1396.6 hz, 0.19 ms behind)
+[0m[33m[init]: not enough feats to compute disp: 0,74 < 15
+[0m[34m[TIME]: 0.0039 seconds total (258.5 hz, 0.19 ms behind)
+[0m[33m[init]: not enough feats to compute disp: 0,74 < 15
+[0m[34m[TIME]: 0.0008 seconds total (1187.6 hz, 0.19 ms behind)
+[0m[33m[init]: not enough feats to compute disp: 0,74 < 15
+[0m[34m[TIME]: 0.0006 seconds total (1569.9 hz, 0.19 ms behind)
+[0m[33m[init]: not enough feats to compute disp: 0,74 < 15
+[0m[34m[TIME]: 0.0042 seconds total (237.1 hz, 0.20 ms behind)
+[0m[33m[init]: not enough feats to compute disp: 0,85 < 15
+[0m[34m[TIME]: 0.0008 seconds total (1259.4 hz, 0.20 ms behind)
+[0m[33m[init]: not enough feats to compute disp: 0,85 < 15
+[0m[34m[TIME]: 0.0035 seconds total (286.4 hz, 0.20 ms behind)
+[0m[33m[init]: not enough feats to compute disp: 0,85 < 15
+[0m[34m[TIME]: 0.0007 seconds total (1430.6 hz, 0.20 ms behind)
+[0m[33m[init]: not enough feats to compute disp: 0,85 < 15
+[0m[34m[TIME]: 0.0005 seconds total (1890.4 hz, 0.20 ms behind)
+[0m[33m[init]: not enough feats to compute disp: 0,85 < 15
+[0m[34m[TIME]: 0.0039 seconds total (258.1 hz, 0.21 ms behind)
+[0m[33m[init]: not enough feats to compute disp: 0,85 < 15
+[0m[34m[TIME]: 0.0007 seconds total (1524.4 hz, 0.21 ms behind)
+[0m[33m[init]: not enough feats to compute disp: 0,85 < 15
+[0m[34m[TIME]: 0.0026 seconds total (388.8 hz, 0.21 ms behind)
+[0m[33m[init]: not enough feats to compute disp: 0,85 < 15
+[0m[34m[TIME]: 0.0007 seconds total (1468.4 hz, 0.21 ms behind)
+[0m[33m[init]: not enough feats to compute disp: 0,85 < 15
+[0m[34m[TIME]: 0.0005 seconds total (1996.0 hz, 0.21 ms behind)
+[0m[33m[init]: not enough feats to compute disp: 0,85 < 15
+[0m[34m[TIME]: 0.0041 seconds total (242.6 hz, 0.22 ms behind)
+[0m[33m[init]: not enough feats to compute disp: 0,85 < 15
+[0m[34m[TIME]: 0.0008 seconds total (1326.3 hz, 0.22 ms behind)
+[0m[33m[init]: not enough feats to compute disp: 0,85 < 15
+[0m[34m[TIME]: 0.0038 seconds total (260.2 hz, 0.22 ms behind)
+[0m[33m[init]: not enough feats to compute disp: 0,85 < 15
+[0m[34m[TIME]: 0.0008 seconds total (1312.3 hz, 0.22 ms behind)
+[0m[33m[init]: not enough feats to compute disp: 0,85 < 15
+[0m[34m[TIME]: 0.0007 seconds total (1474.9 hz, 0.22 ms behind)
+[0m[33m[init]: not enough feats to compute disp: 0,85 < 15
+[0m[34m[TIME]: 0.0043 seconds total (230.5 hz, 0.23 ms behind)
+[0m[33m[init]: not enough feats to compute disp: 0,85 < 15
+[0m[34m[TIME]: 0.0008 seconds total (1319.3 hz, 0.23 ms behind)
+[0m[33m[init]: not enough feats to compute disp: 0,85 < 15
+[0m[34m[TIME]: 0.0037 seconds total (266.8 hz, 0.23 ms behind)
+[0m[33m[init]: not enough feats to compute disp: 0,85 < 15
+[0m[34m[TIME]: 0.0008 seconds total (1287.0 hz, 0.23 ms behind)
+[0m[33m[init]: not enough feats to compute disp: 0,85 < 15
+[0m[34m[TIME]: 0.0006 seconds total (1538.5 hz, 0.23 ms behind)
+[0m[33m[init]: not enough feats to compute disp: 0,85 < 15
+[0m[34m[TIME]: 0.0030 seconds total (335.9 hz, 0.24 ms behind)
+[0m[33m[init]: not enough feats to compute disp: 0,85 < 15
+[0m[34m[TIME]: 0.0006 seconds total (1652.9 hz, 0.24 ms behind)
+[0m[33m[init]: not enough feats to compute disp: 0,85 < 15
+[0m[34m[TIME]: 0.0004 seconds total (2415.5 hz, 0.24 ms behind)
+[0m[33m[init]: not enough feats to compute disp: 0,85 < 15
+[0m[34m[TIME]: 0.0005 seconds total (1968.5 hz, 0.24 ms behind)
+[0m[33m[init]: not enough feats to compute disp: 0,85 < 15
+[0m[34m[TIME]: 0.0005 seconds total (1964.6 hz, 0.24 ms behind)
+[0m[33m[init]: not enough feats to compute disp: 0,85 < 15
+[0m[34m[TIME]: 0.0043 seconds total (234.4 hz, 0.25 ms behind)
+[0m[33m[init]: not enough feats to compute disp: 0,85 < 15
+[0m[34m[TIME]: 0.0007 seconds total (1420.5 hz, 0.25 ms behind)
+[0m[33m[init]: not enough feats to compute disp: 0,85 < 15
+[0m[34m[TIME]: 0.0007 seconds total (1490.3 hz, 0.25 ms behind)
+[0m[33m[init]: not enough feats to compute disp: 0,85 < 15
+[0m[34m[TIME]: 0.0007 seconds total (1440.9 hz, 0.25 ms behind)
+[0m[33m[init]: not enough feats to compute disp: 0,85 < 15
+[0m[34m[TIME]: 0.0005 seconds total (1851.9 hz, 0.25 ms behind)
+[0m[33m[init]: not enough feats to compute disp: 0,85 < 15
+[0m[34m[TIME]: 0.0040 seconds total (248.4 hz, 0.26 ms behind)
+[0m[33m[init]: not enough feats to compute disp: 0,85 < 15
+[0m[34m[TIME]: 0.0007 seconds total (1414.4 hz, 0.26 ms behind)
+[0m[33m[init]: not enough feats to compute disp: 0,85 < 15
+[0m[34m[TIME]: 0.0005 seconds total (2036.7 hz, 0.26 ms behind)
+[0m[33m[init]: not enough feats to compute disp: 0,85 < 15
+[0m[34m[TIME]: 0.0005 seconds total (1984.1 hz, 0.26 ms behind)
+[0m[33m[init]: not enough feats to compute disp: 0,85 < 15
+[0m[34m[TIME]: 0.0005 seconds total (2123.1 hz, 0.26 ms behind)
+[0m[33m[init]: not enough feats to compute disp: 0,85 < 15
+[0m[34m[TIME]: 0.0042 seconds total (240.2 hz, 0.27 ms behind)
+[0m[33m[init]: not enough feats to compute disp: 0,85 < 15
+[0m[34m[TIME]: 0.0008 seconds total (1215.1 hz, 0.27 ms behind)
+[0m[33m[init]: not enough feats to compute disp: 0,85 < 15
+[0m[34m[TIME]: 0.0007 seconds total (1508.3 hz, 0.27 ms behind)
+[0m[33m[init]: not enough feats to compute disp: 0,85 < 15
+[0m[34m[TIME]: 0.0007 seconds total (1472.8 hz, 0.27 ms behind)
+[0m[33m[init]: not enough feats to compute disp: 0,85 < 15
+[0m[34m[TIME]: 0.0006 seconds total (1550.4 hz, 0.27 ms behind)
+[0m[33m[init]: not enough feats to compute disp: 0,85 < 15
+[0m[34m[TIME]: 0.0041 seconds total (241.8 hz, 0.28 ms behind)
+[0m[33m[init]: not enough feats to compute disp: 0,100 < 15
+[0m[34m[TIME]: 0.0009 seconds total (1109.9 hz, 0.28 ms behind)
+[0m[33m[init]: not enough feats to compute disp: 0,100 < 15
+[0m[34m[TIME]: 0.0006 seconds total (1600.0 hz, 0.28 ms behind)
+[0m[33m[init]: not enough feats to compute disp: 0,100 < 15
+[0m[34m[TIME]: 0.0006 seconds total (1751.3 hz, 0.28 ms behind)
+[0m[33m[init]: not enough feats to compute disp: 0,100 < 15
+[0m[34m[TIME]: 0.0005 seconds total (1926.8 hz, 0.28 ms behind)
+[0m[33m[init]: not enough feats to compute disp: 0,100 < 15
+[0m[34m[TIME]: 0.0036 seconds total (274.7 hz, 0.04 ms behind)
+[0m[33m[init]: disparity is 0.072,0.316 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0007 seconds total (1510.6 hz, 0.04 ms behind)
+[0m[33m[init]: disparity is 0.072,0.316 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0006 seconds total (1798.6 hz, 0.04 ms behind)
+[0m[33m[init]: disparity is 0.072,0.316 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0006 seconds total (1811.6 hz, 0.04 ms behind)
+[0m[33m[init]: disparity is 0.072,0.316 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0006 seconds total (1724.1 hz, 0.04 ms behind)
+[0m[33m[init]: disparity is 0.072,0.316 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0032 seconds total (312.5 hz, 0.05 ms behind)
+[0m[33m[init]: disparity is 0.102,0.342 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0005 seconds total (1851.9 hz, 0.05 ms behind)
+[0m[33m[init]: disparity is 0.102,0.342 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0005 seconds total (1945.5 hz, 0.05 ms behind)
+[0m[33m[init]: disparity is 0.102,0.342 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0005 seconds total (1968.5 hz, 0.05 ms behind)
+[0m[33m[init]: disparity is 0.102,0.342 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0005 seconds total (1938.0 hz, 0.05 ms behind)
+[0m[33m[init]: disparity is 0.102,0.342 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0044 seconds total (226.9 hz, 0.06 ms behind)
+[0m[33m[init]: disparity is 0.129,0.322 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0007 seconds total (1353.2 hz, 0.06 ms behind)
+[0m[33m[init]: disparity is 0.129,0.322 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0007 seconds total (1430.6 hz, 0.06 ms behind)
+[0m[33m[init]: disparity is 0.129,0.322 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0006 seconds total (1552.8 hz, 0.06 ms behind)
+[0m[33m[init]: disparity is 0.129,0.322 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0007 seconds total (1497.0 hz, 0.06 ms behind)
+[0m[33m[init]: disparity is 0.129,0.322 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0041 seconds total (241.4 hz, 0.07 ms behind)
+[0m[33m[init]: disparity is 0.149,0.327 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0007 seconds total (1344.1 hz, 0.07 ms behind)
+[0m[33m[init]: disparity is 0.149,0.327 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0007 seconds total (1368.0 hz, 0.07 ms behind)
+[0m[33m[init]: disparity is 0.149,0.327 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0007 seconds total (1529.1 hz, 0.07 ms behind)
+[0m[33m[init]: disparity is 0.149,0.327 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0007 seconds total (1466.3 hz, 0.07 ms behind)
+[0m[33m[init]: disparity is 0.149,0.327 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0030 seconds total (332.3 hz, 0.08 ms behind)
+[0m[33m[init]: disparity is 0.184,0.313 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0006 seconds total (1754.4 hz, 0.08 ms behind)
+[0m[33m[init]: disparity is 0.184,0.313 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0005 seconds total (1848.4 hz, 0.08 ms behind)
+[0m[33m[init]: disparity is 0.184,0.313 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0005 seconds total (1901.1 hz, 0.08 ms behind)
+[0m[33m[init]: disparity is 0.184,0.313 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0005 seconds total (2024.3 hz, 0.08 ms behind)
+[0m[33m[init]: disparity is 0.184,0.313 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0042 seconds total (237.9 hz, 0.10 ms behind)
+[0m[33m[init]: disparity is 0.210,0.314 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0007 seconds total (1338.7 hz, 0.10 ms behind)
+[0m[33m[init]: disparity is 0.210,0.314 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0007 seconds total (1353.2 hz, 0.10 ms behind)
+[0m[33m[init]: disparity is 0.210,0.314 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0006 seconds total (1540.8 hz, 0.10 ms behind)
+[0m[33m[init]: disparity is 0.210,0.314 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0007 seconds total (1468.4 hz, 0.10 ms behind)
+[0m[33m[init]: disparity is 0.210,0.314 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0040 seconds total (250.7 hz, 0.11 ms behind)
+[0m[33m[init]: disparity is 0.217,0.324 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0006 seconds total (1677.9 hz, 0.11 ms behind)
+[0m[33m[init]: disparity is 0.217,0.324 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0005 seconds total (1855.3 hz, 0.11 ms behind)
+[0m[33m[init]: disparity is 0.217,0.324 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0006 seconds total (1555.2 hz, 0.11 ms behind)
+[0m[33m[init]: disparity is 0.217,0.324 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0005 seconds total (2024.3 hz, 0.11 ms behind)
+[0m[33m[init]: disparity is 0.217,0.324 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0042 seconds total (240.7 hz, 0.12 ms behind)
+[0m[33m[init]: disparity is 0.249,0.341 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0008 seconds total (1295.3 hz, 0.12 ms behind)
+[0m[33m[init]: disparity is 0.249,0.341 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0007 seconds total (1408.5 hz, 0.12 ms behind)
+[0m[33m[init]: disparity is 0.249,0.341 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0006 seconds total (1639.3 hz, 0.12 ms behind)
+[0m[33m[init]: disparity is 0.249,0.341 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0005 seconds total (2012.1 hz, 0.12 ms behind)
+[0m[33m[init]: disparity is 0.249,0.341 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0038 seconds total (264.6 hz, 0.13 ms behind)
+[0m[33m[init]: disparity is 0.288,0.363 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0006 seconds total (1564.9 hz, 0.13 ms behind)
+[0m[33m[init]: disparity is 0.288,0.363 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0006 seconds total (1748.3 hz, 0.13 ms behind)
+[0m[33m[init]: disparity is 0.288,0.363 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0005 seconds total (1869.2 hz, 0.13 ms behind)
+[0m[33m[init]: disparity is 0.288,0.363 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0006 seconds total (1788.9 hz, 0.13 ms behind)
+[0m[33m[init]: disparity is 0.288,0.363 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0032 seconds total (312.4 hz, 0.14 ms behind)
+[0m[33m[init]: disparity is 0.316,0.442 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0007 seconds total (1377.4 hz, 0.14 ms behind)
+[0m[33m[init]: disparity is 0.316,0.442 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0005 seconds total (2000.0 hz, 0.14 ms behind)
+[0m[33m[init]: disparity is 0.316,0.442 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0005 seconds total (2105.3 hz, 0.14 ms behind)
+[0m[33m[init]: disparity is 0.316,0.442 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0005 seconds total (1968.5 hz, 0.14 ms behind)
+[0m[33m[init]: disparity is 0.316,0.442 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0043 seconds total (232.2 hz, 0.15 ms behind)
+[0m[33m[init]: disparity is 0.327,0.474 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0007 seconds total (1375.5 hz, 0.15 ms behind)
+[0m[33m[init]: disparity is 0.327,0.474 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0007 seconds total (1379.3 hz, 0.15 ms behind)
+[0m[33m[init]: disparity is 0.327,0.474 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0007 seconds total (1490.3 hz, 0.15 ms behind)
+[0m[33m[init]: disparity is 0.327,0.474 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0006 seconds total (1564.9 hz, 0.15 ms behind)
+[0m[33m[init]: disparity is 0.327,0.474 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0032 seconds total (317.1 hz, 0.16 ms behind)
+[0m[33m[init]: disparity is 0.334,0.511 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0006 seconds total (1766.8 hz, 0.16 ms behind)
+[0m[33m[init]: disparity is 0.334,0.511 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0005 seconds total (2012.1 hz, 0.16 ms behind)
+[0m[33m[init]: disparity is 0.334,0.511 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0005 seconds total (2202.6 hz, 0.16 ms behind)
+[0m[33m[init]: disparity is 0.334,0.511 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0005 seconds total (1904.8 hz, 0.16 ms behind)
+[0m[33m[init]: disparity is 0.334,0.511 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0030 seconds total (332.2 hz, 0.17 ms behind)
+[0m[33m[init]: disparity is 0.343,0.538 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0008 seconds total (1219.5 hz, 0.17 ms behind)
+[0m[33m[init]: disparity is 0.343,0.538 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0005 seconds total (1855.3 hz, 0.17 ms behind)
+[0m[33m[init]: disparity is 0.343,0.538 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0005 seconds total (2114.2 hz, 0.17 ms behind)
+[0m[33m[init]: disparity is 0.343,0.538 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0005 seconds total (2045.0 hz, 0.17 ms behind)
+[0m[33m[init]: disparity is 0.343,0.538 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0041 seconds total (245.5 hz, 0.18 ms behind)
+[0m[33m[init]: disparity is 0.349,0.547 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0008 seconds total (1267.4 hz, 0.18 ms behind)
+[0m[33m[init]: disparity is 0.349,0.547 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0007 seconds total (1436.8 hz, 0.18 ms behind)
+[0m[33m[init]: disparity is 0.349,0.547 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0006 seconds total (1579.8 hz, 0.18 ms behind)
+[0m[33m[init]: disparity is 0.349,0.547 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0006 seconds total (1644.7 hz, 0.18 ms behind)
+[0m[33m[init]: disparity is 0.349,0.547 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0029 seconds total (348.9 hz, 0.19 ms behind)
+[0m[33m[init]: disparity is 0.321,0.547 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0006 seconds total (1763.7 hz, 0.19 ms behind)
+[0m[33m[init]: disparity is 0.321,0.547 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0005 seconds total (1848.4 hz, 0.19 ms behind)
+[0m[33m[init]: disparity is 0.321,0.547 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0005 seconds total (1972.4 hz, 0.19 ms behind)
+[0m[33m[init]: disparity is 0.321,0.547 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0005 seconds total (1893.9 hz, 0.19 ms behind)
+[0m[33m[init]: disparity is 0.321,0.547 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0042 seconds total (237.6 hz, 0.45 ms behind)
+[0m[33m[init]: disparity is 0.337,0.541 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0009 seconds total (1145.5 hz, 0.45 ms behind)
+[0m[33m[init]: disparity is 0.337,0.541 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0007 seconds total (1451.4 hz, 0.45 ms behind)
+[0m[33m[init]: disparity is 0.337,0.541 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0007 seconds total (1468.4 hz, 0.45 ms behind)
+[0m[33m[init]: disparity is 0.337,0.541 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0007 seconds total (1430.6 hz, 0.45 ms behind)
+[0m[33m[init]: disparity is 0.337,0.541 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0029 seconds total (350.1 hz, 0.21 ms behind)
+[0m[33m[init]: disparity is 0.334,0.537 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0006 seconds total (1718.2 hz, 0.21 ms behind)
+[0m[33m[init]: disparity is 0.334,0.537 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0005 seconds total (1883.2 hz, 0.21 ms behind)
+[0m[33m[init]: disparity is 0.334,0.537 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0005 seconds total (1897.5 hz, 0.21 ms behind)
+[0m[33m[init]: disparity is 0.334,0.537 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0005 seconds total (1930.5 hz, 0.21 ms behind)
+[0m[33m[init]: disparity is 0.334,0.537 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0032 seconds total (313.5 hz, 0.22 ms behind)
+[0m[33m[init]: disparity is 0.340,0.518 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0006 seconds total (1574.8 hz, 0.22 ms behind)
+[0m[33m[init]: disparity is 0.340,0.518 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0005 seconds total (1908.4 hz, 0.22 ms behind)
+[0m[33m[init]: disparity is 0.340,0.518 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0005 seconds total (1915.7 hz, 0.22 ms behind)
+[0m[33m[init]: disparity is 0.340,0.518 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0005 seconds total (1897.5 hz, 0.22 ms behind)
+[0m[33m[init]: disparity is 0.340,0.518 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0032 seconds total (309.0 hz, 0.23 ms behind)
+[0m[33m[init]: disparity is 0.372,0.487 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0006 seconds total (1639.3 hz, 0.23 ms behind)
+[0m[33m[init]: disparity is 0.372,0.487 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0005 seconds total (1912.0 hz, 0.23 ms behind)
+[0m[33m[init]: disparity is 0.372,0.487 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0005 seconds total (2024.3 hz, 0.23 ms behind)
+[0m[33m[init]: disparity is 0.372,0.487 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0005 seconds total (1996.0 hz, 0.23 ms behind)
+[0m[33m[init]: disparity is 0.372,0.487 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0041 seconds total (245.2 hz, 0.24 ms behind)
+[0m[33m[init]: disparity is 0.362,0.446 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0009 seconds total (1122.3 hz, 0.24 ms behind)
+[0m[33m[init]: disparity is 0.362,0.446 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0007 seconds total (1381.2 hz, 0.24 ms behind)
+[0m[33m[init]: disparity is 0.362,0.446 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0007 seconds total (1497.0 hz, 0.24 ms behind)
+[0m[33m[init]: disparity is 0.362,0.446 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0006 seconds total (1577.3 hz, 0.24 ms behind)
+[0m[33m[init]: disparity is 0.362,0.446 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0029 seconds total (347.0 hz, 0.25 ms behind)
+[0m[33m[init]: disparity is 0.367,0.411 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0006 seconds total (1700.7 hz, 0.25 ms behind)
+[0m[33m[init]: disparity is 0.367,0.411 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0005 seconds total (2070.4 hz, 0.25 ms behind)
+[0m[33m[init]: disparity is 0.367,0.411 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0005 seconds total (1964.6 hz, 0.25 ms behind)
+[0m[33m[init]: disparity is 0.367,0.411 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0005 seconds total (1988.1 hz, 0.25 ms behind)
+[0m[33m[init]: disparity is 0.367,0.411 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0035 seconds total (283.4 hz, 0.26 ms behind)
+[0m[33m[init]: disparity is 0.358,0.366 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0006 seconds total (1788.9 hz, 0.26 ms behind)
+[0m[33m[init]: disparity is 0.358,0.366 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0005 seconds total (1976.3 hz, 0.26 ms behind)
+[0m[33m[init]: disparity is 0.358,0.366 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0005 seconds total (2145.9 hz, 0.26 ms behind)
+[0m[33m[init]: disparity is 0.358,0.366 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0005 seconds total (1996.0 hz, 0.26 ms behind)
+[0m[33m[init]: disparity is 0.358,0.366 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0041 seconds total (242.1 hz, 0.27 ms behind)
+[0m[33m[init]: disparity is 0.376,0.333 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0009 seconds total (1175.1 hz, 0.27 ms behind)
+[0m[33m[init]: disparity is 0.376,0.333 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0007 seconds total (1438.8 hz, 0.27 ms behind)
+[0m[33m[init]: disparity is 0.376,0.333 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0006 seconds total (1628.7 hz, 0.27 ms behind)
+[0m[33m[init]: disparity is 0.376,0.333 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0007 seconds total (1457.7 hz, 0.27 ms behind)
+[0m[33m[init]: disparity is 0.376,0.333 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0032 seconds total (309.1 hz, 0.29 ms behind)
+[0m[33m[init]: disparity is 0.401,0.284 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0006 seconds total (1805.1 hz, 0.29 ms behind)
+[0m[33m[init]: disparity is 0.401,0.284 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0005 seconds total (1886.8 hz, 0.29 ms behind)
+[0m[33m[init]: disparity is 0.401,0.284 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0005 seconds total (1956.9 hz, 0.29 ms behind)
+[0m[33m[init]: disparity is 0.401,0.284 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0005 seconds total (1960.8 hz, 0.29 ms behind)
+[0m[33m[init]: disparity is 0.401,0.284 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0041 seconds total (242.7 hz, 0.04 ms behind)
+[0m[33m[init]: disparity is 0.414,0.259 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0007 seconds total (1388.9 hz, 0.04 ms behind)
+[0m[33m[init]: disparity is 0.414,0.259 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0007 seconds total (1438.8 hz, 0.04 ms behind)
+[0m[33m[init]: disparity is 0.414,0.259 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0007 seconds total (1479.3 hz, 0.04 ms behind)
+[0m[33m[init]: disparity is 0.414,0.259 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0006 seconds total (1642.0 hz, 0.04 ms behind)
+[0m[33m[init]: disparity is 0.414,0.259 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0029 seconds total (349.5 hz, 0.06 ms behind)
+[0m[33m[init]: disparity is 0.436,0.233 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0006 seconds total (1757.5 hz, 0.06 ms behind)
+[0m[33m[init]: disparity is 0.436,0.233 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0006 seconds total (1540.8 hz, 0.06 ms behind)
+[0m[33m[init]: disparity is 0.436,0.233 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0005 seconds total (2118.6 hz, 0.06 ms behind)
+[0m[33m[init]: disparity is 0.436,0.233 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0005 seconds total (2096.4 hz, 0.06 ms behind)
+[0m[33m[init]: disparity is 0.436,0.233 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0042 seconds total (240.5 hz, 0.07 ms behind)
+[0m[33m[init]: disparity is 0.511,0.214 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0007 seconds total (1418.4 hz, 0.07 ms behind)
+[0m[33m[init]: disparity is 0.511,0.214 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0007 seconds total (1455.6 hz, 0.07 ms behind)
+[0m[33m[init]: disparity is 0.511,0.214 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0007 seconds total (1453.5 hz, 0.07 ms behind)
+[0m[33m[init]: disparity is 0.511,0.214 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0006 seconds total (1612.9 hz, 0.07 ms behind)
+[0m[33m[init]: disparity is 0.511,0.214 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0041 seconds total (242.9 hz, 0.08 ms behind)
+[0m[33m[init]: disparity is 0.543,0.196 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0006 seconds total (1626.0 hz, 0.08 ms behind)
+[0m[33m[init]: disparity is 0.543,0.196 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0005 seconds total (2096.4 hz, 0.08 ms behind)
+[0m[33m[init]: disparity is 0.543,0.196 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0005 seconds total (2096.4 hz, 0.08 ms behind)
+[0m[33m[init]: disparity is 0.543,0.196 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0004 seconds total (2288.3 hz, 0.08 ms behind)
+[0m[33m[init]: disparity is 0.543,0.196 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0039 seconds total (255.4 hz, 0.09 ms behind)
+[0m[33m[init]: disparity is 0.579,0.196 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0006 seconds total (1572.3 hz, 0.09 ms behind)
+[0m[33m[init]: disparity is 0.579,0.196 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0005 seconds total (2045.0 hz, 0.09 ms behind)
+[0m[33m[init]: disparity is 0.579,0.196 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0005 seconds total (2045.0 hz, 0.09 ms behind)
+[0m[33m[init]: disparity is 0.579,0.196 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0005 seconds total (2100.8 hz, 0.09 ms behind)
+[0m[33m[init]: disparity is 0.579,0.196 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0034 seconds total (291.3 hz, 0.10 ms behind)
+[0m[33m[init]: disparity is 0.597,0.212 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0006 seconds total (1721.2 hz, 0.10 ms behind)
+[0m[33m[init]: disparity is 0.597,0.212 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0005 seconds total (2132.2 hz, 0.10 ms behind)
+[0m[33m[init]: disparity is 0.597,0.212 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0005 seconds total (1953.1 hz, 0.10 ms behind)
+[0m[33m[init]: disparity is 0.597,0.212 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0005 seconds total (2083.3 hz, 0.10 ms behind)
+[0m[33m[init]: disparity is 0.597,0.212 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0036 seconds total (280.5 hz, 0.11 ms behind)
+[0m[33m[init]: disparity is 0.596,0.206 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0006 seconds total (1652.9 hz, 0.11 ms behind)
+[0m[33m[init]: disparity is 0.596,0.206 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0005 seconds total (2045.0 hz, 0.11 ms behind)
+[0m[33m[init]: disparity is 0.596,0.206 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0005 seconds total (2114.2 hz, 0.11 ms behind)
+[0m[33m[init]: disparity is 0.596,0.206 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0005 seconds total (2212.4 hz, 0.11 ms behind)
+[0m[33m[init]: disparity is 0.596,0.206 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0041 seconds total (245.8 hz, 0.12 ms behind)
+[0m[33m[init]: disparity is 0.578,0.251 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0007 seconds total (1434.7 hz, 0.12 ms behind)
+[0m[33m[init]: disparity is 0.578,0.251 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0007 seconds total (1466.3 hz, 0.12 ms behind)
+[0m[33m[init]: disparity is 0.578,0.251 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0006 seconds total (1628.7 hz, 0.12 ms behind)
+[0m[33m[init]: disparity is 0.578,0.251 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0008 seconds total (1302.1 hz, 0.12 ms behind)
+[0m[33m[init]: disparity is 0.578,0.251 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0040 seconds total (247.4 hz, 0.13 ms behind)
+[0m[33m[init]: disparity is 0.570,0.287 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0008 seconds total (1321.0 hz, 0.13 ms behind)
+[0m[33m[init]: disparity is 0.570,0.287 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0006 seconds total (1607.7 hz, 0.13 ms behind)
+[0m[33m[init]: disparity is 0.570,0.287 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0006 seconds total (1686.3 hz, 0.13 ms behind)
+[0m[33m[init]: disparity is 0.570,0.287 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0006 seconds total (1697.8 hz, 0.13 ms behind)
+[0m[33m[init]: disparity is 0.570,0.287 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0043 seconds total (234.0 hz, 0.14 ms behind)
+[0m[33m[init]: disparity is 0.559,0.322 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0007 seconds total (1390.8 hz, 0.14 ms behind)
+[0m[33m[init]: disparity is 0.559,0.322 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0007 seconds total (1466.3 hz, 0.14 ms behind)
+[0m[33m[init]: disparity is 0.559,0.322 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0007 seconds total (1479.3 hz, 0.14 ms behind)
+[0m[33m[init]: disparity is 0.559,0.322 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0007 seconds total (1466.3 hz, 0.14 ms behind)
+[0m[33m[init]: disparity is 0.559,0.322 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0032 seconds total (309.7 hz, 0.15 ms behind)
+[0m[33m[init]: disparity is 0.529,0.374 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0006 seconds total (1733.1 hz, 0.15 ms behind)
+[0m[33m[init]: disparity is 0.529,0.374 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0005 seconds total (2105.3 hz, 0.15 ms behind)
+[0m[33m[init]: disparity is 0.529,0.374 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0005 seconds total (2118.6 hz, 0.15 ms behind)
+[0m[33m[init]: disparity is 0.529,0.374 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0005 seconds total (1855.3 hz, 0.15 ms behind)
+[0m[33m[init]: disparity is 0.529,0.374 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0041 seconds total (242.1 hz, 0.16 ms behind)
+[0m[33m[init]: disparity is 0.491,0.427 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0008 seconds total (1254.7 hz, 0.16 ms behind)
+[0m[33m[init]: disparity is 0.491,0.427 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0006 seconds total (1636.7 hz, 0.16 ms behind)
+[0m[33m[init]: disparity is 0.491,0.427 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0008 seconds total (1253.1 hz, 0.16 ms behind)
+[0m[33m[init]: disparity is 0.491,0.427 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0007 seconds total (1377.4 hz, 0.16 ms behind)
+[0m[33m[init]: disparity is 0.491,0.427 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0042 seconds total (240.3 hz, 0.17 ms behind)
+[0m[33m[init]: disparity is 0.453,0.462 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0008 seconds total (1288.7 hz, 0.17 ms behind)
+[0m[33m[init]: disparity is 0.453,0.462 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0006 seconds total (1564.9 hz, 0.17 ms behind)
+[0m[33m[init]: disparity is 0.453,0.462 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0007 seconds total (1416.4 hz, 0.17 ms behind)
+[0m[33m[init]: disparity is 0.453,0.462 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0007 seconds total (1424.5 hz, 0.17 ms behind)
+[0m[33m[init]: disparity is 0.453,0.462 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0042 seconds total (240.3 hz, 0.18 ms behind)
+[0m[33m[init]: disparity is 0.424,0.487 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0008 seconds total (1213.6 hz, 0.18 ms behind)
+[0m[33m[init]: disparity is 0.424,0.487 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0006 seconds total (1548.0 hz, 0.18 ms behind)
+[0m[33m[init]: disparity is 0.424,0.487 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0006 seconds total (1724.1 hz, 0.18 ms behind)
+[0m[33m[init]: disparity is 0.424,0.487 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0006 seconds total (1686.3 hz, 0.18 ms behind)
+[0m[33m[init]: disparity is 0.424,0.487 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0042 seconds total (236.2 hz, 0.19 ms behind)
+[0m[33m[init]: disparity is 0.375,0.537 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0007 seconds total (1373.6 hz, 0.19 ms behind)
+[0m[33m[init]: disparity is 0.375,0.537 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0008 seconds total (1197.6 hz, 0.19 ms behind)
+[0m[33m[init]: disparity is 0.375,0.537 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0006 seconds total (1597.4 hz, 0.19 ms behind)
+[0m[33m[init]: disparity is 0.375,0.537 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0006 seconds total (1658.4 hz, 0.19 ms behind)
+[0m[33m[init]: disparity is 0.375,0.537 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0041 seconds total (245.7 hz, 0.20 ms behind)
+[0m[33m[init]: disparity is 0.340,0.563 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0007 seconds total (1356.9 hz, 0.20 ms behind)
+[0m[33m[init]: disparity is 0.340,0.563 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0006 seconds total (1579.8 hz, 0.20 ms behind)
+[0m[33m[init]: disparity is 0.340,0.563 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0006 seconds total (1620.7 hz, 0.20 ms behind)
+[0m[33m[init]: disparity is 0.340,0.563 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0006 seconds total (1694.9 hz, 0.20 ms behind)
+[0m[33m[init]: disparity is 0.340,0.563 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0040 seconds total (251.3 hz, 0.21 ms behind)
+[0m[33m[init]: disparity is 0.288,0.569 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0007 seconds total (1477.1 hz, 0.21 ms behind)
+[0m[33m[init]: disparity is 0.288,0.569 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0005 seconds total (2028.4 hz, 0.21 ms behind)
+[0m[33m[init]: disparity is 0.288,0.569 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0005 seconds total (1897.5 hz, 0.21 ms behind)
+[0m[33m[init]: disparity is 0.288,0.569 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0005 seconds total (2159.8 hz, 0.21 ms behind)
+[0m[33m[init]: disparity is 0.288,0.569 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0041 seconds total (241.9 hz, 0.22 ms behind)
+[0m[33m[init]: disparity is 0.254,0.581 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0007 seconds total (1356.9 hz, 0.22 ms behind)
+[0m[33m[init]: disparity is 0.254,0.581 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0007 seconds total (1490.3 hz, 0.22 ms behind)
+[0m[33m[init]: disparity is 0.254,0.581 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0007 seconds total (1524.4 hz, 0.22 ms behind)
+[0m[33m[init]: disparity is 0.254,0.581 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0006 seconds total (1610.3 hz, 0.22 ms behind)
+[0m[33m[init]: disparity is 0.254,0.581 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0042 seconds total (239.4 hz, 0.23 ms behind)
+[0m[33m[init]: disparity is 0.237,0.605 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0008 seconds total (1322.8 hz, 0.23 ms behind)
+[0m[33m[init]: disparity is 0.237,0.605 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0007 seconds total (1462.0 hz, 0.23 ms behind)
+[0m[33m[init]: disparity is 0.237,0.605 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0006 seconds total (1605.1 hz, 0.23 ms behind)
+[0m[33m[init]: disparity is 0.237,0.605 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0006 seconds total (1562.5 hz, 0.23 ms behind)
+[0m[33m[init]: disparity is 0.237,0.605 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0008 seconds total (1196.2 hz, 0.24 ms behind)
+[0m[33m[init]: disparity is 0.237,0.605 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0005 seconds total (1845.0 hz, 0.24 ms behind)
+[0m[33m[init]: disparity is 0.241,0.634 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0005 seconds total (2053.4 hz, 0.24 ms behind)
+[0m[33m[init]: disparity is 0.241,0.634 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0004 seconds total (2283.1 hz, 0.24 ms behind)
+[0m[33m[init]: disparity is 0.241,0.634 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0005 seconds total (1876.2 hz, 0.24 ms behind)
+[0m[33m[init]: disparity is 0.241,0.634 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0011 seconds total (917.4 hz, 0.25 ms behind)
+[0m[33m[init]: disparity is 0.241,0.634 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0009 seconds total (1158.7 hz, 0.25 ms behind)
+[0m[33m[init]: disparity is 0.242,0.641 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0007 seconds total (1477.1 hz, 0.25 ms behind)
+[0m[33m[init]: disparity is 0.242,0.641 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0006 seconds total (1677.9 hz, 0.25 ms behind)
+[0m[33m[init]: disparity is 0.242,0.641 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0006 seconds total (1692.0 hz, 0.25 ms behind)
+[0m[33m[init]: disparity is 0.242,0.641 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0033 seconds total (298.8 hz, 0.27 ms behind)
+[0m[33m[init]: disparity is 0.231,0.625 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0006 seconds total (1798.6 hz, 0.27 ms behind)
+[0m[33m[init]: disparity is 0.231,0.625 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0005 seconds total (2123.1 hz, 0.27 ms behind)
+[0m[33m[init]: disparity is 0.231,0.625 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0006 seconds total (1805.1 hz, 0.27 ms behind)
+[0m[33m[init]: disparity is 0.231,0.625 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0005 seconds total (2092.1 hz, 0.27 ms behind)
+[0m[33m[init]: disparity is 0.231,0.625 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0041 seconds total (241.3 hz, 0.28 ms behind)
+[0m[33m[init]: disparity is 0.255,0.594 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0007 seconds total (1385.0 hz, 0.28 ms behind)
+[0m[33m[init]: disparity is 0.255,0.594 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0006 seconds total (1666.7 hz, 0.28 ms behind)
+[0m[33m[init]: disparity is 0.255,0.594 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0007 seconds total (1408.5 hz, 0.28 ms behind)
+[0m[33m[init]: disparity is 0.255,0.594 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0006 seconds total (1628.7 hz, 0.28 ms behind)
+[0m[33m[init]: disparity is 0.255,0.594 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0031 seconds total (327.5 hz, 0.29 ms behind)
+[0m[33m[init]: disparity is 0.295,0.490 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0005 seconds total (1879.7 hz, 0.29 ms behind)
+[0m[33m[init]: disparity is 0.295,0.490 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0005 seconds total (2028.4 hz, 0.29 ms behind)
+[0m[33m[init]: disparity is 0.295,0.490 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0005 seconds total (2083.3 hz, 0.29 ms behind)
+[0m[33m[init]: disparity is 0.295,0.490 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0005 seconds total (2024.3 hz, 0.29 ms behind)
+[0m[33m[init]: disparity is 0.295,0.490 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0043 seconds total (230.9 hz, 0.05 ms behind)
+[0m[33m[init]: disparity is 0.330,0.484 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0008 seconds total (1262.6 hz, 0.05 ms behind)
+[0m[33m[init]: disparity is 0.330,0.484 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0006 seconds total (1557.6 hz, 0.05 ms behind)
+[0m[33m[init]: disparity is 0.330,0.484 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0006 seconds total (1574.8 hz, 0.05 ms behind)
+[0m[33m[init]: disparity is 0.330,0.484 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0005 seconds total (1883.2 hz, 0.05 ms behind)
+[0m[33m[init]: disparity is 0.330,0.484 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0041 seconds total (242.2 hz, 0.06 ms behind)
+[0m[33m[init]: disparity is 0.372,0.482 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0008 seconds total (1285.3 hz, 0.06 ms behind)
+[0m[33m[init]: disparity is 0.372,0.482 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0007 seconds total (1408.5 hz, 0.06 ms behind)
+[0m[33m[init]: disparity is 0.372,0.482 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0007 seconds total (1536.1 hz, 0.06 ms behind)
+[0m[33m[init]: disparity is 0.372,0.482 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0007 seconds total (1436.8 hz, 0.06 ms behind)
+[0m[33m[init]: disparity is 0.372,0.482 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0042 seconds total (237.6 hz, 0.07 ms behind)
+[0m[33m[init]: disparity is 0.431,0.480 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0007 seconds total (1387.0 hz, 0.07 ms behind)
+[0m[33m[init]: disparity is 0.431,0.480 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0007 seconds total (1515.2 hz, 0.07 ms behind)
+[0m[33m[init]: disparity is 0.431,0.480 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0006 seconds total (1594.9 hz, 0.07 ms behind)
+[0m[33m[init]: disparity is 0.431,0.480 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0006 seconds total (1572.3 hz, 0.07 ms behind)
+[0m[33m[init]: disparity is 0.431,0.480 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0043 seconds total (230.3 hz, 0.08 ms behind)
+[0m[33m[init]: disparity is 0.469,0.440 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0007 seconds total (1485.9 hz, 0.08 ms behind)
+[0m[33m[init]: disparity is 0.469,0.440 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0005 seconds total (1883.2 hz, 0.08 ms behind)
+[0m[33m[init]: disparity is 0.469,0.440 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0005 seconds total (1964.6 hz, 0.08 ms behind)
+[0m[33m[init]: disparity is 0.469,0.440 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0005 seconds total (1945.5 hz, 0.08 ms behind)
+[0m[33m[init]: disparity is 0.469,0.440 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0042 seconds total (240.2 hz, 0.09 ms behind)
+[0m[33m[init]: disparity is 0.495,0.383 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0008 seconds total (1207.7 hz, 0.09 ms behind)
+[0m[33m[init]: disparity is 0.495,0.383 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0007 seconds total (1426.5 hz, 0.09 ms behind)
+[0m[33m[init]: disparity is 0.495,0.383 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0006 seconds total (1634.0 hz, 0.09 ms behind)
+[0m[33m[init]: disparity is 0.495,0.383 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0006 seconds total (1605.1 hz, 0.09 ms behind)
+[0m[33m[init]: disparity is 0.495,0.383 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0043 seconds total (234.6 hz, 0.35 ms behind)
+[0m[33m[init]: disparity is 0.554,0.349 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0008 seconds total (1292.0 hz, 0.35 ms behind)
+[0m[33m[init]: disparity is 0.554,0.349 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0007 seconds total (1398.6 hz, 0.35 ms behind)
+[0m[33m[init]: disparity is 0.554,0.349 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0006 seconds total (1552.8 hz, 0.35 ms behind)
+[0m[33m[init]: disparity is 0.554,0.349 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0006 seconds total (1545.6 hz, 0.35 ms behind)
+[0m[33m[init]: disparity is 0.554,0.349 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0032 seconds total (317.4 hz, 0.11 ms behind)
+[0m[33m[init]: disparity is 0.584,0.326 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0006 seconds total (1686.3 hz, 0.11 ms behind)
+[0m[33m[init]: disparity is 0.584,0.326 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0005 seconds total (1949.3 hz, 0.11 ms behind)
+[0m[33m[init]: disparity is 0.584,0.326 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0005 seconds total (2053.4 hz, 0.11 ms behind)
+[0m[33m[init]: disparity is 0.584,0.326 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0005 seconds total (1996.0 hz, 0.11 ms behind)
+[0m[33m[init]: disparity is 0.584,0.326 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0042 seconds total (236.9 hz, 0.12 ms behind)
+[0m[33m[init]: disparity is 0.611,0.317 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0008 seconds total (1231.5 hz, 0.12 ms behind)
+[0m[33m[init]: disparity is 0.611,0.317 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0007 seconds total (1488.1 hz, 0.12 ms behind)
+[0m[33m[init]: disparity is 0.611,0.317 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0007 seconds total (1394.7 hz, 0.12 ms behind)
+[0m[33m[init]: disparity is 0.611,0.317 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0005 seconds total (1901.1 hz, 0.12 ms behind)
+[0m[33m[init]: disparity is 0.611,0.317 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0042 seconds total (239.6 hz, 0.13 ms behind)
+[0m[33m[init]: disparity is 0.611,0.321 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0007 seconds total (1351.4 hz, 0.13 ms behind)
+[0m[33m[init]: disparity is 0.611,0.321 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0007 seconds total (1481.5 hz, 0.13 ms behind)
+[0m[33m[init]: disparity is 0.611,0.321 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0006 seconds total (1628.7 hz, 0.13 ms behind)
+[0m[33m[init]: disparity is 0.611,0.321 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0008 seconds total (1293.7 hz, 0.13 ms behind)
+[0m[33m[init]: disparity is 0.611,0.321 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0040 seconds total (251.9 hz, 0.14 ms behind)
+[0m[34m[TIME]: 0.0007 seconds total (1398.6 hz, 0.14 ms behind)
+[0m[33m[init]: disparity is 0.620,0.353 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0011 seconds total (909.9 hz, 0.14 ms behind)
+[0m[33m[init]: disparity is 0.620,0.353 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0010 seconds total (983.3 hz, 0.14 ms behind)
+[0m[33m[init]: disparity is 0.620,0.353 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0010 seconds total (976.6 hz, 0.14 ms behind)
+[0m[33m[init]: disparity is 0.620,0.353 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0048 seconds total (209.3 hz, 0.15 ms behind)
+[0m[33m[init]: disparity is 0.657,0.372 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0008 seconds total (1206.3 hz, 0.15 ms behind)
+[0m[33m[init]: disparity is 0.657,0.372 (15.00 thresh)
+[0m[33m[init]: failed static init: no accel jerk detected
+[0m[34m[TIME]: 0.0008 

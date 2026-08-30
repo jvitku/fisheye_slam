@@ -171,6 +171,29 @@ class KltFrontend(Frontend):
             e = np.where(ok_h, err.ravel(), np.inf).astype(np.float32)
             better = e < best_err
             best_nxt[better] = nxt_h[better]; best_err[better] = e[better]
+        # second pass (stereo_passes >= 2): re-initialise every accepted match from the
+        # depth it implies and let LK converge again; the coarse-to-fine solution is
+        # biased towards its initial guess (Hilti exp14 basement: walls nearer than the
+        # 3 m default -> depths +2.5 % too far -> +2.5 % trajectory scale)
+        for _ in range(int(self.cfg.get("stereo_passes", 1)) - 1):
+            ok1 = np.isfinite(best_err)
+            if not ok1.any():
+                break
+            d_new = known.copy()
+            bj1, vj1 = self._bearings(cam_j, best_nxt[ok1])
+            for i, bb, vv in zip(np.nonzero(ok1)[0], bj1, vj1):
+                if vv:
+                    _, dep = stereo_verify(self.rig, 0, j, b0[i], bb, px0[i], best_nxt[i], max_px=self.cfg["stereo_max_px"] * 2)
+                    if dep > 0:
+                        d_new[i] = dep
+            depths = np.where(np.isfinite(d_new), d_new, self.cfg["default_depth"])
+            p_cj = (T_cj_c0[:3, :3] @ (b0 * depths[:, None]).T).T + T_cj_c0[:3, 3]
+            guess, gvalid = cam_j.model.project(p_cj); guess = guess.astype(np.float32); guess[~gvalid] = px0f[~gvalid]
+            nxt_h, st, err = cv2.calcOpticalFlowPyrLK(img0, img_j, px0f, guess.copy(), flags=cv2.OPTFLOW_USE_INITIAL_FLOW, **self.lk)
+            back, st2, _ = cv2.calcOpticalFlowPyrLK(img_j, img0, nxt_h, px0f.copy(), flags=cv2.OPTFLOW_USE_INITIAL_FLOW, **self.lk)
+            fb = np.linalg.norm(back - px0f, axis=1)
+            ok_h = (st.ravel() == 1) & (st2.ravel() == 1) & (fb < self.cfg["fb_err_px"] * 1.5) & self._inside(nxt_h, img_j.shape, mask_j)
+            best_nxt[ok_h] = nxt_h[ok_h]; best_err[ok_h] = err.ravel()[ok_h]
         nxt = best_nxt
         ok = np.isfinite(best_err)
         out_ids, out_px, out_b = [], [], []

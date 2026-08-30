@@ -85,6 +85,18 @@ def log_table():
                  f'<td>{r.get("day","—")}/{r.get("night","—")}/{r.get("transition","—")}</td><td><code>{html.escape(str(e.get("commit",""))[:7])}</code></td></tr>')
     h.append('</tbody></table></div>'); return "\n".join(h)
 
+hilti_rows = []
+
+hp = Path("bench/results/hilti2022/summary.json")
+
+if hp.exists():
+
+    for r in json.loads(hp.read_text()):
+
+        hilti_rows.append(f"<tr><td>{html.escape(r['run'])}</td><td>{html.escape(r['seq'].split('_')[0])}</td><td>{r['ate_se3_cm']:.1f}</td><td>{r['ate_sim3_cm']:.1f}</td><td>{r['scale']:.3f}</td><td>{r['coverage']:.2f}</td><td>{(str(round(r['ms_per_frame'])) if r.get('ms_per_frame') else '—')}</td></tr>")
+
+hilti_table = ('<div class="tablewrap"><table><thead><tr><th>run</th><th>seq</th><th>ATE SE3 cm</th><th>ATE Sim3 cm</th><th>scale</th><th>coverage</th><th>ms/frame</th></tr></thead><tbody>' + "".join(hilti_rows) + "</tbody></table></div>") if hilti_rows else "<p class=\"sub\">no runs yet</p>"
+
 page = f'''<title>podslam Campaign</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@112,600;112,700&family=Source+Sans+3:wght@400;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
@@ -129,6 +141,11 @@ page = f'''<title>podslam Campaign</title>
   <section>
     <h2>Best podslam vs baselines</h2>
     <div class="card">{chart}</div>
+  </section>
+  <section>
+    <h2>Multi-camera: Hilti-Oxford 2022</h2>
+    <p class="sub">Real handheld rig with five synchronized cameras (forward stereo pair + backward/left/right) and mm-accurate 6-DoF ground truth; sequence exp14 (basement, 74 s, 38 m). Same calibration for every method. "Sim3" removes a global scale to show what is scale error.</p>
+    {hilti_table}
   </section>
   <section>
     <h2>Now working on</h2>

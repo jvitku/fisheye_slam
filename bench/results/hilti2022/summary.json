@@ -1,0 +1,92 @@
+[
+ {
+  "run": "openvins_5cam",
+  "seq": "exp14_basement_2",
+  "ate_se3_cm": 15.33310474830876,
+  "max_cm": 33.32862048076454,
+  "ate_sim3_cm": 11.379715376971374,
+  "scale": 1.023963047687616,
+  "coverage": 0.5657216466949728,
+  "ms_per_frame": null
+ },
+ {
+  "run": "openvins_stereo",
+  "seq": "exp14_basement_2",
+  "ate_se3_cm": 5.371589946351562,
+  "max_cm": 13.30802233445176,
+  "ate_sim3_cm": 3.872336868939895,
+  "scale": 1.0048278639920787,
+  "coverage": 0.9159561326101577,
+  "ms_per_frame": null
+ },
+ {
+  "run": "podslam_accb03",
+  "seq": "exp14_basement_2",
+  "ate_se3_cm": 22.64566204957501,
+  "max_cm": 37.08423798967525,
+  "ate_sim3_cm": 8.57872139003725,
+  "scale": 0.9749099091970946,
+  "coverage": 0.9901591072752005,
+  "ms_per_frame": 44.62837837837838
+ },
+ {
+  "run": "podslam_cam012",
+  "seq": "exp14_basement_2",
+  "ate_se3_cm": 23.277642363767182,
+  "max_cm": 37.340428567174456,
+  "ate_sim3_cm": 7.164522771933416,
+  "scale": 0.9735236694885625,
+  "coverage": 0.9901591072752005,
+  "ms_per_frame": 52.195945945945944
+ },
+ {
+  "run": "podslam_depth15",
+  "seq": "exp14_basement_2",
+  "ate_se3_cm": 27.033024789965832,
+  "max_cm": 72.81174309238155,
+  "ate_sim3_cm": 18.974320801981612,
+  "scale": 0.976896408437959,
+  "coverage": 0.9901591072752005,
+  "ms_per_frame": 44.96621621621622
+ },
+ {
+  "run": "podslam_stereo_2pass",
+  "seq": "exp14_basement_2",
+  "ate_se3_cm": 19.08335296003155,
+  "max_cm": 41.07872384219419,
+  "ate_sim3_cm": 9.05225544320191,
+  "scale": 0.97978713693301,
+  "coverage": 0.9901591072752005,
+  "ms_per_frame": 57.939189189189186
+ },
+ {
+  "run": "podslam_stereo",
+  "seq": "exp14_basement_2",
+  "ate_se3_cm": 21.149232403033004,
+  "max_cm": 42.082396817424325,
+  "ate_sim3_cm": 7.667601790988285,
+  "scale": 0.9763683430557728,
+  "coverage": 0.9901591072752005,
+  "ms_per_frame": 45.03378378378378
+ },
+ {
+  "run": "podslam_stereo_mh",
+  "seq": "exp14_basement_2",
+  "ate_se3_cm": 21.49251245580006,
+  "max_cm": 50.842489952571526,
+  "ate_sim3_cm": 9.844109678736707,
+  "scale": 0.977076214319081,
+  "coverage": 0.9901591072752005,
+  "ms_per_frame": 70.60810810810811
+ },
+ {
+  "run": "podslam_stereo_noinfl",
+  "seq": "exp14_basement_2",
+  "ate_se3_cm": 13.92506198921592,
+  "max_cm": 36.23114987257918,
+  "ate_sim3_cm": 6.073646455163953,
+  "scale": 0.9848461730344866,
+  "coverage": 0.9901591072752005,
+  "ms_per_frame": 43.817567567567565
+ }
+]
