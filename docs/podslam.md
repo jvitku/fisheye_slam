@@ -74,7 +74,14 @@ cloud with IMU derived from the trajectory and a perfect front-end: it must reco
 ## Status / roadmap
 
 - [x] Estimator core validated synthetically; KLT and XFeat front-ends; conditioning + masks; bag CLI
-- [ ] Real data: TUM-VI room1 day/night/transition rows next to OpenVINS / Basalt / cuVSLAM
+- [x] Real data, first complete flights (2026-08-30, KLT, untuned): TUM-VI room1 day / night /
+      transition ATE **19.6 / 16.5 / 22.6 cm** (OpenVINS 7.4 / 7.6 / 6.1, cuVSLAM 11.4 / 13.1 / 17.2).
+      The first 37 s of the day flight alone — where cuVSLAM loses tracking three times — score 2.9 cm;
+      the whole-flight numbers are dominated by a heading drift in the last 40 s that coincides with the
+      remaining solver soft resets (11 / 26 / 14 per flight, each dropping every landmark). Scale is
+      right (path-length ratio 0.99–1.00). `bench/reports/room1_review.py` renders the comparison.
+- [ ] Remove the reset path: rebuild the smoother *with* the healthy landmarks, mono landmark
+      initialisation from motion parallax so the window never starves
 - [ ] Learned enhancer and learned masks trained on room2, evaluated on room1
 - [ ] Bearing-only factors for the fisheye rim (> 80° off-axis is currently unused)
 - [ ] Mono landmark initialisation from parallax over time (today: stereo only)
