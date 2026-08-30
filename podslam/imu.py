@@ -85,15 +85,24 @@ class StaticInitializer:
 class Preintegrator:
     """gtsam.PreintegratedCombinedMeasurements between two keyframes."""
 
-    def __init__(self, imu, bias=None):
+    # Estimator-side inflation of the datasheet noise densities (accel, gyro, accel walk,
+    # gyro walk).  The datasheet values make a 200 Hz IMU pin every 0.15 s keyframe
+    # translation to ~0.1 mm, so unmodelled effects (scale factor, misalignment,
+    # vibration) dictate the trajectory scale (-1.3 % on TUM-VI) and the gyro bias
+    # cannot follow its drift.  Basalt's TUM-VI values, verified on room1:
+    # 16.5 -> 8.8 cm ATE, scale 0.99-1.00, yaw drift 2.9 -> 0.9 deg/min.
+    DEFAULT_NOISE_SCALE = (5.7, 1.8, 1.2, 4.5)
+
+    def __init__(self, imu, bias=None, noise_scale=None):
         import gtsam
         self.gtsam = gtsam
+        ka, kg, kaw, kgw = noise_scale if noise_scale is not None else self.DEFAULT_NOISE_SCALE
         p = gtsam.PreintegrationCombinedParams.MakeSharedU(G)
-        p.setGyroscopeCovariance(np.eye(3) * imu.gyro_noise_density ** 2)
-        p.setAccelerometerCovariance(np.eye(3) * imu.accel_noise_density ** 2)
+        p.setGyroscopeCovariance(np.eye(3) * (kg * imu.gyro_noise_density) ** 2)
+        p.setAccelerometerCovariance(np.eye(3) * (ka * imu.accel_noise_density) ** 2)
         p.setIntegrationCovariance(np.eye(3) * 1e-8)
-        p.setBiasAccCovariance(np.eye(3) * imu.accel_random_walk ** 2)
-        p.setBiasOmegaCovariance(np.eye(3) * imu.gyro_random_walk ** 2)
+        p.setBiasAccCovariance(np.eye(3) * (kaw * imu.accel_random_walk) ** 2)
+        p.setBiasOmegaCovariance(np.eye(3) * (kgw * imu.gyro_random_walk) ** 2)
         if hasattr(p, "setBiasAccOmegaInit"):          # dropped in gtsam 4.3
             p.setBiasAccOmegaInit(np.eye(6) * 1e-5)
         self.params = p

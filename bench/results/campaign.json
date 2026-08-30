@@ -37,11 +37,35 @@
   "commit": "HEAD"
  },
  {
-  "when": "2026-08-30 17:00",
-  "change": "Smart-factor backend fixed: gtsam's Python wrapper binds setLandmarkDistanceThreshold/setDynamicOutlierRejectionThreshold as bool, so 40.0 -> True -> 1 m and every landmark beyond 1 m was FAR_POINT (error 0, IMU-only drift). Disabled both (False) and gate in podslam instead. Synthetic 29.2 -> 1.10 cm; room1 day 12.2 / night 25.7 / transition 19.4 cm with 0 resets and 0 failed solves in every condition (explicit backend: 17.4/22.1/29.6 with 10-39 rebuilds). RPE p95 6.6 cm vs cuVSLAM 21.6.",
-  "next": "Late-flight drift (last-20 s 19/45/36 cm) is now the whole error: night conditioning (clahe/nlmeans), feature quality gate at night (detector saturates at 300 tracks on noise), then marginalization prior and keyframe policy.",
-  "ate": {},
-  "resets": {},
-  "commit": "0a7b23c"
+  "when": "2026-08-30 18:13",
+  "change": "Smart-factor backend fixed: gtsam's Python wrapper binds setLandmarkDistanceThreshold/setDynamicOutlierRejectionThreshold as bool, so 40.0 -> True -> 1 m and every landmark beyond 1 m was FAR_POINT (error 0, IMU-only drift). Disabled both (False) and gate in podslam instead. Synthetic 29.2 -> 1.10 cm; 0 resets and 0 failed solves in every condition (explicit backend: 17.4/22.1/29.6 with 10-39 rebuilds). RPE p95 6.6 cm vs cuVSLAM 21.6.",
+  "next": "Late-flight drift is the whole error: measure yaw/scale drift over time, then marginalisation prior.",
+  "ate": {
+   "day": 12.2,
+   "night": 25.7,
+   "transition": 19.44
+  },
+  "resets": {
+   "day": 0,
+   "night": 0,
+   "transition": 0
+  },
+  "commit": "64f8eba"
+ },
+ {
+  "when": "2026-08-30 18:13",
+  "change": "Proper marginalisation + chi2 gate + IMU noise inflation. (1) Sliding-window prior is a real Schur complement (LinearContainerFactor) instead of the over-confident full-window marginal pin: exact on synthetic (0.35 cm) once the first pose is hard-anchored (gauge random-walk otherwise) and LM stops on absolute error (the prior's constant term defeated the relative test). (2) chi2 gate on the converged whitened reprojection error (5 per measurement) retires outlier landmarks and keeps them out of the prior. (3) Estimator-side IMU noise inflation (Basalt's TUM-VI values 5.7/1.8/1.2/4.5): with datasheet values the 200 Hz IMU pinned every keyframe translation to 0.1 mm and dictated a -1.3 % scale; now scale 0.99-1.00, yaw drift 2.9 -> 0.9 deg/min. 0 resets, 0 failed solves (cuVSLAM 11.4/13.1/17.2, Basalt 10.8/28.5/20.9, OpenVINS 7.4/7.6/6.1). EPI (nonlinear landmark refinement) unusable: gtsam throws CheiralityException inside LM.",
+  "next": "Night gap (17.4 vs 8.8 day): 1734 vs 935 outlier landmarks and 300-track saturation on noise -> feature quality gate tied to the image noise level, track-length weighting; then parallax-based keyframe policy and speed (48-70 ms/frame in Python; C++ port plan).",
+  "ate": {
+   "day": 8.77,
+   "night": 17.39,
+   "transition": 13.44
+  },
+  "resets": {
+   "day": 0,
+   "night": 0,
+   "transition": 0
+  },
+  "commit": "64f8eba"
  }
 ]

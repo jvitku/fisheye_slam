@@ -1,0 +1,3 @@
+imu noise scaled: accel 0.01596 gyro 0.000288 walks 0.00103/0.00022
+tracked 2763/2821 frames (924 keyframes, 0 soft resets, 0 failed solves, 1000 outlier landmarks, prior absorbed/rejected 19639/0, 897 marginalised) -> /home/jarda/workspace/fisheye_slam/bench/results/room1_sweep/podslam_noise_gw10_day/est.tum
+BENCH_STATS wall_s=136.9 cpu_s=136.9 cpu_percent=100 maxrss_mb=163.4

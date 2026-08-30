@@ -31,7 +31,8 @@ import numpy as np
 
 class SmartBackend:
     def __init__(self, rig, lag_s=3.0, px_sigma=1.5, huber_k=1.345, max_iters=6,
-                 outlier_thr_sigma=0.0, max_landmark_dist=40.0, verbose=False):
+                 outlier_thr_sigma=0.0, max_landmark_dist=40.0, abs_err_tol=1e-2, marg_mode="all",
+                 chi2_gate=5.0, min_obs_prior=4, epi=False, verbose=False):
         import gtsam
         from gtsam.symbol_shorthand import B, V, X
         self.gtsam = gtsam
@@ -61,9 +62,27 @@ class SmartBackend:
         # drift). Pass False (= 0 = disabled) and do both checks in this class instead:
         # far points are gated by max_landmark_dist on our own triangulation, and
         # outliers are rejected in the front-end (fwd/bwd check, RANSAC, stereo verify).
+        # Refine the implicit landmark nonlinearly (Gauss-Newton on the reprojection error)
+        # instead of using the raw DLT point: the DLT solution is biased towards the
+        # cameras with noisy pixels, which showed up as a ~1.3 % scale under-estimate.
+        p.setEnableEPI(bool(epi))
         p.setLandmarkDistanceThreshold(False)
         p.setDynamicOutlierRejectionThreshold(False)
         self.max_landmark_dist = float(max_landmark_dist)
+        self.abs_err_tol = float(abs_err_tol)
+        # 'ended': tracks that ended go into the marginal prior with all their observations,
+        #          live tracks keep their (re-linearised) factor and drop the marginalised
+        #          keyframes' observations;  'all': every landmark seen from a marginalised
+        #          keyframe is absorbed (MSCKF-style);  'pin': legacy over-confident pin.
+        self.marg_mode = marg_mode
+        self.n_lm_iters = 0
+        # Outlier gate on the whitened reprojection error per measurement, evaluated at
+        # the CONVERGED window solution (0.5*chi2 with 2 dof: inliers ~1, 99% < 4.6):
+        # a landmark above it is retired, and a track that ended is only absorbed into
+        # the marginal prior if it passes the gate and has >= min_obs_prior measurements.
+        self.chi2_gate = float(chi2_gate)
+        self.min_obs_prior = int(min_obs_prior)
+        self.n_outliers = 0; self.n_prior_absorbed = 0; self.n_prior_rejected = 0
         self.outlier_thr = float(outlier_thr_sigma) * sig if outlier_thr_sigma > 0 else 0.0
         self.params = p
         # memory
@@ -74,8 +93,14 @@ class SmartBackend:
         self.landmark_t = {}           # landmark id -> last observation time
         self.landmark_obs = {}
         self.lm_point = {}             # landmark id -> last triangulated point (from the factor)
-        self.prior = None              # (k0, pose, vel, bias, cov_pose, cov_vel, cov_bias) of the window's first state
-        self.init_prior = None
+        # Marginalisation prior: nonlinear factors (the init priors, then
+        # LinearContainerFactors = Schur complements of every marginalised keyframe)
+        # over keyframes that are still in the window.  graph_keys = keyframes that
+        # are currently part of the estimator (not yet marginalised).
+        self.prior_factors = []
+        self.graph_keys = set()
+        self.n_marginalized = 0
+        self.n_marg_fallback = 0
         self.n_resets = 0; self.n_rebuilds = 0; self.n_retired = 0; self.n_dropped = 0
         self.n_failed_solves = 0
         self.n_active_lm = 0
@@ -87,15 +112,20 @@ class SmartBackend:
     def can_observe(self, bearing) -> bool:
         return bool(np.all(np.isfinite(bearing)) and bearing[2] > self.cz)
 
-    def initialize(self, k, t, T_W_I, vel, bias, sigmas=(0.05, 0.01, 0.1, 0.1, 0.01)):
+    def initialize(self, k, t, T_W_I, vel, bias, sigmas=(1e-3, 0.01, 0.1, 0.1, 0.01), yaw_sigma=1e-3):
         g = self.gtsam
         pose = g.Pose3(T_W_I)
         self.kf_t[k] = t
         self.kf_state[k] = (pose, np.asarray(vel, float), bias)
-        self.init_prior = (k, pose, np.asarray(vel, float), bias,
-                           np.diag([sigmas[0], sigmas[0], 0.5, sigmas[1], sigmas[1], sigmas[1]]) ** 2,
-                           np.eye(3) * sigmas[2] ** 2, np.diag([sigmas[3]] * 3 + [sigmas[4]] * 3) ** 2)
-        self.prior = self.init_prior
+        # gauge anchor: the first pose's position and yaw are fixed hard (unobservable
+        # otherwise they random-walk through the re-linearised marginal prior)
+        cp = np.diag([sigmas[1], sigmas[1], yaw_sigma, sigmas[0], sigmas[0], sigmas[0]]) ** 2
+        cv = np.eye(3) * sigmas[2] ** 2
+        cb = np.diag([sigmas[3]] * 3 + [sigmas[4]] * 3) ** 2
+        self.prior_factors = [g.PriorFactorPose3(self.X(k), pose, g.noiseModel.Gaussian.Covariance(cp)),
+                              g.PriorFactorVector(self.V(k), np.asarray(vel, float), g.noiseModel.Gaussian.Covariance(cv)),
+                              g.PriorFactorConstantBias(self.B(k), bias, g.noiseModel.Gaussian.Covariance(cb))]
+        self.graph_keys = {k}
         self.estimate.insert(self.X(k), pose); self.estimate.insert(self.V(k), np.asarray(vel, float)); self.estimate.insert(self.B(k), bias)
 
     def add_keyframe(self, k, t, pim, predicted, bias_prev_key):
@@ -103,6 +133,7 @@ class SmartBackend:
         bias = self.kf_state[bias_prev_key][2] if bias_prev_key in self.kf_state else pim.biasHat()
         self.kf_t[k] = t
         self.kf_state[k] = (predicted.pose(), np.asarray(predicted.velocity()), bias)
+        self.graph_keys.add(k)
         self.imu_factor[k] = g.CombinedImuFactor(self.X(k - 1), self.V(k - 1), self.X(k), self.V(k), self.B(k - 1), self.B(k), pim)
 
     def has_landmark(self, j): return j in self.lm_meas
@@ -132,41 +163,128 @@ class SmartBackend:
         cutoff = t - self.lag_s
         return sorted(k for k, tk in self.kf_t.items() if tk >= cutoff)
 
+    def _smart_factor(self, meas):
+        g = self.gtsam
+        f = g.SmartProjectionRigFactorPinholePoseCal3_S2(self.noise, self.cam_set, self.params)
+        for kk, c, m in meas:
+            f.add(m, self.X(kk), int(c))
+        return f
+
+    def _values(self, keys):
+        v = self.gtsam.Values()
+        for kk in keys:
+            pose, vel, bias = self.kf_state[kk]
+            v.insert(self.X(kk), pose); v.insert(self.V(kk), vel); v.insert(self.B(kk), bias)
+        return v
+
+    def _marginalize(self, gone, window, t_now):
+        """Schur-complement the keyframes in `gone` out of the estimator (VINS/OKVIS style):
+        every factor that touches them — the current prior, the IMU factors and the smart
+        factors of landmarks seen from them — is linearised at the last solution and
+        eliminated; the remaining Gaussian factors over the window states become the new
+        prior (LinearContainerFactors, re-linearised by shifting their rhs when the window
+        states move).  Landmark observations that went into the prior are consumed: later
+        observations of the same landmark start a fresh factor, so nothing is counted twice."""
+        g = self.gtsam
+        gone = sorted(gone)
+        gset = set(gone)
+        keys_m = set()
+        for kk in gone:
+            keys_m.update((self.X(kk), self.V(kk), self.B(kk)))
+        values = self._values(gone + list(window))
+        gfg = g.GaussianFactorGraph()
+        kept = []
+        for f in self.prior_factors:
+            if any(key in keys_m for key in f.keys()):
+                gfg.add(f.linearize(values))
+            else:
+                kept.append(f)
+        for kk in list(window) + gone:
+            f = self.imu_factor.get(kk)
+            if f is not None and (kk in gset or (kk - 1) in gset) and (kk - 1) in self.kf_state:
+                gfg.add(f.linearize(values))
+        # Landmarks seen from a marginalised keyframe: a track that has ENDED goes into
+        # the prior with all its observations (MSCKF-style: full information, then
+        # dropped); a track that is still alive keeps its nonlinear factor and merely
+        # loses the observations at the marginalised keyframes (one measurement of
+        # information lost, nothing counted twice, no frozen linearisation).
+        consumed = []
+        wset = set(window)
+        for j, meas in self.lm_meas.items():
+            if not any(kk in gset for kk, _, _ in meas):
+                continue
+            if self.marg_mode != "all" and self.landmark_t.get(j, -1.0) >= t_now:      # still tracked
+                self.lm_meas[j] = [(kk, c, m) for kk, c, m in meas if kk not in gset]
+                continue
+            inside = [(kk, c, m) for kk, c, m in meas if kk in gset or kk in wset]
+            if len(inside) >= max(2, self.min_obs_prior):
+                f = self._smart_factor(inside)
+                try:
+                    if f.error(values) / len(inside) <= self.chi2_gate:
+                        lin = f.linearize(values)
+                        if lin is not None:
+                            gfg.add(lin); self.n_prior_absorbed += 1
+                    else:
+                        self.n_prior_rejected += 1
+                except Exception:
+                    self.n_prior_rejected += 1
+            consumed.append(j)
+        present = set(gfg.keys()) if hasattr(gfg, "keys") else keys_m
+        order = g.Ordering([key for key in [self.X(kk) for kk in gone] + [self.V(kk) for kk in gone] + [self.B(kk) for kk in gone] if key in present])
+        new_prior = []
+        if order.size() > 0:
+            _, rem = gfg.eliminatePartialMultifrontal(order)
+            for i in range(rem.size()):
+                lf = rem.at(i)
+                if lf is None or lf.size() == 0:
+                    continue
+                new_prior.append(g.LinearContainerFactor(lf, values))
+        self.prior_factors = kept + new_prior
+        for j in consumed:
+            self.drop_pending_landmark(j)     # its information now lives in the prior
+        for kk in gone:
+            self.graph_keys.discard(kk)
+            self.kf_state.pop(kk, None); self.imu_factor.pop(kk, None); self.kf_t.pop(kk, None)
+        self.n_marginalized += len(gone)
+
     def optimize(self, k, t):
         g = self.gtsam
         t0 = time.perf_counter()
-        window = self._window(t)
-        k0 = window[0]
+        # every keyframe that is not marginalised yet is in the graph; the ones older
+        # than the lag are marginalised AFTER this solve, at their solved values
+        window = sorted(self.graph_keys)
         kset = set(window)
+        k0 = window[0]
         graph = g.NonlinearFactorGraph()
-        values = g.Values()
+        values = self._values(window)
         for kk in window:
-            pose, vel, bias = self.kf_state[kk]
-            values.insert(self.X(kk), pose); values.insert(self.V(kk), vel); values.insert(self.B(kk), bias)
             if kk != k0 and kk in self.imu_factor and (kk - 1) in kset:
                 graph.add(self.imu_factor[kk])
-        # prior on the first window state (marginal of the previous window, or the init prior)
-        pk, ppose, pvel, pbias, cp, cv, cb = self.prior if (self.prior and self.prior[0] == k0) else self._prior_for(k0)
-        graph.add(g.PriorFactorPose3(self.X(k0), ppose, g.noiseModel.Gaussian.Covariance(cp)))
-        graph.add(g.PriorFactorVector(self.V(k0), pvel, g.noiseModel.Gaussian.Covariance(cv)))
-        graph.add(g.PriorFactorConstantBias(self.B(k0), pbias, g.noiseModel.Gaussian.Covariance(cb)))
+        if not self.prior_factors:
+            self._fallback_prior([], window)
+        for f in self.prior_factors:
+            graph.add(f)
         # smart factors: every landmark with >= 2 measurements inside the window
         factors = {}
         for j, meas in self.lm_meas.items():
             inwin = [(kk, c, b) for kk, c, b in meas if kk in kset]
             if len(inwin) < 2:
                 continue
-            f = g.SmartProjectionRigFactorPinholePoseCal3_S2(self.noise, self.cam_set, self.params)
-            for kk, c, m in inwin:
-                f.add(m, self.X(kk), int(c))
+            f = self._smart_factor(inwin)
             graph.add(f); factors[j] = f
         self.n_active_lm = len(factors)
         params = g.LevenbergMarquardtParams()
         params.setMaxIterations(self.max_iters)
-        params.setRelativeErrorTol(1e-4)
+        # The marginal prior carries a large constant error term, so a *relative*
+        # decrease test stops LM after one iteration long before the state has
+        # converged (that was a 1 cm/keyframe lag).  Stop on the absolute decrease.
+        params.setRelativeErrorTol(0.0)
+        params.setAbsoluteErrorTol(float(self.abs_err_tol))
         params.setVerbosityLM("SILENT")
         try:
-            result = g.LevenbergMarquardtOptimizer(graph, values, params).optimize()
+            opt = g.LevenbergMarquardtOptimizer(graph, values, params)
+            result = opt.optimize()
+            self.n_lm_iters = opt.iterations()
             ok = all(np.all(np.isfinite(result.atPose3(self.X(kk)).matrix())) for kk in window)
         except Exception as e:
             ok = False
@@ -176,10 +294,13 @@ class SmartBackend:
             for kk in window:
                 self.kf_state[kk] = (result.atPose3(self.X(kk)), np.asarray(result.atVector(self.V(kk))), result.atConstantBias(self.B(kk)))
             self.estimate = result
-            # landmark points for diagnostics / cheirality checks
+            # landmark points for diagnostics / cheirality checks + outlier gate
             self.n_valid_lm = 0
+            outliers = []
             for j, f in factors.items():
                 try:
+                    if f.error(result) / max(1, len(f.measured())) > self.chi2_gate:
+                        outliers.append(j); continue
                     if f.isValid():
                         self.n_valid_lm += 1
                         pt = f.point()
@@ -189,44 +310,60 @@ class SmartBackend:
                             self.lm_point[j] = pt
                 except Exception:
                     pass
-            # marginal prior for the next window's first state (only when the window will slide)
-            self._update_prior(graph, result, window, t)
+            for j in outliers:
+                self.drop_pending_landmark(j)
+            self.n_outliers += len(outliers)
         else:
             self.n_failed_solves += 1
-        # forget what fell out of the window
+        # slide: marginalise the keyframes that fell out of the lag window
         cutoff = t - self.lag_s
-        for kk in [kk for kk, tk in self.kf_t.items() if tk < cutoff - self.lag_s]:
-            self.kf_t.pop(kk, None); self.kf_state.pop(kk, None); self.imu_factor.pop(kk, None)
+        gone = [kk for kk in window if self.kf_t[kk] < cutoff]
+        remaining = [kk for kk in window if kk not in set(gone)]
+        if gone and remaining and self.marg_mode == "pin" and ok:
+            # reference: the old over-confident pin (full-window marginal covariances)
+            kn = remaining[0]
+            try:
+                marg = g.Marginals(graph, result)
+                pose, vel, bias = self.kf_state[kn]
+                self.prior_factors = [g.PriorFactorPose3(self.X(kn), pose, g.noiseModel.Gaussian.Covariance(marg.marginalCovariance(self.X(kn)))),
+                                      g.PriorFactorVector(self.V(kn), vel, g.noiseModel.Gaussian.Covariance(marg.marginalCovariance(self.V(kn)))),
+                                      g.PriorFactorConstantBias(self.B(kn), bias, g.noiseModel.Gaussian.Covariance(marg.marginalCovariance(self.B(kn))))]
+            except Exception:
+                self._fallback_prior([], remaining)
+            for kk in gone:
+                self.graph_keys.discard(kk); self.kf_state.pop(kk, None); self.imu_factor.pop(kk, None); self.kf_t.pop(kk, None)
+            self.n_marginalized += len(gone)
+        elif gone and remaining:
+            try:
+                self._marginalize(gone, remaining, t)
+            except Exception as e:
+                self.n_marg_fallback += 1
+                if self.verbose:
+                    print(f"[smart] kf {k}: marginalisation failed ({type(e).__name__}: {str(e)[:80]}); fallback prior")
+                self._fallback_prior(gone, remaining)
+        # forget landmarks that have not been seen for a whole window
         for j in [j for j, tj in self.landmark_t.items() if tj < cutoff]:
             self.drop_pending_landmark(j)
+        rset = set(remaining)
         for j, meas in self.lm_meas.items():
-            self.lm_meas[j] = [m for m in meas if m[0] in kset or self.kf_t.get(m[0], 0) >= cutoff]
+            self.lm_meas[j] = [m for m in meas if m[0] in rset]
         self.t_solve_ms = (time.perf_counter() - t0) * 1e3
         return self.state(k)
 
-    def _prior_for(self, k0):
-        """Fallback prior when the window's first state has no stored marginal:
-        loose position/velocity, tight rotation drift, tight bias."""
-        pose, vel, bias = self.kf_state[k0]
-        return (k0, pose, vel, bias, np.diag([0.02, 0.02, 0.02, 0.05, 0.05, 0.05]) ** 2,
-                np.eye(3) * 0.1 ** 2, np.diag([0.05] * 3 + [0.005] * 3) ** 2)
-
-    def _update_prior(self, graph, result, window, t):
-        """Marginal covariance of the keyframe that will be the window's first state next
-        time (the second-oldest now) — an approximate marginalisation prior."""
+    def _fallback_prior(self, gone, window):
+        """Safety net when the marginalisation fails: pin the oldest window state with
+        loose position/velocity, tight rotation drift and tight bias (loses the past's
+        information, never counts anything twice)."""
         g = self.gtsam
-        if len(window) < 2:
-            return
-        knext = window[1]
-        try:
-            marg = g.Marginals(graph, result)
-            cp = marg.marginalCovariance(self.X(knext)); cv = marg.marginalCovariance(self.V(knext)); cb = marg.marginalCovariance(self.B(knext))
-            pose, vel, bias = self.kf_state[knext]
-            self.prior = (knext, pose, vel, bias, cp, cv, cb)
-        except Exception as e:
-            self.prior = None
-            if self.verbose:
-                print(f"[smart] marginals failed ({type(e).__name__}); fallback prior next window")
+        k0 = window[0]
+        pose, vel, bias = self.kf_state[k0]
+        self.prior_factors = [
+            g.PriorFactorPose3(self.X(k0), pose, g.noiseModel.Diagonal.Sigmas(np.array([0.02, 0.02, 0.02, 0.05, 0.05, 0.05]))),
+            g.PriorFactorVector(self.V(k0), vel, g.noiseModel.Isotropic.Sigma(3, 0.1)),
+            g.PriorFactorConstantBias(self.B(k0), bias, g.noiseModel.Diagonal.Sigmas(np.array([0.05] * 3 + [0.005] * 3)))]
+        for kk in gone:
+            self.graph_keys.discard(kk)
+            self.kf_state.pop(kk, None); self.imu_factor.pop(kk, None); self.kf_t.pop(kk, None)
 
     def state(self, k):
         pose, vel, bias = self.kf_state[k]

@@ -12,7 +12,8 @@ import numpy as np
 
 def build_conditioner(spec: str | None):
     """'none' | 'norm[:mu[:sd]]' | 'clahe[:clip[:tiles]]' | 'gamma:<g>' | 'nlmeans:<h>' |
-    'enhance:<torchscript.pt>' chained with '+'."""
+    'blur:<sigma>' | 'median[:k]' | 'enhance:<torchscript.pt>' chained with '+'
+    (denoisers go first, then the intensity normalisation: 'blur:1+norm')."""
     if not spec or spec == "none":
         return lambda img: img
     import cv2
@@ -35,6 +36,14 @@ def build_conditioner(spec: str | None):
             g = float(p[0]) if p else 0.5
             lut = (np.clip((np.arange(256) / 255.0) ** g, 0, 1) * 255).astype(np.uint8)
             steps.append(lambda img, lut=lut: lut[img])
+        elif name == "blur":
+            # Gaussian blur before the corner detector / KLT: the cheapest sensor-noise
+            # suppression (Jetson-friendly); sigma ~1 px keeps sub-pixel corner accuracy.
+            sg = float(p[0]) if p else 1.0
+            steps.append(lambda img, sg=sg: cv2.GaussianBlur(img, (0, 0), sg))
+        elif name == "median":
+            kk = int(p[0]) if p else 3
+            steps.append(lambda img, kk=kk: cv2.medianBlur(img, kk))
         elif name == "nlmeans":
             hh = float(p[0]) if p else 10.0
             steps.append(lambda img, hh=hh: cv2.fastNlMeansDenoising(img, None, hh, 7, 21))

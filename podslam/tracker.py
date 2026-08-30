@@ -38,6 +38,9 @@ class TrackerConfig:
     mono_landmarks: bool = True           # smart backend: every track becomes a landmark (parallax over time)
     min_landmark_obs: int = 2
     max_landmarks_per_kf: int = 120
+    marg_mode: str = "all"          # smart backend: 'ended' | 'all' | 'pin' (see backend_smart)
+    smart_epi: bool = False           # smart backend: nonlinear landmark refinement (gtsam throws inside LM: keep off)
+    imu_noise_scale: tuple = (5.7, 1.8, 1.2, 4.5)   # estimator-side IMU noise inflation (see imu.Preintegrator)
     verbose: bool = False
 
 
@@ -63,7 +66,7 @@ class Tracker:
         self.imu = ImuBuffer()
         self.init = StaticInitializer()
         self.backend = None
-        self.pim = Preintegrator(rig.imu)
+        self.pim = Preintegrator(rig.imu, noise_scale=self.cfg.imu_noise_scale)
         self.k = -1                        # current keyframe index
         self.kf_navstate = None
         self.bias = None
@@ -127,7 +130,7 @@ class Tracker:
         self.bias = gtsam.imuBias.ConstantBias(np.zeros(3), self.gyro_bias)
         T = np.eye(4); T[:3, :3] = r["R_W_I"]
         if self.cfg.backend == "smart":
-            self.backend = SmartBackend(self.rig, lag_s=self.cfg.lag_s, px_sigma=self.cfg.px_sigma, verbose=self.cfg.verbose)
+            self.backend = SmartBackend(self.rig, lag_s=self.cfg.lag_s, px_sigma=self.cfg.px_sigma, marg_mode=self.cfg.marg_mode, epi=self.cfg.smart_epi, verbose=self.cfg.verbose)
         else:
             self.backend = Backend(self.rig, lag_s=self.cfg.lag_s, px_sigma=self.cfg.px_sigma, verbose=self.cfg.verbose)
         self.k = 0
