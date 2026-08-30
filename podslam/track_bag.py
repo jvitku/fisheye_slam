@@ -60,6 +60,9 @@ def main(argv=None) -> int:
     ap.add_argument("--marg", default="all", choices=("ended", "all", "pin"), help="smart backend marginalisation mode")
     ap.add_argument("--epi", action="store_true", help="smart backend: nonlinear landmark refinement (gtsam throws inside LM on this data)")
     ap.add_argument("--max-features", type=int, default=300)
+    ap.add_argument("--kf-rot-deg", type=float, default=0.0, help="motion-adaptive keyframes: IMU rotation since last keyframe (0 = off)")
+    ap.add_argument("--kf-parallax-px", type=float, default=0.0, help="motion-adaptive keyframes: median parallax since last keyframe (0 = off)")
+    ap.add_argument("--noise-gate", type=float, default=4.0, help="KLT detector: min-eigenvalue response >= k x frame median (0 = off)")
     ap.add_argument("--stats", type=Path, default=None)
     ap.add_argument("--max-frames", type=int, default=0)
     ap.add_argument("--verbose", action="store_true")
@@ -74,9 +77,9 @@ def main(argv=None) -> int:
         pass
     rig = load_rig(args.rig)
     noise_scale = tuple(float(x) for x in args.imu_noise_scale.split(","))
-    cfg = TrackerConfig(frontend=args.frontend, frontend_cfg={"max_features": args.max_features},
+    cfg = TrackerConfig(frontend=args.frontend, frontend_cfg={"max_features": args.max_features, "noise_gate": args.noise_gate},
                         preprocess=args.preprocess, masks=args.masks, circle_mask=not args.no_circle_mask,
-                        kf_every=args.kf_every, lag_s=args.lag, px_sigma=args.px_sigma, backend=args.backend, marg_mode=args.marg, smart_epi=args.epi, imu_noise_scale=noise_scale, verbose=args.verbose)
+                        kf_every=args.kf_every, kf_rot_deg=args.kf_rot_deg, kf_parallax_px=args.kf_parallax_px, lag_s=args.lag, px_sigma=args.px_sigma, backend=args.backend, marg_mode=args.marg, smart_epi=args.epi, imu_noise_scale=noise_scale, verbose=args.verbose)
     tracker = Tracker(rig, cfg)
     cam_topics = {c.topic: i for i, c in enumerate(rig.cameras)}
     imu_topic = rig.imu.topic

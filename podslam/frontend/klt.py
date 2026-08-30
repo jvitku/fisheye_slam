@@ -11,6 +11,12 @@ from .base import CamObs, FrameFeatures, Frontend
 from .common import essential_inliers, stereo_verify
 
 DEFAULTS = dict(max_features=300, min_distance=12, quality=0.01, win=21, levels=4,
+                # noise-adaptive detector gate: a new corner must have a min-eigenvalue
+                # response >= noise_gate x the frame's median response (the noise floor).
+                # Day frames: the 300th best corner is 50-110x the floor; night frames
+                # (TUM-VI room1 darkened): only 3-4x, i.e. the budget was filled with
+                # sensor noise.  min_features: fall back to the plain ranking below it.
+                noise_gate=4.0, min_features=60,
                 fb_err_px=1.0, stereo_max_px=2.0, default_depth=3.0, rim_ang_deg=6.0,
                 ransac_thr_norm=0.004, grid=0)
 
@@ -56,9 +62,26 @@ class KltFrontend(Frontend):
         m = np.full(img.shape, 255, np.uint8) if mask is None else mask.copy()
         for x, y in self.prev_px:
             cv2.circle(m, (int(x), int(y)), self.cfg["min_distance"], 0, -1)
-        pts = cv2.goodFeaturesToTrack(img, maxCorners=int(n_new), qualityLevel=self.cfg["quality"],
+        quality = self.cfg["quality"]
+        gate = float(self.cfg.get("noise_gate", 0.0))
+        if gate > 0:
+            resp = cv2.cornerMinEigenVal(img, blockSize=5)
+            valid = resp[m > 0] if mask is not None else resp
+            floor = float(np.median(valid)) if valid.size else 0.0
+            rmax = float(resp.max())
+            if rmax > 0 and floor > 0:
+                quality = max(quality, min(0.5, gate * floor / rmax))
+        pts = cv2.goodFeaturesToTrack(img, maxCorners=int(n_new), qualityLevel=quality,
                                       minDistance=self.cfg["min_distance"], mask=m, blockSize=5)
-        return np.zeros((0, 2), np.float32) if pts is None else pts.reshape(-1, 2).astype(np.float32)
+        pts = np.zeros((0, 2), np.float32) if pts is None else pts.reshape(-1, 2).astype(np.float32)
+        need = int(self.cfg.get("min_features", 0)) - len(self.prev_px)
+        if gate > 0 and quality > self.cfg["quality"] and len(pts) < need:
+            # too few real corners: keep tracking on the best of what there is
+            more = cv2.goodFeaturesToTrack(img, maxCorners=int(need), qualityLevel=self.cfg["quality"],
+                                           minDistance=self.cfg["min_distance"], mask=m, blockSize=5)
+            if more is not None:
+                pts = more.reshape(-1, 2).astype(np.float32)
+        return pts
 
     def _inside(self, px, shape, mask):
         h, w = shape

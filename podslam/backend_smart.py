@@ -32,7 +32,7 @@ import numpy as np
 class SmartBackend:
     def __init__(self, rig, lag_s=3.0, px_sigma=1.5, huber_k=1.345, max_iters=6,
                  outlier_thr_sigma=0.0, max_landmark_dist=40.0, abs_err_tol=1e-2, marg_mode="all",
-                 chi2_gate=5.0, min_obs_prior=4, epi=False, verbose=False):
+                 chi2_gate=5.0, min_obs_prior=4, epi=False, max_window_kf=32, verbose=False):
         import gtsam
         from gtsam.symbol_shorthand import B, V, X
         self.gtsam = gtsam
@@ -70,6 +70,7 @@ class SmartBackend:
         p.setDynamicOutlierRejectionThreshold(False)
         self.max_landmark_dist = float(max_landmark_dist)
         self.abs_err_tol = float(abs_err_tol)
+        self.max_window_kf = int(max_window_kf)
         # 'ended': tracks that ended go into the marginal prior with all their observations,
         #          live tracks keep their (re-linearised) factor and drop the marginalised
         #          keyframes' observations;  'all': every landmark seen from a marginalised
@@ -317,7 +318,8 @@ class SmartBackend:
             self.n_failed_solves += 1
         # slide: marginalise the keyframes that fell out of the lag window
         cutoff = t - self.lag_s
-        gone = [kk for kk in window if self.kf_t[kk] < cutoff]
+        n_over = max(0, len(window) - self.max_window_kf)
+        gone = [kk for i, kk in enumerate(window) if self.kf_t[kk] < cutoff or i < n_over]
         remaining = [kk for kk in window if kk not in set(gone)]
         if gone and remaining and self.marg_mode == "pin" and ok:
             # reference: the old over-confident pin (full-window marginal covariances)

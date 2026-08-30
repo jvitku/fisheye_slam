@@ -110,6 +110,10 @@ class Preintegrator:
         self.pim = gtsam.PreintegratedCombinedMeasurements(p, self.bias)
         self.t_last = None
 
+    def delta_rotvec(self):
+        """Rotation vector integrated since the last reset (radians)."""
+        return np.asarray(self.gtsam.Rot3.Logmap(self.pim.deltaRij()))
+
     def reset(self, bias, t: float) -> None:
         self.bias = bias
         self.pim = self.gtsam.PreintegratedCombinedMeasurements(self.params, bias)

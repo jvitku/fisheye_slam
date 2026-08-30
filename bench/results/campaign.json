@@ -67,5 +67,21 @@
    "transition": 0
   },
   "commit": "64f8eba"
+ },
+ {
+  "when": "2026-08-30 19:02",
+  "change": "Night front-end round. Measured: on day frames the 300th-best corner is 50-110x above the detector's noise floor (median min-eigenvalue response), at night only 3-4x -> the 300-feature budget was filled with sensor noise (2x landmark churn). Noise-adaptive detector gate (response >= 4x floor, min 60 features): night 17.4 -> 16.2, day unchanged, transition 13.4 -> 14.5 (kept: prevents noise saturation in dark scenes). Rejected after measurement: gate 8x (21.0, too few features), px_sigma 3 at night (19.4), CLAHE/blur (no gain), motion-adaptive keyframes 5 deg/15 px (night 15.5 but day 8.8 -> 12.5 at 2x cost; kept as an option, off). Two-process runs trip the 97 C thermal guard: one run at a time.",
+  "next": "Night residual is track accuracy under noise, not track count: next a learned low-light enhancer (trainer exists) or per-feature uncertainty; in parallel bring up a real 3-6 camera benchmark (Hilti-Oxford 2022, 5 cams) and plan the C++ port for Jetson (48-70 ms/frame in Python now).",
+  "ate": {
+   "day": 8.77,
+   "night": 16.2,
+   "transition": 14.54
+  },
+  "resets": {
+   "day": 0,
+   "night": 0,
+   "transition": 0
+  },
+  "commit": "ff38069"
  }
 ]

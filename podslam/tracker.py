@@ -31,6 +31,16 @@ class TrackerConfig:
     masks: str = "none"                   # per-frame mask providers ('sat', 'learned:<pt>')
     circle_mask: bool = True              # static image-circle mask for f-theta lenses
     kf_every: int = 3                     # keyframe at least every N frames
+    # motion-adaptive keyframes: also key when (>= kf_min_every frames since the last
+    # keyframe and) the IMU rotation since the keyframe >= kf_rot_deg or the median
+    # feature parallax >= kf_parallax_px.  Fast rotation is where tracks die and
+    # where 3-frame keyframes (26 deg apart at 3 rad/s) starve the landmarks.
+    # Off by default: on room1 the 5 deg / 15 px setting doubled the keyframes and
+    # made day worse (8.8 -> 12.5 cm, 32-keyframe cap shortens the window); night 16.2 -> 15.5.
+    kf_min_every: int = 1
+    kf_rot_deg: float = 0.0
+    kf_parallax_px: float = 0.0
+    max_window_kf: int = 32               # keyframe-count cap of the sliding window (cost bound)
     kf_min_track_ratio: float = 0.6       # ...or earlier when tracks fall below this share
     lag_s: float = 4.0
     px_sigma: float = 1.5
@@ -74,6 +84,7 @@ class Tracker:
         self.t_prev_frame = None
         self.frames_since_kf = 0
         self.n_tracks_at_kf = 0
+        self.px_at_kf = {}
         self.track_to_lm = {}              # front-end track id -> landmark id
         self.next_lm = 0
         self.initialized = False
@@ -110,6 +121,10 @@ class Tracker:
         predicted = self.pim.predict(self.kf_navstate)
         n0 = len(feats.cams[0])
         is_kf = (self.frames_since_kf >= self.cfg.kf_every) or (n0 < self.cfg.kf_min_track_ratio * max(self.n_tracks_at_kf, 1))
+        if not is_kf and self.frames_since_kf >= self.cfg.kf_min_every:
+            rot = np.degrees(np.linalg.norm(self.pim.delta_rotvec()))
+            par = self._parallax_since_kf(feats)
+            is_kf = (self.cfg.kf_rot_deg > 0 and rot >= self.cfg.kf_rot_deg) or (self.cfg.kf_parallax_px > 0 and par >= self.cfg.kf_parallax_px)
         self._last_nobs = [len(c) for c in feats.cams]
         if not is_kf:
             return Estimate(t_ns, predicted.pose().matrix(), True, False, self._last_nobs, "propagated", self._n_lm)
@@ -130,7 +145,8 @@ class Tracker:
         self.bias = gtsam.imuBias.ConstantBias(np.zeros(3), self.gyro_bias)
         T = np.eye(4); T[:3, :3] = r["R_W_I"]
         if self.cfg.backend == "smart":
-            self.backend = SmartBackend(self.rig, lag_s=self.cfg.lag_s, px_sigma=self.cfg.px_sigma, marg_mode=self.cfg.marg_mode, epi=self.cfg.smart_epi, verbose=self.cfg.verbose)
+            self.backend = SmartBackend(self.rig, lag_s=self.cfg.lag_s, px_sigma=self.cfg.px_sigma, marg_mode=self.cfg.marg_mode, epi=self.cfg.smart_epi,
+                                        max_window_kf=self.cfg.max_window_kf, verbose=self.cfg.verbose)
         else:
             self.backend = Backend(self.rig, lag_s=self.cfg.lag_s, px_sigma=self.cfg.px_sigma, verbose=self.cfg.verbose)
         self.k = 0
@@ -146,7 +162,15 @@ class Tracker:
         self.t_prev_frame = t
         self.frames_since_kf = 0
         self.n_tracks_at_kf = len(feats.cams[0])
+        self.px_at_kf = {int(i): p for i, p in zip(feats.cams[0].ids, feats.cams[0].px)}
         self.initialized = True
+
+    def _parallax_since_kf(self, feats) -> float:
+        cam0 = feats.cams[0]
+        if not self.px_at_kf or len(cam0) == 0:
+            return 0.0
+        d = [np.linalg.norm(cam0.px[n] - self.px_at_kf[int(i)]) for n, i in enumerate(cam0.ids) if int(i) in self.px_at_kf]
+        return float(np.median(d)) if d else 0.0
 
     def _keyframe(self, t, feats, predicted):
         import gtsam
@@ -161,6 +185,7 @@ class Tracker:
         self.pim.reset(b, t)
         self.frames_since_kf = 0
         self.n_tracks_at_kf = len(feats.cams[0])
+        self.px_at_kf = {int(i): p for i, p in zip(feats.cams[0].ids, feats.cams[0].px)}
 
     def _add_landmarks_and_factors(self, k, t, feats, T_W_I):
         """Existing landmarks: add projection factors. New tracks with a stereo
