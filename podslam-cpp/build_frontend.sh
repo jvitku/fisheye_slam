@@ -8,7 +8,7 @@ docker run --rm ${GUARD_DOCKER_ARGS:-} -v "$PWD:/work" -v /tmp/claude-1001:/tmp/
   g++ -O2 -std=c++17 -Wall -Ipodslam-cpp/include -Ipodslam-cpp/opencv-install/include/opencv5 \
       podslam-cpp/src/test_frontend.cpp \
       -Lpodslam-cpp/opencv-install/lib \
-      -lopencv_core -lopencv_imgproc -lopencv_video -lopencv_geometry -lopencv_flann \
+      -lopencv_core -lopencv_imgproc -lopencv_video -lopencv_geometry -lopencv_features -lopencv_flann \
       -Wl,-rpath,/work/podslam-cpp/opencv-install/lib \
       -o podslam-cpp/build/test_frontend
   LD_LIBRARY_PATH=/work/podslam-cpp/opencv-install/lib podslam-cpp/build/test_frontend "$@"' -- "$@"

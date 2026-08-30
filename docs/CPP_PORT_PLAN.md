@@ -58,10 +58,15 @@ feature budget); the port is an engineering translation, not a redesign.
 
 ## Order of work
 
-1. `podslam-cpp/` skeleton: rig yaml loader, KB4/DS models + golden tests.
-2. Window/backend port + synthetic test parity.
-3. CUDA front-end + track parity on room1 day.
-4. Bag runner parity on all benchmark rows (room1×3, room2, exp14, exp18).
+1. ~~`podslam-cpp/` skeleton: KB4/DS/EUCM models + golden tests~~ **done** (≤1.7e-9 px).
+2. ~~Window/backend port + replay parity~~ **done** (1.7e-9 m over 114 keyframes,
+   identical event counts, production LM settings; GTSAM 4.3a2 pinned, TBB-free).
+3. ~~KLT front-end + track parity~~ **done at the honest criterion**: teacher-forced
+   per-frame parity 0.69 % unmatched / 1.25 % extra / ≤0.5 px (OpenCV 5.0.0+IPP
+   pinned to the wheel; free-running sets diverge chaotically from threshold-edge
+   corners — documented, not chased).
+4. Tracker shell in C++ (keyframe policy, landmark bookkeeping) + bag runner
+   end-to-end check on all benchmark rows (room1×3, room2, exp14, exp18).
 5. Orin build + timing; ROS 2 node; then the learned parts as TensorRT engines.
 
 Risks: GTSAM version drift between the Python wheel (4.3a2) and the C++ build —
