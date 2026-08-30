@@ -90,7 +90,7 @@
   "next": "Hilti scale/tilt gap (2.5 % / 1.2 deg) vs OpenVINS: per-IMU noise setting or online residual-based weighting; online camera-IMU extrinsic/time-offset refinement; 5-camera podslam row and OpenVINS 5-cam at 0.2x playback; then the C++/Jetson port plan.",
   "ate": {
    "day": 8.77,
-   "night": 16.2,
+   "night": 13.7,
    "transition": 14.54
   },
   "resets": {
