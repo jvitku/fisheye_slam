@@ -22,6 +22,7 @@ Usage (inside 3dfe/cuvslam, --gpus all):
 from __future__ import annotations
 
 import argparse
+import time
 from pathlib import Path
 
 import numpy as np
@@ -94,7 +95,7 @@ def T_to_pose(T: np.ndarray) -> "cuvslam.Pose":
     return cuvslam.Pose(rotation=R_to_quat_xyzw(T[:3, :3]), translation=T[:3, 3].tolist())
 
 
-def make_rig(rig_yaml: str):
+def make_rig(rig_yaml: str, imu_scale: float = 1.0):
     """rig yaml -> (cuvslam.Rig, T_rig_imu, topics).
 
     Rig frame = cam0 optical frame (PyCuVSLAM convention). Two rig flavours:
@@ -140,10 +141,10 @@ def make_rig(rig_yaml: str):
     T_rig_imu = T_rig_pod @ T_ref_imu
     imu = cuvslam.ImuCalibration()
     imu.rig_from_imu = T_to_pose(T_rig_imu)
-    imu.gyroscope_noise_density = float(imu_yaml.get("gyro_noise_density", 1e-4))
-    imu.gyroscope_random_walk = float(imu_yaml.get("gyro_random_walk", 1e-5))
-    imu.accelerometer_noise_density = float(imu_yaml.get("accel_noise_density", 1e-3))
-    imu.accelerometer_random_walk = float(imu_yaml.get("accel_random_walk", 1e-4))
+    imu.gyroscope_noise_density = float(imu_yaml.get("gyro_noise_density", 1e-4)) * imu_scale
+    imu.gyroscope_random_walk = float(imu_yaml.get("gyro_random_walk", 1e-5)) * imu_scale
+    imu.accelerometer_noise_density = float(imu_yaml.get("accel_noise_density", 1e-3)) * imu_scale
+    imu.accelerometer_random_walk = float(imu_yaml.get("accel_random_walk", 1e-4)) * imu_scale
     imu.frequency = float(imu_yaml.get("rate_hz", 200))
 
     r = cuvslam.Rig()
@@ -156,6 +157,106 @@ def make_rig(rig_yaml: str):
         "imu": imu_yaml.get("topic", DEFAULT_IMU),
     }
     return r, T_rig_imu, topics
+
+
+def rig_yaml_cams(rig_yaml: str) -> list:
+    return yaml.safe_load(open(rig_yaml))["cameras"]
+
+
+def make_masks(args, cams: list):
+    """-> (static_masks | None, per_frame_fn | None). cuVSLAM mask polarity:
+    255 = ignore the pixel, 0 = valid (measured: an all-255 mask yields zero
+    observations). circle = outside the f-theta image disc (r = fx*fov/2*shrink);
+    sat = per-frame saturated blobs (>thr, dilated) — lamp bloom / flare."""
+    if args.mask == "none":
+        return None, None
+    parts = args.mask.split("+")
+    static = None
+    if any(pt in ("circle", "zeros", "ones") for pt in parts):
+        static = []
+        for c in cams[:2]:
+            w, h = c["resolution"]
+            m = np.zeros((h, w), dtype=np.uint8)
+            if "ones" in parts:
+                m[:] = 255
+            if "circle" in parts and c["model"] == "kb4":
+                intr = c["intrinsics"]
+                r = float(intr["fx"]) * np.deg2rad(float(c.get("fov_deg", 190.0)) / 2.0) * args.mask_shrink
+                ys, xs = np.mgrid[0:h, 0:w]
+                m[(xs + 0.5 - intr["cx"]) ** 2 + (ys + 0.5 - intr["cy"]) ** 2 > r * r] = 255
+            static.append(m)
+    sat = [pt for pt in parts if pt.startswith("sat")]
+    per_frame = None
+    if sat:
+        import cv2
+        p = sat[0].split(":")
+        thr = int(p[1]) if len(p) > 1 else 250
+        dil = int(p[2]) if len(p) > 2 else 9
+        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (dil, dil))
+        def per_frame(img, base):
+            m = cv2.dilate((img > thr).astype(np.uint8) * 255, kernel)
+            return m if base is None else np.maximum(m, base)
+    return static, per_frame
+
+
+def build_preprocess(spec: str):
+    """'none' | 'clahe[:clip[:tiles]]' | 'gamma:<g>' | 'nlmeans:<h>' | 'enhance:<pt>' chained by '+'."""
+    if spec in ("", "none"):
+        return lambda img: img
+    import cv2
+    steps = []
+    for part in spec.split("+"):
+        name, *p = part.split(":")
+        if name == "clahe":
+            clip = float(p[0]) if p else 3.0
+            tiles = int(p[1]) if len(p) > 1 else 8
+            clahe = cv2.createCLAHE(clipLimit=clip, tileGridSize=(tiles, tiles))
+            steps.append(clahe.apply)
+        elif name == "gamma":
+            g = float(p[0]) if p else 0.5
+            lut = (np.clip((np.arange(256) / 255.0) ** g, 0, 1) * 255).astype(np.uint8)
+            steps.append(lambda img, lut=lut: lut[img])
+        elif name == "nlmeans":
+            hh = float(p[0]) if p else 10.0
+            steps.append(lambda img, hh=hh: cv2.fastNlMeansDenoising(img, None, hh, 7, 21))
+        elif name == "bilateral":
+            steps.append(lambda img: cv2.bilateralFilter(img, 5, 25, 5))
+        elif name == "norm":
+            # global photometric normalization: every frame to the same mean/std
+            # (defeats auto-exposure steps, which break brightness constancy)
+            mu = float(p[0]) if p else 90.0
+            sd = float(p[1]) if len(p) > 1 else 45.0
+            def norm(img, mu=mu, sd=sd):
+                x = img.astype(np.float32); s_ = max(float(x.std()), 1.0)
+                return np.clip((x - float(x.mean())) * (sd / s_) + mu, 0, 255).astype(np.uint8)
+            steps.append(norm)
+        elif name == "expcomp":
+            # exposure compensation with a slow reference: scale each frame so its
+            # mean follows an exponential moving average (steps removed, slow
+            # scene-brightness changes kept)
+            alpha = float(p[0]) if p else 0.02
+            state = {"ref": None}
+            def expcomp(img, alpha=alpha, state=state):
+                m = max(float(img.mean()), 1.0)
+                state["ref"] = m if state["ref"] is None else (1 - alpha) * state["ref"] + alpha * m
+                return np.clip(img.astype(np.float32) * (state["ref"] / m), 0, 255).astype(np.uint8)
+            steps.append(expcomp)
+        elif name == "enhance":
+            import torch
+            model = torch.jit.load(p[0]).eval().cuda()
+            def run(img, model=model):
+                with torch.no_grad():
+                    x = torch.from_numpy(img).float().cuda()[None, None] / 255.0
+                    y = model(x).clamp(0, 1)[0, 0]
+                    return (y * 255.0).round().byte().cpu().numpy()
+            steps.append(run)
+        else:
+            raise ValueError(f"unknown preprocess step {part!r}")
+    def chain(img):
+        for f in steps:
+            img = f(img)
+        return np.ascontiguousarray(img)
+    return chain
 
 
 def to_gray(msg) -> np.ndarray:
@@ -187,22 +288,54 @@ def main() -> None:
     ap.add_argument("--unrectified", action="store_true",
                     help="the pair is NOT rectified (sim ideal pinhole and "
                          "record_oak.py rectified output both are)")
+    # --- diagnosis / robustness knobs (experiments/08_oakdpro_slam/README.md) ---
+    ap.add_argument("--multicam-mode", choices=("precision", "moderate", "performance"),
+                    default="precision", help="Tracker.MulticameraMode (default precision)")
+    ap.add_argument("--denoise", action="store_true", help="OdometryConfig.use_denoising")
+    ap.add_argument("--no-motion-model", action="store_true", help="disable the internal pose prediction")
+    ap.add_argument("--slam", action="store_true", help="enable SLAM (loop closure) with default SlamConfig")
+    ap.add_argument("--mask", default="none",
+                    help="per-camera masks passed to track() (cuVSLAM: 255 = IGNORE, 0 = valid — "
+                         "established with zeros/ones), '+'-joined: circle (fisheye image disc, "
+                         "kb4 rigs, radius fx*fov/2 * --mask-shrink) | sat[:thr[:dilate]] (per-frame: "
+                         "saturated blobs, default >250, dilated 9 px) | zeros | ones")
+    ap.add_argument("--mask-shrink", type=float, default=0.97, help="circle radius fraction")
+    ap.add_argument("--preprocess", default="none",
+                    help="image conditioning before the tracker: none | clahe[:clip[:tiles]] | "
+                         "gamma:<g> | nlmeans:<h> | enhance:<torchscript.pt> (GPU U-Net) — chain with '+'")
+    ap.add_argument("--stats", type=Path, default=None,
+                    help="write per-frame csv: t, tracked, n_obs_cam0, n_obs_cam1, mean0, ms")
+    ap.add_argument("--imu-scale", type=float, default=1.0,
+                    help="multiply all IMU noise densities (sensitivity experiment)")
     args = ap.parse_args()
     args.out.mkdir(parents=True, exist_ok=True)
 
-    rig, T_rig_imu, topics_map = make_rig(args.rig)
+    rig, T_rig_imu, topics_map = make_rig(args.rig, imu_scale=args.imu_scale)
     LEFT, RIGHT, DEPTH, IMU = (topics_map[k] for k in ("left", "right", "depth", "imu"))
     Mode = cuvslam.Tracker.OdometryMode
     mode = Mode.Multicamera if args.no_imu else Mode.Inertial
     cfg = cuvslam.Tracker.OdometryConfig()
     cfg.async_sba = False                   # deterministic offline replay
-    cfg.enable_observations_export = False
+    cfg.enable_observations_export = args.stats is not None
     cfg.enable_final_landmarks_export = False
     cfg.rectified_stereo_camera = not args.unrectified
     cfg.odometry_mode = mode
-    tracker = cuvslam.Tracker(rig, cfg)
+    cfg.multicam_mode = {"precision": cuvslam.Tracker.MulticameraMode.Precision,
+                         "moderate": cuvslam.Tracker.MulticameraMode.Moderate,
+                         "performance": cuvslam.Tracker.MulticameraMode.Performance}[args.multicam_mode]
+    cfg.use_denoising = bool(args.denoise)
+    cfg.use_motion_model = not args.no_motion_model
+    slam_cfg = cuvslam.Tracker.SlamConfig() if args.slam else None
+    tracker = cuvslam.Tracker(rig, cfg, slam_cfg) if slam_cfg is not None else cuvslam.Tracker(rig, cfg)
     print(f"cuVSLAM {getattr(cuvslam, '__version__', '?')} tracker: mode={mode}, "
-          f"rectified={not args.unrectified}")
+          f"rectified={not args.unrectified}, multicam={args.multicam_mode}, denoise={args.denoise}, "
+          f"motion_model={not args.no_motion_model}, slam={args.slam}, mask={args.mask}, "
+          f"preprocess={args.preprocess}, imu_scale={args.imu_scale}")
+    static_masks, mask_fn = make_masks(args, rig_yaml_cams(args.rig))
+    prep = build_preprocess(args.preprocess)
+    stats_f = args.stats.open("w") if args.stats else None
+    if stats_f:
+        stats_f.write("t,tracked,n_obs0,n_obs1,mean0,ms\n")
 
     tum = (args.out / "est.tum").open("w")
     depth_dir = args.out / "depth"
@@ -220,9 +353,26 @@ def main() -> None:
 
     def process(t_ns: int, group: dict) -> None:
         nonlocal n_frames, n_valid
-        estimate, _ = tracker.track(t_ns, [group["l"], group["r"]])
+        imgs = [prep(group["l"]), prep(group["r"])]
+        t_wall = time.perf_counter()
+        if mask_fn is not None:
+            masks = [mask_fn(im, static_masks[i] if static_masks else None) for i, im in enumerate(imgs)]
+        else:
+            masks = static_masks
+        estimate, _ = tracker.track(t_ns, imgs, masks=masks) if masks is not None \
+            else tracker.track(t_ns, imgs)
+        ms = (time.perf_counter() - t_wall) * 1e3
         n_frames += 1
-        if estimate.world_from_rig is None:
+        ok = estimate.world_from_rig is not None
+        if stats_f:
+            n0 = n1 = -1
+            if cfg.enable_observations_export:
+                try:
+                    n0 = len(tracker.get_last_observations(0)); n1 = len(tracker.get_last_observations(1))
+                except Exception:
+                    pass
+            stats_f.write(f"{t_ns / 1e9:.6f},{int(ok)},{n0},{n1},{float(imgs[0].mean()):.2f},{ms:.2f}\n")
+        if not ok:
             return
         n_valid += 1
         p = estimate.world_from_rig.pose
@@ -280,6 +430,8 @@ def main() -> None:
     tum.close()
     if poses_txt:
         poses_txt.close()
+    if stats_f:
+        stats_f.close()
     print(f"tracked {n_valid}/{n_frames} stereo frames ({n_imu} IMU samples) "
           f"-> {args.out / 'est.tum'}")
 

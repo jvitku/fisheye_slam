@@ -33,7 +33,8 @@ def test_transform_to_pod_frame_applies_lever_arm():
     for row_in, row_out in zip(poses, out):
         R = quat_xyzw_to_R(row_in[4:8])
         np.testing.assert_allclose(row_out[1:4], row_in[1:4] + R @ T[:3, 3], atol=1e-12)
-        np.testing.assert_allclose(row_out[4:8], row_in[4:8], atol=1e-12)   # pure translation
+        # pure translation: same rotation (quaternion sign is not significant)
+        np.testing.assert_allclose(quat_xyzw_to_R(row_out[4:8]), R, atol=1e-12)
     # starboard offset: the sensor path is a slightly smaller circle (r - 0.13)
     r_body = np.linalg.norm(poses[:, 1:3], axis=1)
     r_sens = np.linalg.norm(out[:, 1:3], axis=1)

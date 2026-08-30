@@ -4,11 +4,14 @@ version = "0.1.0"
 description = "Shared fisheye lens models and rig utilities for the fisheye_slam SLAM evaluation"
 requires-python = ">=3.10"
 dependencies = [
+    "gtsam==4.3a2",
     "numpy>=1.24",
+    "opencv-python-headless>=5.0.0.93",
     "pillow>=12.3.0",
     "pymavlink>=2.4.49",
     "pyyaml>=6.0",
     "rosbags>=0.9.22",
+    "scipy>=1.15.3",
 ]
 
 [dependency-groups]

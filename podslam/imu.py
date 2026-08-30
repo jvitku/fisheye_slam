@@ -1,0 +1,129 @@
+"""IMU handling: sample buffer, static initialisation, GTSAM preintegration,
+gyro-only rotation prediction for the front-end."""
+from __future__ import annotations
+
+import numpy as np
+
+from .geometry import exp_so3, rotation_aligning
+
+G = 9.81
+
+
+class ImuBuffer:
+    """Time-ordered IMU samples (t [s], gyro [rad/s], accel [m/s^2])."""
+
+    def __init__(self, keep_s: float = 10.0):
+        self.t: list = []; self.w: list = []; self.a: list = []
+        self.keep_s = keep_s
+
+    def append(self, t: float, gyro, accel) -> None:
+        if self.t and t <= self.t[-1]:
+            return                                   # drop out-of-order duplicates
+        self.t.append(float(t)); self.w.append(np.asarray(gyro, float)); self.a.append(np.asarray(accel, float))
+        if len(self.t) > 4 and self.t[-1] - self.t[0] > 2 * self.keep_s:
+            cut = np.searchsorted(np.asarray(self.t), self.t[-1] - self.keep_s)
+            del self.t[:cut]; del self.w[:cut]; del self.a[:cut]
+
+    def between(self, t0: float, t1: float):
+        """Samples with t0 < t <= t1 plus the sample before t0 (for dt)."""
+        t = np.asarray(self.t)
+        i0 = int(np.searchsorted(t, t0, side="right"))
+        i1 = int(np.searchsorted(t, t1, side="right"))
+        return t[i0:i1], np.asarray(self.w[i0:i1]).reshape(-1, 3), np.asarray(self.a[i0:i1]).reshape(-1, 3)
+
+    def latest(self) -> float | None:
+        return self.t[-1] if self.t else None
+
+
+def delta_rotation(buf: ImuBuffer, t0: float, t1: float, gyro_bias) -> np.ndarray:
+    """R_{I0 <- I1}: rotation of the body between t0 and t1 from the gyro alone."""
+    ts, ws, _ = buf.between(t0, t1)
+    R = np.eye(3)
+    t_prev = t0
+    for t, w in zip(ts, ws):
+        dt = float(t - t_prev)
+        if dt > 0:
+            R = R @ exp_so3((w - gyro_bias) * dt)
+        t_prev = t
+    if t1 > t_prev and len(ws):
+        R = R @ exp_so3((ws[-1] - gyro_bias) * (t1 - t_prev))
+    return R
+
+
+class StaticInitializer:
+    """Wait for a still period, then estimate gravity direction + gyro bias.
+    Falls back to 'assume the first window is still' after max_wait_s."""
+
+    def __init__(self, window_s=1.0, gyro_thr=0.03, accel_std_thr=0.35, max_wait_s=3.0):
+        self.window_s, self.gyro_thr, self.accel_std_thr, self.max_wait_s = window_s, gyro_thr, accel_std_thr, max_wait_s
+        self.t: list = []; self.w: list = []; self.a: list = []
+        self.result = None
+
+    def feed(self, t, gyro, accel) -> bool:
+        if self.result is not None:
+            return True
+        self.t.append(float(t)); self.w.append(np.asarray(gyro, float)); self.a.append(np.asarray(accel, float))
+        t_arr = np.asarray(self.t)
+        if t_arr[-1] - t_arr[0] < self.window_s:
+            return False
+        # most recent window
+        i0 = int(np.searchsorted(t_arr, t_arr[-1] - self.window_s))
+        w = np.asarray(self.w[i0:]); a = np.asarray(self.a[i0:])
+        still = (np.linalg.norm(w, axis=1).max() < self.gyro_thr) and (a.std(axis=0).max() < self.accel_std_thr)
+        forced = (t_arr[-1] - t_arr[0]) > self.max_wait_s
+        if still or forced:
+            a_mean = a.mean(axis=0)
+            g_body = a_mean / max(np.linalg.norm(a_mean), 1e-9)          # "up" in body coordinates
+            R_W_I = rotation_aligning(g_body, [0.0, 0.0, 1.0])           # maps body up -> world +Z
+            self.result = dict(t=float(t_arr[-1]), R_W_I=R_W_I, gyro_bias=w.mean(axis=0),
+                               accel_bias=np.zeros(3), forced=bool(forced and not still),
+                               accel_norm=float(np.linalg.norm(a_mean)))
+            return True
+        return False
+
+
+class Preintegrator:
+    """gtsam.PreintegratedCombinedMeasurements between two keyframes."""
+
+    def __init__(self, imu, bias=None):
+        import gtsam
+        self.gtsam = gtsam
+        p = gtsam.PreintegrationCombinedParams.MakeSharedU(G)
+        p.setGyroscopeCovariance(np.eye(3) * imu.gyro_noise_density ** 2)
+        p.setAccelerometerCovariance(np.eye(3) * imu.accel_noise_density ** 2)
+        p.setIntegrationCovariance(np.eye(3) * 1e-8)
+        p.setBiasAccCovariance(np.eye(3) * imu.accel_random_walk ** 2)
+        p.setBiasOmegaCovariance(np.eye(3) * imu.gyro_random_walk ** 2)
+        if hasattr(p, "setBiasAccOmegaInit"):          # dropped in gtsam 4.3
+            p.setBiasAccOmegaInit(np.eye(6) * 1e-5)
+        self.params = p
+        self.bias = bias if bias is not None else gtsam.imuBias.ConstantBias()
+        self.pim = gtsam.PreintegratedCombinedMeasurements(p, self.bias)
+        self.t_last = None
+
+    def reset(self, bias, t: float) -> None:
+        self.bias = bias
+        self.pim = self.gtsam.PreintegratedCombinedMeasurements(self.params, bias)
+        self.t_last = t
+
+    def integrate_until(self, buf: ImuBuffer, t1: float) -> None:
+        """Integrate all buffered samples in (t_last, t1]."""
+        if self.t_last is None:
+            self.t_last = t1
+            return
+        ts, ws, as_ = buf.between(self.t_last, t1)
+        for t, w, a in zip(ts, ws, as_):
+            dt = float(t - self.t_last)
+            if dt > 0:
+                self.pim.integrateMeasurement(a, w, dt)
+                self.t_last = float(t)
+        if t1 > self.t_last and len(ws):                    # hold the last sample to t1
+            self.pim.integrateMeasurement(as_[-1], ws[-1], float(t1 - self.t_last))
+            self.t_last = float(t1)
+
+    def predict(self, navstate):
+        return self.pim.predict(navstate, self.bias)
+
+    @property
+    def dt(self) -> float:
+        return float(self.pim.deltaTij())
