@@ -65,8 +65,10 @@ feature budget); the port is an engineering translation, not a redesign.
    per-frame parity 0.69 % unmatched / 1.25 % extra / ≤0.5 px (OpenCV 5.0.0+IPP
    pinned to the wheel; free-running sets diverge chaotically from threshold-edge
    corners — documented, not chased).
-4. Tracker shell in C++ (keyframe policy, landmark bookkeeping) + bag runner
-   end-to-end check on all benchmark rows (room1×3, room2, exp14, exp18).
+4. ~~Tracker shell in C++~~ **core done**: the full pipeline (static init, keyframe
+   policy, landmark lifecycle, retirement) runs end-to-end on dumped frames —
+   full room1 day: **7.7 cm ATE vs GT (Python 8.8), 923 keyframes (identical),
+   35.6 ms/frame single-core**. Remaining: the other benchmark rows, bag/ROS I/O.
 5. Orin build + timing; ROS 2 node; then the learned parts as TensorRT engines.
 
 Risks: GTSAM version drift between the Python wheel (4.3a2) and the C++ build —
