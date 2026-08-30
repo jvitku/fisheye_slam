@@ -45,6 +45,38 @@ def stereo_verify(rig, cam_i, cam_j, b_i, b_j, px_i, px_j, max_px=2.0, min_depth
     return p, float(si)
 
 
+def stereo_verify_batch(rig, cam_i, cam_j, b_i, b_j, px_i, px_j, max_px=2.0, min_depth=0.2,
+                        max_depth=40.0, min_parallax_deg=1.0):
+    """Vectorised stereo_verify for N bearing pairs: returns (points_imu (N,3),
+    depth_i (N,), ok (N,)).  The per-point Python version was 80 k calls / 4.6 s
+    over 400 frames — 20 % of the whole tracker."""
+    ci, cj = rig.cameras[cam_i], rig.cameras[cam_j]
+    Ri, ti = ci.T_imu_cam[:3, :3], ci.T_imu_cam[:3, 3]
+    Rj, tj = cj.T_imu_cam[:3, :3], cj.T_imu_cam[:3, 3]
+    b_i = np.asarray(b_i, float); b_j = np.asarray(b_j, float)
+    n = len(b_i)
+    ok = np.all(np.isfinite(b_i), 1) & np.all(np.isfinite(b_j), 1)
+    di = b_i @ Ri.T; dj = b_j @ Rj.T
+    cosang = np.clip(np.sum(di * dj, 1), -1.0, 1.0)
+    ok &= np.degrees(np.arccos(cosang)) >= min_parallax_deg
+    w = (ti - tj)[None, :]
+    b = np.sum(di * dj, 1); d = np.sum(di * w, 1); e = np.sum(dj * w, 1)
+    den = 1.0 - b * b
+    ok &= den > 1e-12
+    den = np.where(den > 1e-12, den, 1.0)
+    si = (b * e - d) / den
+    sj = (e - b * d) / den
+    p = 0.5 * ((ti[None] + si[:, None] * di) + (tj[None] + sj[:, None] * dj))
+    ok &= np.all(np.isfinite(p), 1) & (si >= min_depth) & (sj >= min_depth) & (si <= max_depth)
+    # reprojection check through both camera models
+    pi = (p - ti[None]) @ Ri; pj = (p - tj[None]) @ Rj
+    ui, vi = ci.model.project(pi); uj, vj = cj.model.project(pj)
+    with np.errstate(invalid="ignore"):
+        ok &= vi & vj
+        ok &= (np.linalg.norm(ui - px_i, axis=1) <= max_px) & (np.linalg.norm(uj - px_j, axis=1) <= max_px)
+    return p, si, ok
+
+
 def essential_inliers(b_prev, b_cur, dR_cam=None, max_theta_deg=80.0, thr_norm=0.004, ang_thr_deg=6.0):
     """Outlier rejection for temporal matches given bearings in the same camera.
     Central region (theta < max_theta): 5-point RANSAC on normalized coordinates.

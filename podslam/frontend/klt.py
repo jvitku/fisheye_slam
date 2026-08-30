@@ -8,7 +8,7 @@ import cv2
 import numpy as np
 
 from .base import CamObs, FrameFeatures, Frontend
-from .common import essential_inliers, stereo_verify
+from .common import essential_inliers, stereo_verify, stereo_verify_batch
 
 DEFAULTS = dict(max_features=300, min_distance=12, quality=0.01, win=21, levels=4,
                 # noise-adaptive detector gate: a new corner must have a min-eigenvalue
@@ -240,18 +240,19 @@ class KltFrontend(Frontend):
             best_nxt[ok_h] = nxt_h[ok_h]; best_err[ok_h] = err.ravel()[ok_h]
         nxt = best_nxt
         ok = np.isfinite(best_err)
-        out_ids, out_px, out_b = [], [], []
-        if ok.any():
-            bj, vj = self._bearings(cam_j, nxt[ok])
-            for k, (i, bb, vv) in enumerate(zip(np.nonzero(ok)[0], bj, vj)):
-                if not vv:
-                    continue
-                p, depth = stereo_verify(self.rig, 0, j, b0[i], bb, px0[i], nxt[i], max_px=self.cfg["stereo_max_px"])
-                if p is None:
-                    continue
-                self.depth[int(ids[i])] = depth
-                out_ids.append(ids[i]); out_px.append(nxt[i]); out_b.append(bb)
-        if not out_ids:
+        if not ok.any():
             return CamObs()
-        return CamObs(ids=np.asarray(out_ids, np.int64), px=np.asarray(out_px, np.float32),
-                      bearings=np.asarray(out_b, np.float64))
+        idx = np.nonzero(ok)[0]
+        bj, vj = self._bearings(cam_j, nxt[idx])
+        idx = idx[vj]; bj = bj[vj]
+        if len(idx) == 0:
+            return CamObs()
+        _, depths_ok, keep = stereo_verify_batch(self.rig, 0, j, b0[idx], bj, px0[idx], nxt[idx],
+                                                 max_px=self.cfg["stereo_max_px"])
+        idx2 = idx[keep]
+        for i, dep in zip(idx2, depths_ok[keep]):
+            self.depth[int(ids[i])] = float(dep)
+        if len(idx2) == 0:
+            return CamObs()
+        return CamObs(ids=ids[idx2].astype(np.int64), px=nxt[idx2].astype(np.float32),
+                      bearings=bj[keep].astype(np.float64))
