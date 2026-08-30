@@ -99,5 +99,21 @@
    "transition": 0
   },
   "commit": "70d53c4"
+ },
+ {
+  "when": "2026-08-30 20:09",
+  "change": "Hilti round 2. IMU model from the dataset's own 89-min static recording (Allan deviation: gyro 1.75e-4, accel 9.5e-4, walks 5e-6 / 2e-4) with the accelerometer scale factor it reveals (|a| at rest 9.641 vs g 9.812: -1.7 %, corrected via accel_scale): podslam stereo 21.1 -> 13.1 cm SE3; x2 inflation of the measured noise hurts (17.6) - inflation is IMU-specific, TUM-VI's BMI160 needed it, the BMI085 does not. Roll/pitch anchor of the first pose loosened to 0.05 rad (gravity carries the accel bias; observable): Sim3 8.9 -> 5.5, max error 49 -> 33 cm. All five cameras: 15.4 cm SE3 / 4.8 cm Sim3 (max 26) at 69 ms/frame; OpenVINS 5-cam 7.6 / 6.6 (stereo 5.4 / 3.9). KB4 lens model verified identical to OpenCV fisheye (0.0000 px) for these coefficients. Remaining gap = a -1.8 % scale (est/gt) that survives calibration, lens-model and stereo-init checks.",
+  "next": "Find the visual scale bias on Hilti (per-axis accel scale, temporal-KLT sub-pixel bias, time-offset sign test), online extrinsic/time-offset refinement, then Hilti exp18 (second dense-GT sequence) and the C++/Jetson port plan.",
+  "ate": {
+   "day": 8.77,
+   "night": 16.2,
+   "transition": 14.54
+  },
+  "resets": {
+   "day": 0,
+   "night": 0,
+   "transition": 0
+  },
+  "commit": "db94855"
  }
 ]
