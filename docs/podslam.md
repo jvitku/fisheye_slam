@@ -101,5 +101,5 @@ cloud with IMU derived from the trajectory and a perfect front-end: it must reco
 - [ ] 5-camera podslam rows (Hilti) and the N-camera pod sim recordings (needs the GPU host)
 - [ ] Bearing-only factors for the fisheye rim (> 80° off-axis is currently unused)
 - [ ] Learned masks; enhancer generalisation to real low light (trained on synthetic night only)
-- [ ] C++ port of KLT + preintegration + smart-factor window for Jetson real time (Python: 45–70 ms/frame
-      single-threaded on a laptop core); ROS 2 live node
+- [ ] C++ port of KLT + preintegration + smart-factor window for Jetson real time (Python after the vectorised
+      stereo check: 33 ms stereo / ~55 ms five-camera on one laptop core; LM solve is now 53 % of it); ROS 2 live node
