@@ -307,5 +307,21 @@
    "transition": 0
   },
   "commit": "a137f1c"
+ },
+ {
+  "when": "2026-08-30 22:57",
+  "change": "C++ port step 2 complete: the native sliding-window backend (GTSAM 4.3a2 pinned, TBB-free) replays 114 keyframes of room1 day at 1.7e-9 m / 7e-10 rad parity with identical event counts (1627 absorbed, 43 outliers, 88 marginalised), under production LM settings. Diagnosis chain worth keeping: kf-1 exactness isolated the bug to inputs, not math; the killers were 1 ms-truncated dump timestamps and 42 unrecorded tracker retirements; TBB and LM stop-rounding were measured and exonerated.",
+  "next": "Port step 3: the KLT front-end on OpenCV C++/CUDA with track parity; then the bag runner and Orin build (docs/CPP_PORT_PLAN.md).",
+  "ate": {
+   "day": 8.77,
+   "night": 16.2,
+   "transition": 14.54
+  },
+  "resets": {
+   "day": 0,
+   "night": 0,
+   "transition": 0
+  },
+  "commit": "b9f3f83"
  }
 ]
