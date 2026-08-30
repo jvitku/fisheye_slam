@@ -60,6 +60,7 @@ class Camera:
     depth_topic: str | None = None
     fov_deg: float | None = None  # kb4 rigs: full field of view (image circle)
     fx: float = 0.0
+    time_shift_s: float = 0.0     # Kalibr timeshift_cam_imu: t_imu = t_image + shift
 
     @property
     def T_cam_imu(self) -> np.ndarray:
@@ -124,6 +125,7 @@ def load_rig(path: str) -> Rig:
         model = Pinhole(**c["intrinsics"]) if c["model"] == "pinhole" else load_camera(c)
         cameras.append(Camera(
             name=c["name"], model=model, size=tuple(int(v) for v in c["resolution"]), T_imu_cam=T_ic,
+            time_shift_s=float(c.get("time_shift_s", 0.0)),
             topic=c.get("topic", f"{prefix}/{c['name']}/color/image_raw"),
             depth_topic=c.get("depth_topic", f"{prefix}/{c['name']}/depth/image_raw") if c.get("depth") else None,
             fov_deg=float(c["fov_deg"]) if c["model"] == "kb4" and "fov_deg" in c else (190.0 if c["model"] == "kb4" else None),

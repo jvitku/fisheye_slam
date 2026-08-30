@@ -11,7 +11,7 @@
 #   free disk (repo + docker root)   >= --disk-floor   (15G)
 #   available RAM                    >= --mem          (12G)
 #   free VRAM                        >= --vram-need    (0; e.g. 7G for Isaac)
-#   CPU package temperature          <  --temp-max     (90 C)
+#   CPU package temperature          <  --temp-max     (90 C) sustained over --temp-hold samples (3 x 5 s)
 #   1-min load average               <  --load-max     (ncpu)
 # Limits while running:
 #   host processes  : systemd user scope, MemoryMax=--mem, no swap, pinned to
@@ -33,6 +33,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
 MEM=12G; CPUS=$(( $(nproc) / 2 )); DISK_FLOOR=15G; RAM_FLOOR=2G
 VRAM_NEED=0; VRAM_FLOOR=512M; TEMP_MAX=90; LOAD_MAX=$(nproc)
+TEMP_HOLD=3; TEMP_OVER=0             # kill only after --temp-hold consecutive watchdog samples (5 s) over --temp-max
 TIMEOUT=4h; INTERVAL=5; CHECK_ONLY=0
 
 to_bytes() {   # 12G / 512M / 4096 -> bytes
@@ -59,7 +60,7 @@ while [ $# -gt 0 ]; do
         --mem) MEM="$2"; shift 2;;              --cpus) CPUS="$2"; shift 2;;
         --disk-floor) DISK_FLOOR="$2"; shift 2;; --ram-floor) RAM_FLOOR="$2"; shift 2;;
         --vram-need) VRAM_NEED="$2"; shift 2;;  --vram-floor) VRAM_FLOOR="$2"; shift 2;;
-        --temp-max) TEMP_MAX="$2"; shift 2;;    --load-max) LOAD_MAX="$2"; shift 2;;
+        --temp-max) TEMP_MAX="$2"; shift 2;;    --temp-hold) TEMP_HOLD="$2"; shift 2;;    --load-max) LOAD_MAX="$2"; shift 2;;
         --timeout) TIMEOUT="$2"; shift 2;;      --interval) INTERVAL="$2"; shift 2;;
         --check) CHECK_ONLY=1; shift;;
         -h|--help) usage 0;;
@@ -214,7 +215,11 @@ while kill -0 "$JOB" 2>/dev/null; do
     [ "$ram" -ge "$RAM_FLOOR_B" ] || reason="available RAM $(human "$ram") < $(human "$RAM_FLOOR_B")"
     [ "$disk" -ge "$DISK_FLOOR_B" ] || reason="free disk $(human "$disk") < $(human "$DISK_FLOOR_B")"
     [ -z "$vram" ] || [ "$vram" -ge "$VRAM_FLOOR_B" ] || reason="free VRAM $(human "$vram") < $(human "$VRAM_FLOOR_B")"
-    [ -z "$temp" ] || [ "$temp" -lt "$TEMP_MAX" ] || reason="CPU package ${temp}C >= ${TEMP_MAX}C"
+    # sustained over-temperature only: this laptop spikes to 97-98 C for one sample
+    # whenever a second core wakes up and is back at 60 C two samples later; the CPU
+    # self-throttles at 100 C, so a short spike is not a reason to kill a 30-min job
+    if [ -n "$temp" ] && [ "$temp" -ge "$TEMP_MAX" ]; then TEMP_OVER=$((TEMP_OVER + 1)); else TEMP_OVER=0; fi
+    [ "$TEMP_OVER" -lt "$TEMP_HOLD" ] || reason="CPU package ${temp}C >= ${TEMP_MAX}C for ${TEMP_OVER} consecutive samples"
     [ $(( $(date +%s) - START )) -le "$TIMEOUT_S" ] || reason="runtime exceeded $TIMEOUT"
     if [ -n "$reason" ]; then KILLED="$reason"; kill_job "$reason"; break; fi
 done

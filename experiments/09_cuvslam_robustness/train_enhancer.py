@@ -82,6 +82,40 @@ def load_frames(pattern: str, limit: int) -> list[np.ndarray]:
     return out
 
 
+class GpuPairs:
+    """Same degradation model as bench/degrade_bag.relight (ambient + IR-beam vignette,
+    read + shot noise) but generated on the GPU: the numpy version pegged one CPU core
+    at ~98 C on the laptop and tripped the thermal guard (bench/guard.sh)."""
+
+    def __init__(self, frames, dev, crop, seed):
+        self.dev, self.crop = dev, crop
+        self.frames = torch.from_numpy(np.stack(frames)).to(dev)      # (N, H, W) uint8
+        self.n, self.h, self.w = self.frames.shape
+        self.g = torch.Generator(device=dev); self.g.manual_seed(seed)
+        yy, xx = torch.meshgrid(torch.arange(self.h, device=dev, dtype=torch.float32),
+                                torch.arange(self.w, device=dev, dtype=torch.float32), indexing="ij")
+        r2 = (xx - self.w / 2.0) ** 2 + (yy - self.h / 2.0) ** 2
+        self.vig = {s: torch.exp(-r2 / (2.0 * (s * float(np.hypot(self.h, self.w)) / 2.0) ** 2))
+                    for s in (0.35, 0.45, 0.6)}
+        self.sigmas = list(self.vig)
+
+    def batch(self, b):
+        idx = torch.randint(0, self.n, (b,), device=self.dev, generator=self.g)
+        day = self.frames[idx].float()                                   # (b, H, W)
+        u = lambda lo, hi: lo + (hi - lo) * torch.rand(b, 1, 1, device=self.dev, generator=self.g)
+        ambient, beam, noise = u(0.02, 0.08), u(0.4, 0.9), u(3.0, 9.0)
+        which = torch.randint(0, len(self.sigmas), (b,), device=self.dev, generator=self.g)
+        vig = torch.stack([self.vig[self.sigmas[int(i)]] for i in which])
+        lit = day * (ambient + beam * vig)
+        night = lit + torch.randn(day.shape, device=self.dev, generator=self.g) * torch.sqrt(noise ** 2 + 0.5 * lit.clamp(min=0))
+        night = night.clamp(0, 255)
+        ys = torch.randint(0, self.h - self.crop + 1, (b,), device=self.dev, generator=self.g)
+        xs = torch.randint(0, self.w - self.crop + 1, (b,), device=self.dev, generator=self.g)
+        xc = torch.stack([night[i, ys[i]:ys[i] + self.crop, xs[i]:xs[i] + self.crop] for i in range(b)])
+        yc = torch.stack([day[i, ys[i]:ys[i] + self.crop, xs[i]:xs[i] + self.crop] for i in range(b)])
+        return xc[:, None] / 255.0, yc[:, None] / 255.0
+
+
 def make_pair(day: np.ndarray, rng: np.random.Generator, vig_cache: dict, crop: int):
     """Random degradation of a random crop; returns (night, day) float32 in [0,1]."""
     h, w = day.shape
@@ -117,14 +151,12 @@ def main() -> None:
     print(f"params: {sum(p.numel() for p in model.parameters()) / 1e6:.2f} M")
     opt = torch.optim.AdamW(model.parameters(), lr=1e-3, weight_decay=1e-4)
     sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=args.epochs * args.steps)
-    vig_cache: dict = {}
+    gen = GpuPairs(frames, dev, args.crop, args.seed)
     t0 = time.time()
     for ep in range(args.epochs):
         model.train(); tot = 0.0
         for it in range(args.steps):
-            pairs = [make_pair(frames[rng.integers(len(frames))], rng, vig_cache, args.crop) for _ in range(args.batch)]
-            x = torch.from_numpy(np.stack([p[0] for p in pairs]))[:, None].to(dev)
-            y = torch.from_numpy(np.stack([p[1] for p in pairs]))[:, None].to(dev)
+            x, y = gen.batch(args.batch)
             pred = model(x)
             # L1 + gradient (edge) loss: the tracker cares about gradients, not absolute tone
             gx = lambda t: t[..., :, 1:] - t[..., :, :-1]

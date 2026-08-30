@@ -60,6 +60,7 @@ def main(argv=None) -> int:
     ap.add_argument("--marg", default="all", choices=("ended", "all", "pin"), help="smart backend marginalisation mode")
     ap.add_argument("--epi", action="store_true", help="smart backend: nonlinear landmark refinement (gtsam throws inside LM on this data)")
     ap.add_argument("--max-features", type=int, default=300)
+    ap.add_argument("--cams", default=None, help="comma-separated camera names to use (subset of the rig, first = tracking camera)")
     ap.add_argument("--kf-rot-deg", type=float, default=0.0, help="motion-adaptive keyframes: IMU rotation since last keyframe (0 = off)")
     ap.add_argument("--kf-parallax-px", type=float, default=0.0, help="motion-adaptive keyframes: median parallax since last keyframe (0 = off)")
     ap.add_argument("--noise-gate", type=float, default=4.0, help="KLT detector: min-eigenvalue response >= k x frame median (0 = off)")
@@ -76,6 +77,14 @@ def main(argv=None) -> int:
     except Exception:
         pass
     rig = load_rig(args.rig)
+    if args.cams:
+        wanted = [c.strip() for c in args.cams.split(",") if c.strip()]
+        by_name = {c.name: c for c in rig.cameras}
+        missing = [w for w in wanted if w not in by_name]
+        if missing:
+            raise SystemExit(f"--cams: unknown camera(s) {missing}; rig has {[c.name for c in rig.cameras]}")
+        rig.cameras = [by_name[w] for w in wanted]
+        print(f"using cameras {wanted}")
     noise_scale = tuple(float(x) for x in args.imu_noise_scale.split(","))
     cfg = TrackerConfig(frontend=args.frontend, frontend_cfg={"max_features": args.max_features, "noise_gate": args.noise_gate},
                         preprocess=args.preprocess, masks=args.masks, circle_mask=not args.no_circle_mask,
@@ -88,6 +97,9 @@ def main(argv=None) -> int:
     stats.write("t,tracked,n_obs0,n_obs1,mean0,ms,keyframe,n_landmarks\n")
 
     pending: dict[int, dict] = {}
+    shift_ns = int(round(rig.cameras[0].time_shift_s * 1e9))
+    if shift_ns:
+        print(f"camera->IMU time shift {shift_ns / 1e6:.2f} ms applied to image stamps")
     n_frames = n_ok = n_kf = 0
     LAG_NS = 100_000_000
 
@@ -122,7 +134,9 @@ def main(argv=None) -> int:
                 g, a = msg.angular_velocity, msg.linear_acceleration
                 tracker.register_imu(stamp_ns(msg), [g.x, g.y, g.z], [a.x, a.y, a.z])
                 continue
-            t_ns = stamp_ns(msg)
+            # image stamps into the IMU clock (Kalibr timeshift_cam_imu, per rig); the
+            # estimate is written with the shifted stamp so it aligns with IMU-frame GT
+            t_ns = stamp_ns(msg) + shift_ns
             pending.setdefault(t_ns, {})[cam_topics[conn.topic]] = to_gray(msg)
             flush(t_ns)
             if args.max_frames and n_frames >= args.max_frames:
