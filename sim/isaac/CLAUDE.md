@@ -9,7 +9,10 @@
 > `workspace/pod_imu.py` (sensor-pod PX4-FC IMU on /uav1/sensor_pod/imu; one
 > per member pod, /uav1/<ns>/imu, for composite rigs such as
 > `rigs/pod3_oakdpro.yaml` — pod + OAK-D Pro on one drone),
-> compose mounts `../../rigs:/rigs:ro`. The original `px4_drone.py`
+> `workspace/render_from_poses.py` (offline render pass: rig on a kinematic
+> Xform along recorded poses, one camera at a time — fits an 8 GB GPU; see
+> bench/README.md "Physics once, render offline"),
+> compose mounts `../../rigs:/rigs:ro` and `../../datasets/data/render:/render`. The original `px4_drone.py`
 > is kept unmodified as reference (`SIM_SCRIPT=px4_drone.py`). Upstream fixes
 > in swarm_stack should be ported here manually. Sections below describing the
 > lidar/FAST-LIO pipeline apply to the original, not to `bench_drone.py`.

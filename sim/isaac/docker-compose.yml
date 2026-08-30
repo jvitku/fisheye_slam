@@ -39,6 +39,8 @@ services:
       - ./workspace:/workspace
       # Camera rig definitions (single source of truth, shared with bench/)
       - ../../rigs:/rigs:ro
+      # Offline render pass I/O (poses in, frames out) — bench/render_bag.sh
+      - ../../datasets/data/render:/render
     deploy:
       resources:
         # Hard caps so the sim cannot take the host down (bench/guard.sh

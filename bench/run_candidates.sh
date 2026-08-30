@@ -2,10 +2,10 @@
 # Run one candidate (openvins | basalt) on one condition bag, headless in
 # docker, and drop a TUM trajectory + resource stats into bench/results/.
 #
-# Usage: ./run_candidates.sh <openvins|basalt> <day|night|transition>
+# Usage: ./run_candidates.sh <openvins|basalt|cuvslam> <day|night|transition>
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-CAND="${1:?openvins|basalt}"
+CAND="${1:?openvins|basalt|cuvslam}"
 COND="${2:?day|night|transition}"
 BAG="$ROOT/datasets/data/tumvi/room1_${COND}.bag"
 OUT="$ROOT/bench/results/room1/${CAND}_${COND}"
@@ -45,6 +45,19 @@ basalt)
             --config-path /src/basalt/data/tumvi_512_config.json \
             --show-gui 0 --step-by-step 0 --save-trajectory tum \
             2>&1 | tail -40" 2>&1 | tee "$OUT/run.log"
+    ;;
+cuvslam)
+    # Track F1 product-lane candidate (closed-source, NVIDIA GPU) on the real
+    # fisheye data: cuvslam 17 wheel, unrectified KB4 stereo + IMU.
+    docker run --rm ${GUARD_DOCKER_ARGS:-} --gpus all --user "$(id -u):$(id -g)" -e HOME=/tmp \
+        -v "$BAG:/data/input.bag:ro" \
+        -v "$ROOT/rigs:/rigs:ro" \
+        -v "$ROOT/experiments/08_oakdpro_slam:/scripts:ro" \
+        -v "$ROOT/bench/timer_wrap.py:/timer_wrap.py:ro" \
+        -v "$OUT:/out" \
+        3dfe/cuvslam \
+        python3 /timer_wrap.py python3 /scripts/cuvslam_track.py /data/input.bag /out \
+            --rig /rigs/tumvi_room1.yaml --unrectified 2>&1 | tee "$OUT/run.log"
     ;;
 *)  echo "unknown candidate $CAND"; exit 1 ;;
 esac

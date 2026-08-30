@@ -101,6 +101,39 @@ The convergence loop this enables: iterate on the fisheye pod's stack
 (learned front-end / depth allowed — see the design note on what is geometry
 vs perception) until its row matches the OAK-D row on the same recording.
 
+## Physics once, render offline (the 8 GB-GPU workaround, and a better design)
+
+Rendering five cameras live inside the physics sim is what needs a big GPU.
+Instead the flight is flown **once** with only physics outputs recorded, and
+the cameras are rendered **offline, one at a time**, along the recorded
+trajectory:
+
+```
+flight pass (any GPU, no camera cost)
+  RIG_CONFIG=/rigs/pod3_oakdpro.yaml ./sim/isaac/start_all.sh -d
+  RECORD_IMAGES=0 bench/record.sh rigs/pod3_oakdpro.yaml flight01 150 &   # IMU(s) + GT only
+  uv run python -m bench.fly_trajectory --pattern slow_scan --duration 120
+
+render pass (VRAM = renderer + ONE render product; fits 8 GB)
+  bench/render_bag.sh datasets/data/sim/flight01.bag rigs/pod3_oakdpro.yaml day   flight01_day
+  bench/render_bag.sh datasets/data/sim/flight01.bag rigs/pod3_oakdpro.yaml night flight01_night
+      = gt_extract (body) -> pose_sampler (exact 20 Hz SE3 samples)
+        -> sim/isaac/workspace/render_from_poses.py (kinematic rig Xform, camera by camera)
+        -> frames2bag (frames + the flight bag's IMU/GT -> contract bag)
+
+  bench/compare_rigs.sh datasets/data/sim/flight01_day.bag rigs/pod3_oakdpro.yaml
+```
+
+What this buys beyond fitting the laptop: both rigs are rendered from
+**byte-identical poses** (the "same data" guarantee no longer depends on PX4
+repeatability), timestamps are exact frame-period multiples, and **day and
+night come from the same flight** — the lighting axis becomes a controlled
+variable instead of a separate flight. Rendering may run slower than real
+time without affecting the data. Not covered: the drone body never appears
+in the images; motion blur / rolling shutter are as absent as in the live sim.
+`pose_sampler.py` and `frames2bag.py` are unit-tested on the host; the Isaac
+side (`render_from_poses.py`) carries VERIFY-IN-SIM markers.
+
 ## Resource guards (don't kill the workstation)
 
 Everything heavy runs under **`bench/guard.sh`** — `compare_rigs.sh` and
@@ -204,6 +237,7 @@ pod's IMU frame (see the side-by-side section for why that matters).
 - [ ] Sim bring-up: verify fisheye rendering, camera orientation convention, rates
 - [x] Scripted benchmark trajectories (`fly_trajectory.py`, PX4 offboard; VERIFY-IN-SIM)
 - [x] Resource guard for every heavy step (`guard.sh`)
+- [x] Physics-once / render-offline pipeline (`pose_sampler.py`, `frames2bag.py`, `render_bag.sh`, `render_from_poses.py`; Isaac side VERIFY-IN-SIM)
 - [x] GT extraction (`gt_extract.py`, pod-frame aware) + OpenVINS config generation from rig yamls (`gen_openvins_config.py`)
 - [x] Composite rig (pod + OAK-D Pro side by side) + bag split + one-command comparison (`compare_rigs.sh`)
 - [ ] First full matrix row: openvins × 3 rigs × slow_scan × sync

@@ -33,9 +33,12 @@ import cuvslam
 
 TS = get_typestore(Stores.ROS1_NOETIC)
 
-LEFT, RIGHT = "/uav1/cam0/color/image_raw", "/uav1/cam1/color/image_raw"
-DEPTH = "/uav1/cam0/depth/image_raw"
-IMU = "/uav1/sensor_pod/imu"
+# Bag contract defaults (docs/oak_d_pro_slam.md §4); a rig yaml may override
+# them per camera (`topic`, `depth_topic`) and for the IMU (`topic`), e.g.
+# rigs/tumvi_room1.yaml for the real TUM-VI bags.
+DEFAULT_LEFT, DEFAULT_RIGHT = "/uav1/cam0/color/image_raw", "/uav1/cam1/color/image_raw"
+DEFAULT_DEPTH = "/uav1/cam0/depth/image_raw"
+DEFAULT_IMU = "/uav1/sensor_pod/imu"
 
 # Camera FLU mount frame (rig yaml: rpy 0 = optical axis along +x) -> optical
 # frame (x right, y down, z forward); same constant as rig_math.R_MOUNT_OPTICAL.
@@ -92,15 +95,26 @@ def T_to_pose(T: np.ndarray) -> "cuvslam.Pose":
 
 
 def make_rig(rig_yaml: str):
-    """rigs/oakdpro.yaml -> (cuvslam.Rig, T_rig_imu).
+    """rig yaml -> (cuvslam.Rig, T_rig_imu, topics).
 
-    Rig frame = cam0 optical frame (PyCuVSLAM convention). All mounts in the
-    yaml are pod-relative, so the pod mount cancels out.
+    Rig frame = cam0 optical frame (PyCuVSLAM convention). Two rig flavours:
+      sim rigs (rigs/oakdpro.yaml): FLU pod-relative `mount`s — the pod mount
+        cancels out; camera optical = mount . T_FLU_OPT; IMU frame = its mount
+      real rigs (rigs/tumvi_room1.yaml): Kalibr `T_cam_imu` per camera
+        (IMU -> camera optical); IMU frame = the calibration's IMU frame
     """
     rig = yaml.safe_load(open(rig_yaml))
     cams_yaml = rig["cameras"]
-    T_pod_cam = [mount_to_T(c["mount"]) @ T_FLU_OPT for c in cams_yaml]
-    T_rig_pod = np.linalg.inv(T_pod_cam[0])
+    if all("T_cam_imu" in c for c in cams_yaml):
+        # reference frame = the IMU: T_ref_cam = inv(T_cam_imu)
+        T_ref_cam = [np.linalg.inv(np.asarray(c["T_cam_imu"], dtype=np.float64)) for c in cams_yaml]
+        T_ref_imu = np.eye(4)
+    else:
+        T_ref_cam = [mount_to_T(c["mount"]) @ T_FLU_OPT for c in cams_yaml]
+        T_ref_imu = mount_to_T(rig["imu"].get("mount"))
+    T_rig_ref = np.linalg.inv(T_ref_cam[0])
+    T_pod_cam = T_ref_cam
+    T_rig_pod = T_rig_ref
 
     cams = []
     for c, T_pc in zip(cams_yaml, T_pod_cam):
@@ -123,7 +137,7 @@ def make_rig(rig_yaml: str):
         cams.append(cam)
 
     imu_yaml = rig["imu"]
-    T_rig_imu = T_rig_pod @ mount_to_T(imu_yaml.get("mount"))
+    T_rig_imu = T_rig_pod @ T_ref_imu
     imu = cuvslam.ImuCalibration()
     imu.rig_from_imu = T_to_pose(T_rig_imu)
     imu.gyroscope_noise_density = float(imu_yaml.get("gyro_noise_density", 1e-4))
@@ -135,7 +149,13 @@ def make_rig(rig_yaml: str):
     r = cuvslam.Rig()
     r.cameras = cams
     r.imus = [imu]
-    return r, T_rig_imu
+    topics = {
+        "left": cams_yaml[0].get("topic", DEFAULT_LEFT),
+        "right": cams_yaml[1].get("topic", DEFAULT_RIGHT),
+        "depth": cams_yaml[0].get("depth_topic", DEFAULT_DEPTH),
+        "imu": imu_yaml.get("topic", DEFAULT_IMU),
+    }
+    return r, T_rig_imu, topics
 
 
 def to_gray(msg) -> np.ndarray:
@@ -170,7 +190,8 @@ def main() -> None:
     args = ap.parse_args()
     args.out.mkdir(parents=True, exist_ok=True)
 
-    rig, T_rig_imu = make_rig(args.rig)
+    rig, T_rig_imu, topics_map = make_rig(args.rig)
+    LEFT, RIGHT, DEPTH, IMU = (topics_map[k] for k in ("left", "right", "depth", "imu"))
     Mode = cuvslam.Tracker.OdometryMode
     mode = Mode.Multicamera if args.no_imu else Mode.Inertial
     cfg = cuvslam.Tracker.OdometryConfig()

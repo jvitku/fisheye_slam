@@ -74,6 +74,84 @@
     "est_poses": 2821,
     "status": "ok"
   },
+  "cuvslam_day": {
+    "wall_s": 10.0,
+    "cpu_s": 10.6,
+    "cpu_percent": 106,
+    "peak_rss_mb": 384.1,
+    "ate": {
+      "rmse": 0.11362192667885741,
+      "mean": 0.094038148119616,
+      "median": 0.0771256086197597,
+      "max": 0.3722738533161302,
+      "scale": 1.0,
+      "pairs": 2770
+    },
+    "rpe": {
+      "rmse": 0.07865273066110162,
+      "median": 0.035781541156734833,
+      "max": 0.362766621289693,
+      "pairs": 2750
+    },
+    "coverage": 1.0,
+    "gaps": 0,
+    "longest_gap": 0.10040092468261719,
+    "gt_duration": 141.02499985694885,
+    "est_poses": 2818,
+    "status": "ok"
+  },
+  "cuvslam_night": {
+    "wall_s": 29.5,
+    "cpu_s": 30.1,
+    "cpu_percent": 102,
+    "peak_rss_mb": 383.9,
+    "ate": {
+      "rmse": 0.13136360841186911,
+      "mean": 0.11313315358585134,
+      "median": 0.09433225256616828,
+      "max": 0.3739087435835633,
+      "scale": 1.0,
+      "pairs": 2773
+    },
+    "rpe": {
+      "rmse": 0.02852276879108359,
+      "median": 0.021843585389366836,
+      "max": 0.3364863175321362,
+      "pairs": 2753
+    },
+    "coverage": 1.0,
+    "gaps": 0,
+    "longest_gap": 0.051458120346069336,
+    "gt_duration": 141.02499985694885,
+    "est_poses": 2821,
+    "status": "ok"
+  },
+  "cuvslam_transition": {
+    "wall_s": 17.6,
+    "cpu_s": 18.2,
+    "cpu_percent": 104,
+    "peak_rss_mb": 383.7,
+    "ate": {
+      "rmse": 0.17184255691268832,
+      "mean": 0.15201135223706666,
+      "median": 0.133236324318792,
+      "max": 0.4358038358001417,
+      "scale": 1.0,
+      "pairs": 2770
+    },
+    "rpe": {
+      "rmse": 0.07964453714512332,
+      "median": 0.03997807745593186,
+      "max": 0.35733329383860946,
+      "pairs": 2750
+    },
+    "coverage": 1.0,
+    "gaps": 0,
+    "longest_gap": 0.10040092468261719,
+    "gt_duration": 141.02499985694885,
+    "est_poses": 2818,
+    "status": "ok"
+  },
   "openvins_day": {
     "wall_s": 99.8,
     "cpu_s": 128.8,

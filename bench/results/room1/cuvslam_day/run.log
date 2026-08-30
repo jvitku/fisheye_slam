@@ -1,0 +1,18 @@
+
+==========
+== CUDA ==
+==========
+
+CUDA Version 12.6.3
+
+Container image Copyright (c) 2016-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+
+This container image and its contents are governed by the NVIDIA Deep Learning Container License.
+By pulling and using the container, you accept the terms and conditions of this license:
+https://developer.nvidia.com/ngc/nvidia-deep-learning-container-license
+
+A copy of this license is made available in this container at /NGC-DL-CONTAINER-LICENSE for your convenience.
+
+cuVSLAM 17.0.0 tracker: mode=OdometryMode.Inertial, rectified=False
+tracked 2818/2821 stereo frames (28122 IMU samples) -> /out/est.tum
+BENCH_STATS wall_s=10.0 cpu_s=10.6 cpu_percent=106 maxrss_mb=384.1
