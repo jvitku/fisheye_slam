@@ -23,6 +23,7 @@ def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("map_npz"); ap.add_argument("scene", choices=list(S.SCENES))
     ap.add_argument("--gt", default=None, help="gt.tum of the flight (observability mask)")
+    ap.add_argument("--est", default=None, help="est.tum -- aligns the map (est gauge frame) to the world via SE3 Umeyama before scoring")
     ap.add_argument("--tau", type=float, default=0.10, help="completeness threshold [m]")
     ap.add_argument("--reach", type=float, default=15.0, help="observable = within this of the path")
     ap.add_argument("--out", default=None, help="write metrics json here")
@@ -30,6 +31,22 @@ def main(argv=None) -> int:
 
     m = np.load(a.map_npz)
     pts, kind = m["points"], m["kind"]
+    if a.est and a.gt and len(pts):
+        est = np.loadtxt(a.est)
+        gt = np.loadtxt(a.gt)
+        # associate by nearest timestamp, then SE3 Umeyama est->gt (no scale)
+        gi = np.searchsorted(gt[:, 0], est[:, 0])
+        gi = np.clip(gi, 0, len(gt) - 1)
+        ok = np.abs(gt[gi, 0] - est[:, 0]) < 0.05
+        A, B = est[ok, 1:4], gt[gi[ok], 1:4]
+        ca, cb = A.mean(0), B.mean(0)
+        H = (A - ca).T @ (B - cb)
+        U, _, Vt = np.linalg.svd(H)
+        Sd = np.diag([1.0, 1.0, np.sign(np.linalg.det(Vt.T @ U.T))])
+        Rw = Vt.T @ Sd @ U.T
+        tw = cb - Rw @ ca
+        pts = (Rw @ pts.T).T + tw
+        print(f"aligned map to world: |t| {np.linalg.norm(tw):.3f} m over {ok.sum()} pose pairs")
     prims = S.SCENES[a.scene][0]()
     res: dict = dict(n_points=int(len(pts)), n_dense=int((kind == 0).sum()),
                      n_landmarks=int((kind == 1).sum()))
