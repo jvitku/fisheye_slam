@@ -125,6 +125,12 @@ def forest_scene() -> list[dict]:
 # ------------------------------------------------------------- trajectories
 
 
+def _smooth01(u: float) -> float:
+    """C2 smoothstep: 0 for u<=0, 1 for u>=1, 6u^5-15u^4+10u^3 between."""
+    u = min(max(u, 0.0), 1.0)
+    return u * u * u * (u * (6.0 * u - 15.0) + 10.0)
+
+
 def _yaw_R(yaw, pitch=0.0, roll=0.0):
     cy, sy = np.cos(yaw), np.sin(yaw)
     cp, sp = np.cos(pitch), np.sin(pitch)
@@ -137,7 +143,7 @@ def _yaw_R(yaw, pitch=0.0, roll=0.0):
 
 def indoor_trajectory(t: float):
     """Scan pattern inside the room; two fast-yaw segments; 110 s."""
-    ramp = min(t / 6.0, 1.0) if t > 1.5 else 0.0           # static first 1.5 s
+    ramp = _smooth01((t - 1.5) / 6.0)                      # static first 1.5 s, C2 ramp
     x = 3.0 * np.sin(2 * np.pi * t / 40.0) * ramp
     y = 1.9 * np.sin(2 * np.pi * t / 23.0 + 1.0) * ramp
     z = 1.5 + 0.5 * np.sin(2 * np.pi * t / 17.0) * ramp
@@ -154,7 +160,7 @@ def indoor_trajectory(t: float):
 
 def forest_trajectory(t: float):
     """Elliptical loop (a=13, b=7) at ~2.2 m/s with weave and bobbing; 110 s."""
-    ramp = min(max(t - 1.5, 0.0) / 6.0, 1.0)
+    ramp = _smooth01((t - 1.5) / 6.0)
     th = 2 * np.pi * (t * ramp * 0.5 + 0.0) / 55.0          # one lap ~ 55 s after ramp
     x = 13.0 * np.sin(th)
     y = -7.0 * np.cos(th) + 7.0                              # start at origin edge

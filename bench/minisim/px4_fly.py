@@ -69,8 +69,16 @@ async def fly(scene: str, duration: float):
     async for h in drone.telemetry.health():
         if h.is_global_position_ok and h.is_home_position_ok:
             break
+    print("health ok; arming (with retries while EKF settles)", flush=True)
+    for attempt in range(30):
+        try:
+            await drone.action.arm()
+            break
+        except Exception:
+            if attempt == 29:
+                raise
+            await asyncio.sleep(2.0)
     print("armed + offboard", flush=True)
-    await drone.action.arm()
     path = PATHS[scene]
     x0, y0, z0, yaw0 = path(0.0)
     await drone.offboard.set_position_ned(PositionNedYaw(y0, x0, -z0, -yaw0 + 90.0))
@@ -143,6 +151,9 @@ def main(argv=None) -> int:
     ap.add_argument("--duration", type=float, default=110.0)
     a = ap.parse_args(argv)
     px4 = Path(a.px4)
+    subprocess.run(["pkill", "-x", "mavsdk_server"], check=False)   # stale port holders
+    subprocess.run(["pkill", "-x", "px4"], check=False)
+    time.sleep(1)
     env = dict(os.environ)
     env["PATH"] = os.path.dirname(sys.executable) + os.pathsep + env.get("PATH", "")
     env.update(PX4_SYS_AUTOSTART="10040", PX4_SIM_MODEL="sihsim_quadx", HEADLESS="1")
@@ -159,6 +170,7 @@ def main(argv=None) -> int:
             proc.wait(timeout=15)
         except subprocess.TimeoutExpired:
             os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
+        subprocess.run(["pkill", "-x", "mavsdk_server"], check=False)
     extract_ulog(px4, Path(a.out_tum))
     return 0
 

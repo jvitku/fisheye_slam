@@ -79,8 +79,13 @@ class DenseMapper:
     def cloud(self) -> tuple[np.ndarray, np.ndarray]:
         """(points, kind) with kind 0 = dense/depth voxel, 1 = landmark."""
         dense = [self._sum[u] / self._n[u] for u in self._sum if self._n[u] >= self.min_hits]
-        lms = list(self.landmarks.values())
-        pts = np.array(dense + lms) if dense or lms else np.zeros((0, 3))
+        lms = []
+        for v in self.landmarks.values():
+            a = np.asarray(v, dtype=float).reshape(-1)
+            if a.size == 3 and np.isfinite(a).all():
+                lms.append(a)
+        rows = [np.asarray(d, dtype=float).reshape(-1) for d in dense] + lms
+        pts = np.stack(rows) if rows else np.zeros((0, 3))
         kind = np.array([0] * len(dense) + [1] * len(lms), dtype=np.int8)
         return pts, kind
 
