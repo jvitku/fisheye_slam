@@ -28,3 +28,4 @@ podslam-cpp/build/
 podslam-cpp/opencv-install/
 podslam-cpp/opencv-src/
 podslam-cpp/opencv-build/
+podslam-cpp/deps-src/
