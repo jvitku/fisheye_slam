@@ -26,11 +26,13 @@ GT="${BAG%.bag}.gt.txt"
 
 OV_PARAMS="_save_total_state:=true _filepath_est:=/out/state_estimate.txt \
     _filepath_std:=/out/state_std.txt _filepath_gt:=/out/state_gt.txt"
-NCAM=$(cd "$ROOT" && uv run python -c "import sys; from bench.rigdef import load_rig; print(len(load_rig(sys.argv[1])['cameras']))" "$RIG")
+# python helpers run in the project image (host stays clean)
+PY="docker run --rm --user $(id -u):$(id -g) -e HOME=/tmp -e PYTHONPATH=$ROOT -v $ROOT:$ROOT -v $RUN:$RUN -w $ROOT ${PODSLAM_IMG:-fisheye/podslam} python3"
+NCAM=$($PY -c "import sys; from bench.rigdef import load_rig; print(len(load_rig(sys.argv[1])['cameras']))" "$RIG")
 
 case "$CAND" in
 openvins)
-    (cd "$ROOT" && uv run python -m bench.gen_openvins_config "$RIG" "$RUN/config")
+    $PY -m bench.gen_openvins_config "$RIG" "$RUN/config"
     if [ "$NCAM" -le 2 ]; then
         # 1-2 cameras: deterministic serial bag reader.
         INNER="python3 /timer_wrap.py rosrun ov_msckf ros1_serial_msckf \
@@ -54,7 +56,7 @@ openvins)
         -v "$RUN/config:/config:ro" \
         -v "$ROOT/bench/timer_wrap.py:/timer_wrap.py:ro" \
         -v "$RUN:/out" \
-        3dfe/openvins \
+        ${OPENVINS_IMG:-3dfe/openvins} \
         bash -lc "source /catkin_ws/devel/setup.bash && \
             (roscore >/dev/null 2>&1 &) && sleep 3 && $INNER; tail -40 /out/run.log"
     ;;

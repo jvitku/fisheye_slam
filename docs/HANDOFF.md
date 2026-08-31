@@ -1,6 +1,8 @@
-# podslam campaign — handoff notes (2026-08-31)
+# podslam campaign — handoff notes (2026-08-31, updated same day on the desktop)
 
 Written by the campaign agent for its future instance on a stronger machine.
+**Desktop era has begun** (i7-13700K / 62 GB / RTX 3080): see "Desktop-era status"
+at the bottom for what's already done here — the laptop-era notes below stand.
 Everything below is committed; results live in `results/minisim/*/{ate.json,map_metrics.json}`,
 history in `git log` (one commit per accepted/rejected experiment).
 
@@ -135,3 +137,34 @@ fly PX4 missions with real takeoff jerk for fair external baselines (podslam han
 - `trajs/` — PX4-flown trajectories (indoor_px4b.tum + _trim).
 - Memory (agent-side): project-minisim-px4-ops, project-dev-machine-limits,
   project-podslam-estimator-lessons, reference-gtsam-python-pitfalls, project-campaign-rules.
+
+
+## Desktop-era status (2026-08-31 evening, this machine)
+
+Done today (each a commit, all pushed):
+1. **Containerized pipeline**: one lean image `fisheye/podslam` (6.5 GB, docker/podslam,
+   pytorch cu126 base + pyproject deps). run_matrix.sh / run_render.sh fully dockerised
+   (host uv debt gone), map_eval gets `--est` (finding 3), GUARD_DOCKER_ARGS expansion
+   deferred into the guarded child (the laptop's unkillable-orphan bug — fixed).
+   Env baseline: px4b window 2.79 cm here vs 2.22 laptop (lib drift; per-machine A/B only).
+2. **Moving-platform init LANDED** (priority 3): podslam/init_dynamic.py.
+   Mid-flight PX4 window 13.38 m -> 0.101 m (auto), map 784->8.7 cm median.
+   Rotation-warp cross-cam matching (raw LK 1.2% -> warped ~90-200 pts/frame @ 37 ms).
+   `--init-mode static|auto|dynamic`; static default bit-exact (verified); auto on
+   static start 2.25 vs 2.79 cm (track warm-up helps). 8 solver unit tests.
+   Candidate: flip default to auto after full-matrix A/B.
+3. **Dynamic-scene weighting implemented, A/B pending** (priority 5): `--dyn-weight`
+   (per-landmark EMA gate, lo=3.0 from measured static tail p99=2.75) and
+   `--px-adapt-up` (one-sided global sigma, floored at rig nominal). Forest renders
+   queued on this machine; compare vs ps25 numbers.
+4. **px4-sitl container** (docker/px4-sitl, PX4 v1.15.4 SIH prebuilt). Traps hit and
+   fixed in the Dockerfile: shallow NuttX needs a local nuttx-* tag; pip needs pyyaml.
+   bench/minisim/trim_traj.py replaces the lost ad-hoc window trimming.
+5. **skydio6hd** rig (1024^2, fx 293.4) — night angular-noise attack in progress.
+
+Machine notes: disk is the scarce resource (shared box; arrived 100% full, safe docker
+prunes freed ~42 G; ~44 G free at last check, guard floor 15 G). Big levers (423 GB
+docker volumes of other projects, 133 GB Downloads) are the USER's call — asked.
+Thermal is a non-issue (guarded peaks ~61 C, temp-max 97 kept). Isaac at scale
+(priority 2) still needs the disk decision; OpenVINS baseline on px4 bags is next
+(docker/openvins build + containerised run_sim_candidate.sh ready).
