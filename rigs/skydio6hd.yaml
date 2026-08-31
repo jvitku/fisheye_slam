@@ -1,0 +1,59 @@
+# 1024^2 variant of skydio6: attacks the 10 mrad angular-noise ceiling of the
+# 512^2 night runs (px_sigma 1.5 px = 5.1 mrad at fx 293.4 vs 10.2 at 146.7).
+# Skydio-style full navigation system: TWO trinocular planes (top and bottom of
+# the drone), six 200-deg fisheye cameras total — the X10 arrangement giving
+# true 360-deg coverage to ~20 m, with NightSense-style 850 nm IR floods on
+# each plane (skydio.com/x10). Top set azimuths 0/120/240, bottom set staggered
+# 60/180/300 and tilted 40 deg below the horizontal plane. See skydio3.yaml.
+
+name: skydio6hd
+px_sigma: 1.5
+pod:
+  mount: {position: [0.0, 0.0, 0.0], rpy_deg: [0.0, 0.0, 0.0]}
+
+imu:
+  topic: /uav1/sensor_pod/imu
+  source: px4_fc
+  rate_hz: 400
+  mount: {position: [0.0, 0.0, 0.0], rpy_deg: [0.0, 0.0, 0.0]}
+  gyro_noise_density: 1.0e-4
+  gyro_random_walk: 1.0e-5
+  accel_noise_density: 1.0e-3
+  accel_random_walk: 1.0e-4
+
+illuminators:
+  - type: ir_850nm
+    mount: {position: [0.0, 0.0, 0.04], rpy_deg: [0.0, -90.0, 0.0]}   # top, beam up
+    cone_half_angle_deg: 100
+    intensity: 30000
+  - type: ir_850nm
+    mount: {position: [0.0, 0.0, -0.04], rpy_deg: [0.0, 90.0, 0.0]}   # bottom, beam down
+    cone_half_angle_deg: 100
+    intensity: 30000
+
+camera_defaults: &cam
+  model: kb4
+  resolution: [1024, 1024]
+  rate_hz: 20
+  fov_deg: 200.0
+  intrinsics: {fx: 293.4, fy: 293.4, cx: 512.0, cy: 512.0, k1: 0.0, k2: 0.0, k3: 0.0, k4: 0.0}
+
+cameras:
+  - <<: *cam
+    name: cam0                 # top forward
+    mount: {position: [0.07, 0.0, 0.03], rpy_deg: [0.0, -50.0, 0.0]}
+  - <<: *cam
+    name: cam1                 # top left-rear
+    mount: {position: [-0.035, 0.0606, 0.03], rpy_deg: [0.0, -50.0, 120.0]}
+  - <<: *cam
+    name: cam2                 # top right-rear
+    mount: {position: [-0.035, -0.0606, 0.03], rpy_deg: [0.0, -50.0, 240.0]}
+  - <<: *cam
+    name: cam3                 # bottom right-forward
+    mount: {position: [0.035, -0.0606, -0.03], rpy_deg: [0.0, 50.0, -60.0]}
+  - <<: *cam
+    name: cam4                 # bottom rear
+    mount: {position: [-0.07, 0.0, -0.03], rpy_deg: [0.0, 50.0, 180.0]}
+  - <<: *cam
+    name: cam5                 # bottom left-forward
+    mount: {position: [0.035, 0.0606, -0.03], rpy_deg: [0.0, 50.0, 60.0]}

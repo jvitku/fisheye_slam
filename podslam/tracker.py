@@ -45,6 +45,9 @@ class TrackerConfig:
     depth_feedback: bool = False          # estimator landmark depths as stereo guesses: no gain on Hilti, hurts TUM-VI
     px_sigma_adapt: bool = False          # residual-driven sigma converges to 0.5-0.9 px (residuals at the
                                           # converged solution do not see calibration/distortion errors): off
+    dyn_weight: bool = False              # smart backend: per-landmark temporal-consistency down-weighting
+                                          # (wind sway); replaces the global px_sigma 2.5 stopgap when on
+    px_adapt_up: bool = False             # smart backend: one-sided global sigma adaptation (>= rig nominal)
     kf_min_track_ratio: float = 0.6       # ...or earlier when tracks fall below this share
     lag_s: float = 4.0
     px_sigma: float = 1.5
@@ -186,7 +189,7 @@ class Tracker:
         if self.cfg.backend == "smart":
             self.backend = SmartBackend(self.rig, lag_s=self.cfg.lag_s, px_sigma=self.cfg.px_sigma, marg_mode=self.cfg.marg_mode, epi=self.cfg.smart_epi,
                                         max_window_kf=self.cfg.max_window_kf, max_obs_angle_deg=self.cfg.max_obs_angle_deg,
-                                        px_sigma_adapt=self.cfg.px_sigma_adapt, verbose=self.cfg.verbose)
+                                        px_sigma_adapt=self.cfg.px_sigma_adapt, px_adapt_up=self.cfg.px_adapt_up, dyn_weight=self.cfg.dyn_weight, verbose=self.cfg.verbose)
         else:
             self.backend = Backend(self.rig, lag_s=self.cfg.lag_s, px_sigma=self.cfg.px_sigma, verbose=self.cfg.verbose)
         self.k = 0

@@ -33,7 +33,8 @@ class SmartBackend:
     def __init__(self, rig, lag_s=3.0, px_sigma=1.5, huber_k=1.345, max_iters=6,
                  outlier_thr_sigma=0.0, max_landmark_dist=40.0, abs_err_tol=1e-2, marg_mode="all",
                  chi2_gate=5.0, min_obs_prior=4, epi=False, max_window_kf=32, max_obs_angle_deg=80.0,
-                 px_sigma_adapt=True, verbose=False):
+                 px_sigma_adapt=True, px_adapt_up=False, dyn_weight=False, dyn_weight_lo=3.0, dyn_weight_max=3.0,
+                 dyn_weight_alpha=0.3, verbose=False):
         import gtsam
         from gtsam.symbol_shorthand import B, V, X
         self.gtsam = gtsam
@@ -58,7 +59,13 @@ class SmartBackend:
         # median 0.69) and sigma is nudged so the residual statistics match.  The right
         # sigma is rig- and condition-specific (TUM-VI 512x512 ~1.5 px; Hilti 720x540 KLT
         # under fisheye distortion ~3 px: 14.9 -> 8.9 cm when set by hand).
-        self.px_sigma_adapt = bool(px_sigma_adapt)
+        # px_adapt_up: one-sided variant — sigma may only rise above the rig's nominal
+        # (coherent scene motion inflates residuals -> global down-weight toward the
+        # measured px_sigma-2.5 sway optimum) and returns to the floor on static
+        # scenes, where two-sided adaptation collapsed to 0.5-0.9 px and was rejected.
+        self.px_adapt_up = bool(px_adapt_up)
+        self.px_sigma_adapt = bool(px_sigma_adapt) or self.px_adapt_up
+        self.px_sigma0 = float(px_sigma)
         self.px_sigma = float(px_sigma)
         self.inv_f = sig / float(px_sigma)
         p = gtsam.SmartProjectionParams()
@@ -92,6 +99,22 @@ class SmartBackend:
         # the marginal prior if it passes the gate and has >= min_obs_prior measurements.
         self.chi2_gate = float(chi2_gate)
         self.min_obs_prior = int(min_obs_prior)
+        # Temporal-consistency down-weighting for non-stationary landmarks (wind sway):
+        # coherent scene motion of 1.5-3 sigma amplitude passes the chi2 gate per solve
+        # but keeps a landmark's per-measurement error PERSISTENTLY elevated across
+        # solves (static landmarks stay near 1).  Track an EMA of that error per
+        # landmark; above dyn_weight_lo the landmark's factor noise is inflated by
+        # sqrt(EMA) (<= dyn_weight_max) — a per-landmark version of the global
+        # px_sigma 2.5 stopgap that leaves static structure at full weight.
+        self.dyn_weight = bool(dyn_weight)
+        self.dyn_weight_lo = float(dyn_weight_lo)
+        self.dyn_weight_max = float(dyn_weight_max)
+        self.dyn_weight_alpha = float(dyn_weight_alpha)
+        self.lm_ema = {}               # landmark id -> EMA of raw per-measurement error
+        self.lm_nup = {}               # landmark id -> EMA update count (inflation needs persistence)
+        self.lm_w = {}                 # landmark id -> current noise inflation (>= 1)
+        self.dyn_weight_min_n = 3      # solves of evidence before any inflation applies
+        self.n_downweighted = 0
         self.n_outliers = 0; self.n_prior_absorbed = 0; self.n_prior_rejected = 0
         self.outlier_thr = float(outlier_thr_sigma) * sig if outlier_thr_sigma > 0 else 0.0
         self.params = p
@@ -153,6 +176,7 @@ class SmartBackend:
         self.lm_point[j] = np.asarray(point_w, float) if point_w is not None else None
     def drop_pending_landmark(self, j):
         self.lm_meas.pop(j, None); self.landmark_t.pop(j, None); self.landmark_obs.pop(j, None); self.lm_point.pop(j, None)
+        self.lm_ema.pop(j, None); self.lm_w.pop(j, None); self.lm_nup.pop(j, None)
     def retire_landmark(self, j):
         self.drop_pending_landmark(j); self.n_retired += 1
 
@@ -173,9 +197,10 @@ class SmartBackend:
         cutoff = t - self.lag_s
         return sorted(k for k, tk in self.kf_t.items() if tk >= cutoff)
 
-    def _smart_factor(self, meas):
+    def _smart_factor(self, meas, w=1.0):
         g = self.gtsam
-        f = g.SmartProjectionRigFactorPinholePoseCal3_S2(self.noise, self.cam_set, self.params)
+        noise = self.noise if w == 1.0 else g.noiseModel.Isotropic.Sigma(2, self.px_sigma * self.inv_f * w)
+        f = g.SmartProjectionRigFactorPinholePoseCal3_S2(noise, self.cam_set, self.params)
         for kk, c, m in meas:
             f.add(m, self.X(kk), int(c))
         return f
@@ -228,7 +253,7 @@ class SmartBackend:
                 continue
             inside = [(kk, c, m) for kk, c, m in meas if kk in gset or kk in wset]
             if len(inside) >= max(2, self.min_obs_prior):
-                f = self._smart_factor(inside)
+                f = self._smart_factor(inside, self.lm_w.get(j, 1.0) if self.dyn_weight else 1.0)
                 try:
                     if f.error(values) / len(inside) <= self.chi2_gate:
                         lin = f.linearize(values)
@@ -280,7 +305,7 @@ class SmartBackend:
             inwin = [(kk, c, b) for kk, c, b in meas if kk in kset]
             if len(inwin) < 2:
                 continue
-            f = self._smart_factor(inwin)
+            f = self._smart_factor(inwin, self.lm_w.get(j, 1.0) if self.dyn_weight else 1.0)
             graph.add(f); factors[j] = f
         self.n_active_lm = len(factors)
         params = g.LevenbergMarquardtParams()
@@ -314,7 +339,18 @@ class SmartBackend:
             outliers = []
             for j, f in factors.items():
                 try:
-                    if f.error(result) / max(1, len(f.measured())) > self.chi2_gate:
+                    e_w = f.error(result) / max(1, len(f.measured()))
+                    if self.dyn_weight:
+                        w = self.lm_w.get(j, 1.0)
+                        e_raw = e_w * w * w              # error in base-noise units (undo the inflation)
+                        ema = self.lm_ema.get(j)
+                        ema = e_raw if ema is None else (1 - self.dyn_weight_alpha) * ema + self.dyn_weight_alpha * e_raw
+                        self.lm_ema[j] = ema
+                        n_up = self.lm_nup.get(j, 0) + 1
+                        self.lm_nup[j] = n_up
+                        if n_up >= self.dyn_weight_min_n:
+                            self.lm_w[j] = 1.0 if ema <= self.dyn_weight_lo else min(float(np.sqrt(ema)), self.dyn_weight_max)
+                    if e_w > self.chi2_gate:
                         outliers.append(j); continue
                     if f.isValid():
                         self.n_valid_lm += 1
@@ -328,6 +364,13 @@ class SmartBackend:
             for j in outliers:
                 self.drop_pending_landmark(j)
             self.n_outliers += len(outliers)
+            if self.dyn_weight:
+                self.n_downweighted = sum(1 for w in self.lm_w.values() if w > 1.0)
+                if self.verbose and k % 40 == 0 and self.lm_ema:
+                    v = np.array([self.lm_ema[j] for j in self.lm_ema if self.lm_nup.get(j, 0) >= self.dyn_weight_min_n])
+                    if len(v):
+                        print(f"[dw] kf {k}: ema n={len(v)} p50={np.percentile(v,50):.2f} p90={np.percentile(v,90):.2f} "
+                              f"p97={np.percentile(v,97):.2f} p99={np.percentile(v,99):.2f} downweighted={self.n_downweighted}")
             if self.px_sigma_adapt and len(factors) >= 20:
                 errs = []
                 for j, f in factors.items():
@@ -343,7 +386,8 @@ class SmartBackend:
                         pass
                 if len(errs) >= 20:
                     ratio = float(np.median(errs)) / 0.93           # chi2_k/k median for k ~ 9-40 dof
-                    target = float(np.clip(self.px_sigma * np.sqrt(ratio), 0.5, 6.0))
+                    lo = self.px_sigma0 if self.px_adapt_up else 0.5
+                    target = float(np.clip(self.px_sigma * np.sqrt(ratio), lo, 6.0))
                     self.px_sigma = 0.9 * self.px_sigma + 0.1 * target        # slow, stable
                     self.noise = g.noiseModel.Isotropic.Sigma(2, self.px_sigma * self.inv_f)
         else:
