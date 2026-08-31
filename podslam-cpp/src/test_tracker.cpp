@@ -112,6 +112,8 @@ struct Tracker {
     int max_landmarks_per_kf = 120;
 
     KltFrontend fe;
+    MultiKltFrontend mfe;
+    bool per_cam = false;              // multiklt: disjoint per-camera id spaces
     Window* win = nullptr;
     std::vector<std::array<double, 20>> rig_rows;
     double px_sigma = 1.5;
@@ -166,10 +168,14 @@ struct Tracker {
         }
     }
 
+    size_t n_cams() const { return per_cam ? mfe.subs.size() : fe.cams.size(); }
+    const Kb4& cam_of(size_t c) const { return per_cam ? mfe.subs[c].cams[0] : fe.cams[c]; }
+    const Mat4& T_of(size_t c) const { return per_cam ? mfe.subs[c].T_imu_cam[0] : fe.T_imu_cam[c]; }
+
     bool in_front(const std::array<double, 3>& p_w, const gtsam::Pose3& T_W_I) const {
         const gtsam::Point3 p_i = T_W_I.transformTo(gtsam::Point3(p_w[0], p_w[1], p_w[2]));
-        for (size_t c = 0; c < fe.cams.size(); ++c) {
-            const auto& T = fe.T_imu_cam[c];
+        for (size_t c = 0; c < n_cams(); ++c) {
+            const auto& T = T_of(c);
             const double q[3] = {p_i.x() - T.m[0][3], p_i.y() - T.m[1][3], p_i.z() - T.m[2][3]};
             const double z = T.m[0][2] * q[0] + T.m[1][2] * q[1] + T.m[2][2] * q[2];
             if (z > 0.15) return true;
@@ -177,53 +183,63 @@ struct Tracker {
         return false;
     }
 
+    // tracker.py _add_landmarks_and_factors (generalized over every camera's
+    // native tracks with a seen-set; stereo-centric rigs — shared ids — behave
+    // bit-identically to the old cam0-only loop, per-camera rigs contribute
+    // every camera's tracks as mono smart landmarks)
     void add_landmarks(int kk, double t, const std::vector<CamOut>& cams,
                        const std::vector<std::vector<cv::Vec3d>>& bearings,
                        const gtsam::Pose3& T_W_I) {
         std::vector<std::map<int64_t, size_t>> by_cam(cams.size());
-        for (size_t c = 1; c < cams.size(); ++c)
+        for (size_t c = 0; c < cams.size(); ++c)
             for (size_t i = 0; i < cams[c].ids.size(); ++i) by_cam[c][cams[c].ids[i]] = i;
         int n_new = 0;
-        for (size_t n = 0; n < cams[0].ids.size(); ++n) {
-            const int64_t tid = cams[0].ids[n];
-            long j = -1;
-            auto it = track_to_lm.find(tid);
-            if (it != track_to_lm.end()) {
-                j = it->second;
-                const auto lt = win->landmark_t.find(j);
-                const bool alive = lt != win->landmark_t.end() && (t - lt->second) < win->lag_s;
-                if (!alive) { track_to_lm.erase(it); j = -1; }
-            }
-            const cv::Vec3d& b0 = bearings[0][n];
-            if (j < 0) {
-                if (n_new >= max_landmarks_per_kf * 3 || !win->can_observe(b0[0], b0[1], b0[2])) continue;
-                j = next_lm++;
-                track_to_lm[tid] = j;
-                ++n_new;
-                win->add_observation({kk, 0, j, b0[0] / b0[2], b0[1] / b0[2]}, t);
-                for (size_t c = 1; c < cams.size(); ++c) {
+        std::set<int64_t> seen;
+        for (size_t c0 = 0; c0 < cams.size(); ++c0) {
+            for (size_t n = 0; n < cams[c0].ids.size(); ++n) {
+                const int64_t tid = cams[c0].ids[n];
+                if (!seen.insert(tid).second) continue;
+                long j = -1;
+                auto it = track_to_lm.find(tid);
+                if (it != track_to_lm.end()) {
+                    j = it->second;
+                    const auto lt = win->landmark_t.find(j);
+                    const bool alive = lt != win->landmark_t.end() && (t - lt->second) < win->lag_s;
+                    if (!alive) { track_to_lm.erase(it); j = -1; }
+                }
+                const cv::Vec3d& b0 = bearings[c0][n];
+                if (j < 0) {
+                    if (n_new >= max_landmarks_per_kf * 3 || !win->can_observe(b0[0], b0[1], b0[2])) continue;
+                    j = next_lm++;
+                    track_to_lm[tid] = j;
+                    ++n_new;
+                    win->add_observation({kk, int(c0), j, b0[0] / b0[2], b0[1] / b0[2]}, t);
+                    for (size_t c = 0; c < cams.size(); ++c) {
+                        if (c == c0) continue;
+                        auto f = by_cam[c].find(tid);
+                        if (f == by_cam[c].end()) continue;
+                        const cv::Vec3d& bc = bearings[c][f->second];
+                        if (win->can_observe(bc[0], bc[1], bc[2]))
+                            win->add_observation({kk, int(c), j, bc[0] / bc[2], bc[1] / bc[2]}, t);
+                    }
+                    continue;
+                }
+                const auto pit = win->lm_point.find(j);
+                if (pit != win->lm_point.end() && !in_front(pit->second, T_W_I)) {
+                    track_to_lm.erase(tid);
+                    win->lm_meas.erase(j); win->landmark_t.erase(j); win->lm_point.erase(j);
+                    continue;
+                }
+                if (win->can_observe(b0[0], b0[1], b0[2]))
+                    win->add_observation({kk, int(c0), j, b0[0] / b0[2], b0[1] / b0[2]}, t);
+                for (size_t c = 0; c < cams.size(); ++c) {
+                    if (c == c0) continue;
                     auto f = by_cam[c].find(tid);
                     if (f == by_cam[c].end()) continue;
                     const cv::Vec3d& bc = bearings[c][f->second];
                     if (win->can_observe(bc[0], bc[1], bc[2]))
                         win->add_observation({kk, int(c), j, bc[0] / bc[2], bc[1] / bc[2]}, t);
                 }
-                continue;
-            }
-            const auto pit = win->lm_point.find(j);
-            if (pit != win->lm_point.end() && !in_front(pit->second, T_W_I)) {
-                track_to_lm.erase(tid);
-                win->lm_meas.erase(j); win->landmark_t.erase(j); win->lm_point.erase(j);
-                continue;
-            }
-            if (win->can_observe(b0[0], b0[1], b0[2]))
-                win->add_observation({kk, 0, j, b0[0] / b0[2], b0[1] / b0[2]}, t);
-            for (size_t c = 1; c < cams.size(); ++c) {
-                auto f = by_cam[c].find(tid);
-                if (f == by_cam[c].end()) continue;
-                const cv::Vec3d& bc = bearings[c][f->second];
-                if (win->can_observe(bc[0], bc[1], bc[2]))
-                    win->add_observation({kk, int(c), j, bc[0] / bc[2], bc[1] / bc[2]}, t);
             }
         }
     }
@@ -245,11 +261,12 @@ struct Tracker {
             pim = std::make_unique<gtsam::PreintegratedCombinedMeasurements>(pp, bias);
             pim_t_last = t;
             int n_new = 0;
-            auto outs = fe.process(imgs[0], imgs, nullptr, n_new);
+            auto outs = per_cam ? mfe.process(imgs, nullptr, n_new)
+                                : fe.process(imgs[0], imgs, nullptr, n_new);
             std::vector<std::vector<cv::Vec3d>> bs(outs.size());
             for (size_t c = 0; c < outs.size(); ++c) {
                 std::vector<bool> v;
-                bs[c] = fe.bearings(fe.cams[c], outs[c].px, v);
+                bs[c] = fe.bearings(cam_of(c), outs[c].px, v);
             }
             add_landmarks(0, t, outs, bs, T);
             win->optimize(0, t);
@@ -257,7 +274,9 @@ struct Tracker {
             kf_navstate = gtsam::NavState(ps, vs);
             t_prev_frame = t;
             frames_since_kf = 0;
-            n_tracks_at_kf = int(outs[0].ids.size());
+            n_tracks_at_kf = 0;
+            for (size_t c = 0; c < outs.size(); ++c) n_tracks_at_kf += int(outs[c].ids.size());
+            if (!per_cam) n_tracks_at_kf = int(outs[0].ids.size());
             initialized = true;
             pose_out = ps;
             is_kf_out = true;
@@ -265,12 +284,14 @@ struct Tracker {
         }
         const cv::Matx33d dR = delta_rotation(imu, t_prev_frame, t, gyro_bias);
         int n_new = 0;
-        auto outs = fe.process(imgs[0], imgs, &dR, n_new);
+        auto outs = per_cam ? mfe.process(imgs, &dR, n_new)
+                            : fe.process(imgs[0], imgs, &dR, n_new);
         t_prev_frame = t;
         ++frames_since_kf;
         integrate_until(t);
         const gtsam::NavState predicted = pim->predict(kf_navstate, bias);
-        const int n0 = int(outs[0].ids.size());
+        int n0 = int(outs[0].ids.size());
+        if (per_cam) { n0 = 0; for (size_t c = 0; c < outs.size(); ++c) n0 += int(outs[c].ids.size()); }
         bool is_kf = frames_since_kf >= kf_every || n0 < kf_min_track_ratio * std::max(n_tracks_at_kf, 1);
         if (!is_kf) { pose_out = predicted.pose(); return true; }
         // _keyframe
@@ -279,7 +300,7 @@ struct Tracker {
         std::vector<std::vector<cv::Vec3d>> bs(outs.size());
         for (size_t c = 0; c < outs.size(); ++c) {
             std::vector<bool> v;
-            bs[c] = fe.bearings(fe.cams[c], outs[c].px, v);
+            bs[c] = fe.bearings(cam_of(c), outs[c].px, v);
         }
         add_landmarks(k, t, outs, bs, predicted.pose());
         win->optimize(k, t);
@@ -303,11 +324,13 @@ int main(int argc, char** argv) {
     const char* dir = argc > 1 ? argv[1] : "/tmp/frontend_golden";
     const char* rig = argc > 2 ? argv[2] : "podslam-cpp/tests/data/backend_golden.txt";
     const int kf_every_arg = argc > 3 ? std::atoi(argv[3]) : 0;
+    const bool multiklt = argc > 4 && std::string(argv[4]) == "multiklt";
 
     Tracker tr;
     if (!load_rig_lines(rig, tr.fe.cams, tr.fe.T_imu_cam)) { std::printf("no rig\n"); return 1; }
     tr.rig_rows.clear();
-    {   // reload R + N lines for the window/imu parameters
+    std::vector<double> fovs;
+    {   // reload R + N (+ optional F fov) lines for the window/imu parameters
         std::ifstream in(rig);
         std::string line;
         while (std::getline(in, line)) {
@@ -321,7 +344,21 @@ int main(int argc, char** argv) {
                 tr.noise_scale = {v[5], v[6], v[7], v[8]};
                 tr.px_sigma = v[9];
             }
+            else if (tag == "F") { double v; while (ss >> v) fovs.push_back(v); }
         }
+    }
+    if (multiklt) {
+        // image dims from the first frames.bin record (needed for the circle masks)
+        std::ifstream peek(std::string(dir) + "/frames.bin", std::ios::binary);
+        int64_t tns0; int32_t nc0, h0, w0;
+        if (!(peek.read(reinterpret_cast<char*>(&tns0), 8) &&
+              peek.read(reinterpret_cast<char*>(&nc0), 4) &&
+              peek.read(reinterpret_cast<char*>(&h0), 4) &&
+              peek.read(reinterpret_cast<char*>(&w0), 4))) { std::printf("no frames.bin\n"); return 1; }
+        tr.mfe.init(tr.fe.cams, tr.fe.T_imu_cam, fovs, w0, h0);
+        tr.per_cam = true;
+        std::printf("multiklt: %zu per-camera trackers, %zu circle masks\n",
+                    tr.mfe.subs.size(), fovs.size());
     }
     if (kf_every_arg > 0) tr.kf_every = kf_every_arg;
     tr.setup();

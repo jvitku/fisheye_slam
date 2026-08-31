@@ -3,4 +3,4 @@
 FROM ubuntu:22.04
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update -qq && apt-get install -y -qq --no-install-recommends \
-    g++ make cmake libboost-all-dev libtbb-dev libeigen3-dev libopencv-dev && rm -rf /var/lib/apt/lists/*
+    g++ make cmake git ca-certificates wget libboost-all-dev libtbb-dev libeigen3-dev libopencv-dev && rm -rf /var/lib/apt/lists/*

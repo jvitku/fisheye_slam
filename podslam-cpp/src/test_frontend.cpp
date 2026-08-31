@@ -48,6 +48,7 @@ struct KltFrontend {
     cv::TermCriteria crit{cv::TermCriteria::EPS + cv::TermCriteria::COUNT, 30, 0.01};
 
     cv::Mat prev_img;
+    cv::Mat mask;                      // static mask (255 = valid), e.g. the f-theta image circle
     std::vector<cv::Point2f> prev_px;
     std::vector<cv::Vec3d> prev_b;
     std::vector<int64_t> ids;
@@ -83,7 +84,7 @@ struct KltFrontend {
 
     std::vector<cv::Point2f> detect(const cv::Mat& img, int n_new) {
         if (n_new <= 0) return {};
-        cv::Mat m(img.size(), CV_8U, cv::Scalar(255));
+        cv::Mat m = mask.empty() ? cv::Mat(img.size(), CV_8U, cv::Scalar(255)) : mask.clone();
         for (const auto& p : prev_px)
             cv::circle(m, cv::Point(int(p.x), int(p.y)), min_distance, cv::Scalar(0), -1);
         double q = quality;
@@ -91,9 +92,20 @@ struct KltFrontend {
             cv::Mat resp;
             cv::cornerMinEigenVal(img, resp, 5);
             // mirror klt.py: with no STATIC mask the median runs over the full response
-            // map (the circle mask is not applied to the median), and np.median averages
-            // the two middle elements for even counts
-            std::vector<float> vals(resp.begin<float>(), resp.end<float>());
+            // map; WITH one it runs over the combined mask m > 0 (min-distance circles
+            // included). np.median averages the two middle elements for even counts.
+            std::vector<float> vals;
+            if (mask.empty()) {
+                vals.assign(resp.begin<float>(), resp.end<float>());
+            } else {
+                vals.reserve(size_t(resp.total()));
+                for (int r = 0; r < resp.rows; ++r) {
+                    const float* rp = resp.ptr<float>(r);
+                    const uint8_t* mp = m.ptr<uint8_t>(r);
+                    for (int c = 0; c < resp.cols; ++c)
+                        if (mp[c] > 0) vals.push_back(rp[c]);
+                }
+            }
             double rmax; cv::minMaxLoc(resp, nullptr, &rmax);
             if (!vals.empty() && rmax > 0) {
                 const size_t h2 = vals.size() / 2;
@@ -118,8 +130,14 @@ struct KltFrontend {
 
     std::vector<bool> inside(const std::vector<cv::Point2f>& px, const cv::Size& sz) const {
         std::vector<bool> ok(px.size());
-        for (size_t i = 0; i < px.size(); ++i)
+        for (size_t i = 0; i < px.size(); ++i) {
             ok[i] = px[i].x >= 1 && px[i].x < sz.width - 1 && px[i].y >= 1 && px[i].y < sz.height - 1;
+            if (ok[i] && !mask.empty()) {
+                const int xi = std::min(std::max(int(px[i].x), 0), sz.width - 1);
+                const int yi = std::min(std::max(int(px[i].y), 0), sz.height - 1);
+                ok[i] = mask.at<uint8_t>(yi, xi) > 0;
+            }
+        }
         return ok;
     }
 
@@ -275,6 +293,55 @@ struct KltFrontend {
         for (auto it = depth.begin(); it != depth.end();)
             it = live.count(it->first) ? std::next(it) : depth.erase(it);
         return cams_out;
+    }
+};
+
+// f-theta image circle (rig.py Camera.circle_mask): 255 inside fx*fov/2*shrink
+static cv::Mat circle_mask(const Kb4& cam, int w, int h, double fov_deg, double shrink = 0.97) {
+    cv::Mat m(h, w, CV_8U, cv::Scalar(0));
+    const double r = cam.fx * fov_deg / 2.0 * M_PI / 180.0 * shrink;
+    const double r2 = r * r;
+    for (int y = 0; y < h; ++y) {
+        uint8_t* mp = m.ptr<uint8_t>(y);
+        const double dy = y + 0.5 - cam.cy;
+        for (int x = 0; x < w; ++x) {
+            const double dx = x + 0.5 - cam.cx;
+            if (dx * dx + dy * dy <= r2) mp[x] = 255;
+        }
+    }
+    return m;
+}
+
+// multiklt.py: one independent single-camera KLT per camera, disjoint id spaces
+// (stride 1e8), shared IMU rotation prediction; each sub predicts through its
+// own extrinsics (its cams[0]/T_imu_cam[0]) and never enters the stereo path.
+struct MultiKltFrontend {
+    static constexpr int64_t ID_STRIDE = 100000000;
+    std::vector<KltFrontend> subs;
+
+    void init(const std::vector<Kb4>& cams, const std::vector<Mat4>& Ts,
+              const std::vector<double>& fov_deg, int img_w, int img_h) {
+        subs.assign(cams.size(), KltFrontend{});
+        for (size_t i = 0; i < cams.size(); ++i) {
+            subs[i].cams = {cams[i]};
+            subs[i].T_imu_cam = {Ts[i]};
+            subs[i].next_id = int64_t(i) * ID_STRIDE;
+            if (i < fov_deg.size() && fov_deg[i] > 0)
+                subs[i].mask = circle_mask(cams[i], img_w, img_h, fov_deg[i]);
+        }
+    }
+
+    std::vector<CamOut> process(const std::vector<cv::Mat>& imgs, const cv::Matx33d* dR_imu, int& n_new) {
+        n_new = 0;
+        std::vector<CamOut> outs;
+        outs.reserve(subs.size());
+        for (size_t i = 0; i < subs.size(); ++i) {
+            int nn = 0;
+            auto o = subs[i].process(imgs[i], {imgs[i]}, dR_imu, nn);
+            outs.push_back(std::move(o[0]));
+            n_new += nn;
+        }
+        return outs;
     }
 };
 
