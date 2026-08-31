@@ -128,7 +128,7 @@ class Tracker:
         self.frames_since_kf += 1
         self.pim.integrate_until(self.imu, t)
         predicted = self.pim.predict(self.kf_navstate)
-        n0 = len(feats.cams[0])
+        n0 = sum(len(c) for c in feats.cams) if getattr(self.frontend, "per_cam", False) else len(feats.cams[0])
         is_kf = (self.frames_since_kf >= self.cfg.kf_every) or (n0 < self.cfg.kf_min_track_ratio * max(self.n_tracks_at_kf, 1))
         if not is_kf and self.frames_since_kf >= self.cfg.kf_min_every:
             rot = np.degrees(np.linalg.norm(self.pim.delta_rotvec()))
@@ -171,8 +171,12 @@ class Tracker:
         self.kf_navstate = gtsam.NavState(gtsam.Pose3(T_est), v)
         self.t_prev_frame = t
         self.frames_since_kf = 0
-        self.n_tracks_at_kf = len(feats.cams[0])
-        self.px_at_kf = {int(i): p for i, p in zip(feats.cams[0].ids, feats.cams[0].px)}
+        if getattr(self.frontend, "per_cam", False):
+            self.n_tracks_at_kf = sum(len(c) for c in feats.cams)
+            self.px_at_kf = {int(i): p for c in feats.cams for i, p in zip(c.ids, c.px)}
+        else:
+            self.n_tracks_at_kf = len(feats.cams[0])
+            self.px_at_kf = {int(i): p for i, p in zip(feats.cams[0].ids, feats.cams[0].px)}
         self.initialized = True
 
     def _feed_depths(self, feats, T_W_I):
@@ -219,62 +223,73 @@ class Tracker:
         self.kf_navstate = gtsam.NavState(gtsam.Pose3(T_est), v)
         self.pim.reset(b, t)
         self.frames_since_kf = 0
-        self.n_tracks_at_kf = len(feats.cams[0])
-        self.px_at_kf = {int(i): p for i, p in zip(feats.cams[0].ids, feats.cams[0].px)}
+        if getattr(self.frontend, "per_cam", False):
+            self.n_tracks_at_kf = sum(len(c) for c in feats.cams)
+            self.px_at_kf = {int(i): p for c in feats.cams for i, p in zip(c.ids, c.px)}
+        else:
+            self.n_tracks_at_kf = len(feats.cams[0])
+            self.px_at_kf = {int(i): p for i, p in zip(feats.cams[0].ids, feats.cams[0].px)}
 
     def _add_landmarks_and_factors(self, k, t, feats, T_W_I):
-        """Existing landmarks: add projection factors. New tracks with a stereo
-        match: triangulate (in the current pose), create the landmark, add
-        factors from every camera that sees it."""
+        """Existing landmarks: add projection factors. New tracks: create the
+        landmark and add factors from every camera that sees the track id.
+        Iterates every camera's native tracks; with the stereo-centric front-end
+        (shared ids) the seen-set makes this identical to the old cam0-only loop."""
         be = self.backend
-        cam0 = feats.cams[0]
         by_cam = [{int(i): n for n, i in enumerate(c.ids)} for c in feats.cams]
         n_new = 0
-        for n, tid in enumerate(cam0.ids):
-            tid = int(tid)
-            j = self.track_to_lm.get(tid)
-            if j is not None and not be.landmark_alive(j, t):
-                self.track_to_lm.pop(tid, None); j = None
-            if j is None:
-                pair = next(((c, by_cam[c][tid]) for c in range(1, len(feats.cams)) if tid in by_cam[c]), None)
-                if self.cfg.backend == "smart" and self.cfg.mono_landmarks:
-                    # smart factors triangulate themselves: any track is a landmark
-                    if n_new >= self.cfg.max_landmarks_per_kf * 3 or not be.can_observe(cam0.bearings[n]):
+        seen: set[int] = set()
+        for c0 in range(len(feats.cams)):
+            cam0 = feats.cams[c0]
+            others = [c for c in range(len(feats.cams)) if c != c0]
+            for n, tid in enumerate(cam0.ids):
+                tid = int(tid)
+                if tid in seen:
+                    continue
+                seen.add(tid)
+                j = self.track_to_lm.get(tid)
+                if j is not None and not be.landmark_alive(j, t):
+                    self.track_to_lm.pop(tid, None); j = None
+                if j is None:
+                    pair = next(((c, by_cam[c][tid]) for c in others if tid in by_cam[c]), None)
+                    if self.cfg.backend == "smart" and self.cfg.mono_landmarks:
+                        # smart factors triangulate themselves: any track is a landmark
+                        if n_new >= self.cfg.max_landmarks_per_kf * 3 or not be.can_observe(cam0.bearings[n]):
+                            continue
+                        j = self.next_lm; self.next_lm += 1
+                        be.add_landmark(j, None, t); self.track_to_lm[tid] = j; n_new += 1
+                        be.add_observation(k, c0, j, cam0.bearings[n], t)
+                        for c in others:
+                            if tid in by_cam[c]:
+                                be.add_observation(k, c, j, feats.cams[c].bearings[by_cam[c][tid]], t)
                         continue
+                    # explicit backend: new landmark only if stereo-observed now (metric depth)
+                    if pair is None or n_new >= self.cfg.max_landmarks_per_kf:
+                        continue
+                    c, m = pair
+                    b0, bc = cam0.bearings[n], feats.cams[c].bearings[m]
+                    if not (be.can_observe(b0) and be.can_observe(bc)):   # both rays must become factors
+                        continue
+                    p_imu, _ = stereo_verify(self.rig, c0, c, b0, bc, cam0.px[n], feats.cams[c].px[m], max_px=3.0)
+                    if p_imu is None:
+                        continue
+                    p_w = T_W_I[:3, :3] @ p_imu + T_W_I[:3, 3]
                     j = self.next_lm; self.next_lm += 1
-                    be.add_landmark(j, None, t); self.track_to_lm[tid] = j; n_new += 1
-                    be.add_observation(k, 0, j, cam0.bearings[n], t)
-                    for c in range(1, len(feats.cams)):
-                        if tid in by_cam[c]:
-                            be.add_observation(k, c, j, feats.cams[c].bearings[by_cam[c][tid]], t)
+                    be.add_landmark(j, p_w, t)
+                    self.track_to_lm[tid] = j
+                    n_new += 1
+                    be.add_observation(k, c0, j, b0, t)
+                    be.add_observation(k, c, j, bc, t)
                     continue
-                # explicit backend: new landmark only if stereo-observed now (metric depth)
-                if pair is None or n_new >= self.cfg.max_landmarks_per_kf:
+                p_w = be.landmark(j)
+                if p_w is not None and not self._in_front(p_w, T_W_I):
+                    # the optimiser pushed it behind us (usually a wrong stereo match): retire it
+                    self.track_to_lm.pop(tid, None); be.retire_landmark(j)
                     continue
-                c, m = pair
-                b0, bc = cam0.bearings[n], feats.cams[c].bearings[m]
-                if not (be.can_observe(b0) and be.can_observe(bc)):   # both rays must become factors
-                    continue
-                p_imu, _ = stereo_verify(self.rig, 0, c, b0, bc, cam0.px[n], feats.cams[c].px[m], max_px=3.0)
-                if p_imu is None:
-                    continue
-                p_w = T_W_I[:3, :3] @ p_imu + T_W_I[:3, 3]
-                j = self.next_lm; self.next_lm += 1
-                be.add_landmark(j, p_w, t)
-                self.track_to_lm[tid] = j
-                n_new += 1
-                be.add_observation(k, 0, j, b0, t)
-                be.add_observation(k, c, j, bc, t)
-                continue
-            p_w = be.landmark(j)
-            if p_w is not None and not self._in_front(p_w, T_W_I):
-                # the optimiser pushed it behind us (usually a wrong stereo match): retire it
-                self.track_to_lm.pop(tid, None); be.retire_landmark(j)
-                continue
-            be.add_observation(k, 0, j, cam0.bearings[n], t)
-            for c in range(1, len(feats.cams)):
-                if tid in by_cam[c]:
-                    be.add_observation(k, c, j, feats.cams[c].bearings[by_cam[c][tid]], t)
+                be.add_observation(k, c0, j, cam0.bearings[n], t)
+                for c in others:
+                    if tid in by_cam[c]:
+                        be.add_observation(k, c, j, feats.cams[c].bearings[by_cam[c][tid]], t)
 
     def _in_front(self, p_w, T_W_I, min_z=0.15) -> bool:
         p_w = np.asarray(p_w, dtype=float).reshape(-1)

@@ -35,10 +35,10 @@ for COND in "$@"; do
   mkdir -p "$R"
   if [ ! -f "$R/est.tum" ]; then
     bash bench/guard.sh --cpus 6 --mem 10G --temp-max 97 --temp-hold 3 -- bash -c \
-      "UV_NO_SYNC=1 PYTHONPATH=$PWD uv run python -m podslam.track_bag $BAG $R --rig $RIG --map-out $R/map" || \
+      "UV_NO_SYNC=1 PYTHONPATH=$PWD uv run python -m podslam.track_bag $BAG $R --rig $RIG --map-out $R/map ${FRONTEND:+--frontend $FRONTEND}" || \
     { echo "$SEQ: track killed, cool + retry"; sleep 120; \
       bash bench/guard.sh --cpus 6 --mem 10G --temp-max 97 --temp-hold 3 -- bash -c \
-      "UV_NO_SYNC=1 PYTHONPATH=$PWD uv run python -m podslam.track_bag $BAG $R --rig $RIG --map-out $R/map"; } || { echo "$SEQ: track failed"; continue; }
+      "UV_NO_SYNC=1 PYTHONPATH=$PWD uv run python -m podslam.track_bag $BAG $R --rig $RIG --map-out $R/map ${FRONTEND:+--frontend $FRONTEND}"; } || { echo "$SEQ: track failed"; continue; }
   fi
   GT=$D/gt.tum; [ -f "$GT" ] || GT=datasets/data/minisim/${SEQ}_gt.tum
   UV_NO_SYNC=1 PYTHONPATH=$PWD uv run python -m bench.evaluate "$GT" "$R/est.tum" --json "$R/ate.json" || echo "$SEQ: evaluate failed"

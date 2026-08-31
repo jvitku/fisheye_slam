@@ -114,7 +114,7 @@ def main(argv=None) -> int:
     imu_topic = rig.imu.topic
     tum = (args.out / "est.tum").open("w")
     stats = (args.stats or (args.out / "frames.csv")).open("w")
-    stats.write("t,tracked,n_obs0,n_obs1,mean0,ms,keyframe,n_landmarks\n")
+    stats.write("t,tracked,n_obs0,n_obs1,mean0,ms,keyframe,n_landmarks,allobs\n")
 
     pending: dict[int, dict] = {}
     shift_ns = int(round(rig.cameras[0].time_shift_s * 1e9))
@@ -134,7 +134,8 @@ def main(argv=None) -> int:
         ms = (time.perf_counter() - t0) * 1e3
         n_frames += 1
         n1 = est.n_obs[1] if len(est.n_obs) > 1 else 0
-        stats.write(f"{t_ns / 1e9:.6f},{int(est.ok)},{est.n_obs[0]},{n1},{float(imgs[0].mean()):.2f},{ms:.2f},{int(est.keyframe)},{est.n_landmarks}\n")
+        allobs = "/".join(str(x) for x in est.n_obs)
+        stats.write(f"{t_ns / 1e9:.6f},{int(est.ok)},{est.n_obs[0]},{n1},{float(imgs[0].mean()):.2f},{ms:.2f},{int(est.keyframe)},{est.n_landmarks},{allobs}\n")
         if est.ok and est.T_W_I is not None:
             n_ok += 1; n_kf += int(est.keyframe)
             T = est.T_W_I
