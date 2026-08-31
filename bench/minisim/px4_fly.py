@@ -78,7 +78,16 @@ async def fly(scene: str, duration: float):
             if attempt == 29:
                 raise
             await asyncio.sleep(2.0)
-    print("armed + offboard", flush=True)
+    print("armed", flush=True)
+    try:
+        await drone.param.set_param_float("MPC_Z_VEL_MAX_UP", 1.0)
+        await drone.param.set_param_float("MPC_XY_VEL_MAX", 2.5)
+    except Exception as e:
+        print(f"param set skipped: {e}", flush=True)
+    await drone.action.set_takeoff_altitude(1.7)
+    await drone.action.takeoff()
+    await asyncio.sleep(12)                       # controlled climb + settle at 1.7 m
+    print("hovering; offboard", flush=True)
     path = PATHS[scene]
     x0, y0, z0, yaw0 = path(0.0)
     await drone.offboard.set_position_ned(PositionNedYaw(y0, x0, -z0, -yaw0 + 90.0))

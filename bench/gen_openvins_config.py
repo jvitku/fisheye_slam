@@ -25,6 +25,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 from pathlib import Path
 
@@ -191,7 +192,7 @@ zupt_only_at_beginning: true
 # Static initialization on the ground; the takeoff jerk exceeds the threshold.
 init_window_time: 1.5
 init_imu_thresh: {init_imu_thresh}
-init_max_disparity: 15.0
+init_max_disparity: {init_max_disparity}
 init_max_features: 50
 
 init_dyn_use: false
@@ -265,7 +266,8 @@ def write_estimator_config(rig: dict, path: Path, masks: dict[int, str]) -> None
         use_stereo="true" if len(cams) >= 2 and 1 in overlaps(rig, 0) else "false",
         max_cameras=len(cams),
         gravity_mag=GRAVITY_MAG,
-        init_imu_thresh=0.45,
+        init_imu_thresh=float(os.environ.get("OV_INIT_IMU_THRESH", 0.45)),
+        init_max_disparity=float(os.environ.get("OV_INIT_MAX_DISP", 15.0)),
         num_pts=200,
         track_frequency=rate + 1.0,
         use_mask="true" if masks else "false",

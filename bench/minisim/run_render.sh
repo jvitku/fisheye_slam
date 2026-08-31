@@ -5,7 +5,7 @@ set -euo pipefail
 REPO="$(cd "$(dirname "$0")/../.." && pwd)"
 RIG=$1; SCENE=$2; COND=$3; OUT=$4; shift 4
 mkdir -p "$OUT"
-exec bash "$REPO/bench/guard.sh" --cpus 4 --mem 10G --vram-need 2G --temp-max 97 --temp-hold 3 -- \
+exec bash "$REPO/bench/guard.sh" --cpus 4 --mem 10G --vram-need 2G --temp-max 98 --temp-hold 6 -- \
   docker run --rm ${GUARD_DOCKER_ARGS:-} --gpus all --user "$(id -u):$(id -g)" -e HOME=/tmp \
     -v "$REPO:$REPO" -v "$(cd "$OUT" && pwd):$(cd "$OUT" && pwd)" -w "$REPO" \
     3dfe/cuvslam-ml python3 -m bench.minisim.render "$RIG" "$SCENE" "$COND" "$(cd "$OUT" && pwd)" "$@"

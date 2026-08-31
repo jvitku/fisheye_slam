@@ -304,16 +304,20 @@ class TumTrajectory:
 
 
 def synth_imu(traj, dur, rig, seed, out_csv):
-    """True IMU from the trajectory + the rig's noise model, at the rig rate."""
+    """True IMU from the trajectory + the rig's noise model, at the rig rate.
+    For sampled trajectories (TUM files) the finite-difference step must span
+    the interpolation knots, or the piecewise-linear velocity steps become
+    accel spikes (Dv/1e-4 ~ hundreds of m/s^2)."""
     rate = rig.imu.rate_hz
     dt = 1.0 / rate
+    fd_dt = 0.012 if isinstance(traj, TumTrajectory) else 1e-4
     rng = np.random.default_rng(seed)
     bg = np.zeros(3)
     ba = np.zeros(3)
     rows = []
     for k in range(int(dur * rate)):
         t = k * dt
-        gyro, accel = S.imu_from_trajectory(traj, max(t, 2 * 1e-4))
+        gyro, accel = S.imu_from_trajectory(traj, max(t, 2 * fd_dt), dt=fd_dt)
         bg += rng.normal(0, rig.imu.gyro_random_walk * np.sqrt(dt), 3)
         ba += rng.normal(0, rig.imu.accel_random_walk * np.sqrt(dt), 3)
         g = gyro + bg + rng.normal(0, rig.imu.gyro_noise_density * np.sqrt(rate), 3)
