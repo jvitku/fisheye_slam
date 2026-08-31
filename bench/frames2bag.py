@@ -77,7 +77,7 @@ def camera_stream(frames_dir: Path, cam: dict, color_topic: str, depth_topic: st
             img = img[..., :3]
         encoding = "mono8" if img.ndim == 2 else "rgb8"
         yield t_ns, color_topic, image_msg(t_ns, cam["name"], img.astype(np.uint8), encoding)
-        if depth_topic is not None:
+        if depth_topic is not None and (cam_dir / f"{index:06d}.depth.npy").exists():
             depth = np.load(cam_dir / f"{index:06d}.depth.npy").astype(np.float32)
             yield t_ns, depth_topic, image_msg(t_ns, cam["name"], depth, "32FC1")
 

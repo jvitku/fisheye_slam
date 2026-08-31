@@ -69,6 +69,7 @@ def main(argv=None) -> int:
     ap.add_argument("--max-window-kf", type=int, default=32, help="smart backend: keyframe-count cap of the window")
     ap.add_argument("--map-out", default=None, help="dense map output basename (.npz + .ply); landmark + depth fusion")
     ap.add_argument("--map-voxel", type=float, default=0.05)
+    ap.add_argument("--max-landmarks-per-kf", type=int, default=None, help="smart backend: per-keyframe new-landmark budget (default TrackerConfig 120)")
     ap.add_argument("--cams", default=None, help="comma-separated camera names to use (subset of the rig, first = tracking camera)")
     ap.add_argument("--kf-rot-deg", type=float, default=0.0, help="motion-adaptive keyframes: IMU rotation since last keyframe (0 = off)")
     ap.add_argument("--kf-parallax-px", type=float, default=0.0, help="motion-adaptive keyframes: median parallax since last keyframe (0 = off)")
@@ -100,6 +101,8 @@ def main(argv=None) -> int:
                         init_acc_bias_sigma=args.init_acc_bias_sigma, init_tilt_sigma=args.init_tilt_sigma, max_obs_angle_deg=args.max_obs_angle, px_sigma_adapt=args.px_adapt, depth_feedback=args.depth_feedback, max_window_kf=args.max_window_kf,
                         preprocess=args.preprocess, masks=args.masks, circle_mask=not args.no_circle_mask,
                         kf_every=args.kf_every, kf_rot_deg=args.kf_rot_deg, kf_parallax_px=args.kf_parallax_px, lag_s=args.lag, px_sigma=px_sigma, backend=args.backend, marg_mode=args.marg, smart_epi=args.epi, imu_noise_scale=noise_scale, verbose=args.verbose)
+    if args.max_landmarks_per_kf is not None:
+        cfg.max_landmarks_per_kf = args.max_landmarks_per_kf
     tracker = Tracker(rig, cfg)
     mapper = None
     depth_topics: dict[str, int] = {}

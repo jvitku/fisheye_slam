@@ -196,7 +196,9 @@ def shade(tracer, prims, o, d, cond, floods_w, device, chunk=250_000):
         for i, pr in enumerate(prims):
             m = pid == i
             if m.any():
-                alb[m] = albedo_t(p[m], pr["tex"])
+                off = pr.get("disp")
+                pm = p[m] - torch.tensor(off, dtype=torch.float32, device=p.device) if off is not None else p[m]
+                alb[m] = albedo_t(pm, pr["tex"])
         L = torch.full((len(oc),), float(cond["ambient"]), device=device)
         if cond["sun"] > 0:
             L = L + cond["sun"] * (nrm * sun).sum(-1).clamp_min(0)
@@ -342,6 +344,7 @@ def main(argv=None):
     cond = S.CONDITIONS[a.condition]
     scene_fn, traj_fn, default_dur = S.SCENES[a.scene]
     prims = scene_fn()
+    dynamic = any(pr.get("motion") for pr in prims)
     traj = TumTrajectory(a.traj) if a.traj else traj_fn
     dur = a.duration or (traj.dur if a.traj else default_dur)
     tracer = Tracer(prims, device)
@@ -396,6 +399,11 @@ def main(argv=None):
                    and (not c["depth"] or k % a.depth_every or (out / c["cam"].name / f"{k:06d}.depth.npy").exists())
                    for c in cams)
         R_wp, p_wp = traj(t)
+        if dynamic:
+            prims_t = S.prims_at_time(prims, t)
+            tracer = Tracer(prims_t, device)
+        else:
+            prims_t = prims
         R_wp_t = torch.tensor(R_wp, dtype=torch.float32, device=device)
         p_wp_t = torch.tensor(p_wp, dtype=torch.float32, device=device)
         floods_w = []
@@ -411,7 +419,7 @@ def main(argv=None):
             ppc = torch.tensor(c["T_pod_cam"][:3, 3], dtype=torch.float32, device=device)
             d_w = (R_wp_t @ (Rpc @ c["rays"].T)).T
             o_w = (R_wp_t @ ppc + p_wp_t).expand(len(d_w), 3)
-            rad, dep = shade(tracer, prims, o_w, d_w, cond, floods_w, device, a.chunk)
+            rad, dep = shade(tracer, prims_t, o_w, d_w, cond, floods_w, device, a.chunk)
             img = rad.reshape(h, w)
             if dust is not None:
                 T_cam_pod = np.linalg.inv(c["T_pod_cam"])
@@ -421,10 +429,14 @@ def main(argv=None):
             g = (a.exposure * img).clamp_min(0) ** (1 / 2.2)
             noise = torch.randn(g.shape, device=device) * (0.004 + 0.012 * torch.sqrt(g.clamp_min(0)))
             u8 = ((g + noise).clamp(0, 1) * 255).to(torch.uint8).cpu().numpy()
-            Image.fromarray(u8, "L").save(out / c["cam"].name / f"{k:06d}.png", compress_level=1)
+            _fp = out / c["cam"].name / f"{k:06d}.png"
+            Image.fromarray(u8, "L").save(_fp.with_suffix(".tmp.png"), compress_level=1)
+            _fp.with_suffix(".tmp.png").rename(_fp)
             if c["depth"] and k % a.depth_every == 0:
+                # store z-depth (device convention), not ray range
+                rz = c["rays"][:, 2].reshape(h, w).cpu().numpy()
                 np.save(out / c["cam"].name / f"{k:06d}.depth.npy",
-                        dep.reshape(h, w).cpu().numpy().astype(np.float32))
+                        (dep.reshape(h, w).cpu().numpy() * rz).astype(np.float32))
         if k % 50 == 0:
             el = time.time() - t_render0
             print(f"frame {k}/{n_frames}  {el:.0f}s  ({el / max(k, 1):.2f} s/frame)", flush=True)

@@ -173,9 +173,39 @@ def forest_trajectory(t: float):
     return _yaw_R(yaw, pitch, roll), np.array([x, y, z])
 
 
+def indoor_scene_dyn() -> list[dict]:
+    """Indoor + two movers (walker-sized and crate-sized) crossing the room."""
+    prims = indoor_scene()
+    prims.append({"kind": "box", "center": [-3.5, -2.0, 0.8], "half": [0.18, 0.18, 0.8],
+                  "tex": dict(TEX_FURN, base=0.35),
+                  "motion": {"type": "path", "p0": [-3.5, -2.0, 0.8], "p1": [3.5, 2.0, 0.8], "period": 26.0}})
+    prims.append({"kind": "box", "center": [2.5, -2.5, 0.25], "half": [0.25, 0.25, 0.25],
+                  "tex": dict(TEX_ROCK, base=0.5),
+                  "motion": {"type": "path", "p0": [2.5, -2.5, 0.25], "p1": [-2.5, 2.5, 0.25], "period": 17.0}})
+    return prims
+
+
+def forest_scene_dyn() -> list[dict]:
+    """Forest with all trees swaying in wind + one ground-level mover."""
+    rng = np.random.default_rng(99)
+    prims = []
+    for pr in forest_scene():
+        if pr["kind"] == "cylinder":
+            pr = dict(pr)
+            pr["motion"] = {"type": "sway", "amp": float(rng.uniform(0.05, 0.22)),
+                            "period": float(rng.uniform(2.2, 4.5)), "phase": float(rng.uniform(0, 2 * np.pi))}
+        prims.append(pr)
+    prims.append({"kind": "box", "center": [5.0, -6.0, 0.35], "half": [0.45, 0.2, 0.35],
+                  "tex": dict(TEX_BARK, base=0.3),
+                  "motion": {"type": "path", "p0": [5.0, -6.0, 0.35], "p1": [-8.0, -9.0, 0.35], "period": 40.0}})
+    return prims
+
+
 SCENES = {
     "indoor": (indoor_scene, indoor_trajectory, 110.0),
     "forest": (forest_scene, forest_trajectory, 110.0),
+    "indoor_dyn": (indoor_scene_dyn, indoor_trajectory, 110.0),
+    "forest_dyn": (forest_scene_dyn, forest_trajectory, 110.0),
 }
 
 
@@ -217,6 +247,40 @@ class DustField:
             self.p[out] = self.rng.uniform(self.lo, self.hi, (int(out.sum()), 3))
 
 
+WIND = np.array([0.94, 0.33, 0.0])
+
+
+def _motion_disp(m: dict, t: float) -> np.ndarray:
+    """Displacement of a dynamic primitive at time t (world frame)."""
+    if m["type"] == "sway":                                  # wind: 2-frequency lateral sway
+        s = np.sin(2 * np.pi * t / m["period"] + m["phase"]) \
+            + 0.35 * np.sin(2 * np.pi * t / (0.37 * m["period"]) + 1.7 * m["phase"])
+        return WIND * (m["amp"] * s / 1.35)
+    if m["type"] == "path":                                  # ping-pong between p0 and p1
+        u = 0.5 - 0.5 * np.cos(2 * np.pi * t / m["period"])
+        return (np.asarray(m["p1"], float) - np.asarray(m["p0"], float)) * u
+    return np.zeros(3)
+
+
+def prims_at_time(prims: list[dict], t: float) -> list[dict]:
+    """Scene with dynamic primitives displaced to time t ('disp' records the offset)."""
+    out = []
+    for pr in prims:
+        m = pr.get("motion")
+        if not m:
+            out.append(pr)
+            continue
+        d = _motion_disp(m, t)
+        q = dict(pr)
+        q["disp"] = d
+        if pr["kind"] == "cylinder":
+            q["center_xy"] = [pr["center_xy"][0] + d[0], pr["center_xy"][1] + d[1]]
+        elif pr["kind"] == "box":
+            q["center"] = [pr["center"][0] + d[0], pr["center"][1] + d[1], pr["center"][2] + d[2]]
+        out.append(q)
+    return out
+
+
 CONDITIONS = {
     "day":        {"ambient": 0.55, "sun": 0.65, "fog_beta": 0.0, "dust": False, "flood": False},
     "night":      {"ambient": 0.004, "sun": 0.0, "fog_beta": 0.0, "dust": False, "flood": True},
@@ -231,7 +295,10 @@ CONDITIONS = {
 
 
 def distance_to_surface(points: np.ndarray, prims: list[dict]) -> np.ndarray:
-    """Unsigned distance from (N,3) points to the nearest scene surface — exact."""
+    """Unsigned distance from (N,3) points to the nearest STATIC scene surface — exact.
+    Dynamic primitives are excluded: a good SLAM must not map them, so any mapped
+    point on a mover scores as error (contamination)."""
+    prims = [pr for pr in prims if not pr.get("motion")]
     p = np.asarray(points, float)
     best = np.full(len(p), np.inf)
     for pr in prims:
@@ -255,7 +322,8 @@ def distance_to_surface(points: np.ndarray, prims: list[dict]) -> np.ndarray:
 
 
 def surface_samples(prims: list[dict], n_per_prim: int = 400, seed: int = 0) -> np.ndarray:
-    """Points sampled on the scene surfaces (for map completeness)."""
+    """Points sampled on the STATIC scene surfaces (for map completeness)."""
+    prims = [pr for pr in prims if not pr.get("motion")]
     rng = np.random.default_rng(seed)
     out = []
     for pr in prims:
