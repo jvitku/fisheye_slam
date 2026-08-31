@@ -67,6 +67,8 @@ def main(argv=None) -> int:
     ap.add_argument("--px-adapt", action="store_true", help="smart backend: adapt px_sigma to residual statistics (experimental)")
     ap.add_argument("--depth-feedback", action="store_true", help="front-end: use estimator landmark depths as stereo guesses (experimental)")
     ap.add_argument("--max-window-kf", type=int, default=32, help="smart backend: keyframe-count cap of the window")
+    ap.add_argument("--map-out", default=None, help="dense map output basename (.npz + .ply); landmark + depth fusion")
+    ap.add_argument("--map-voxel", type=float, default=0.05)
     ap.add_argument("--cams", default=None, help="comma-separated camera names to use (subset of the rig, first = tracking camera)")
     ap.add_argument("--kf-rot-deg", type=float, default=0.0, help="motion-adaptive keyframes: IMU rotation since last keyframe (0 = off)")
     ap.add_argument("--kf-parallax-px", type=float, default=0.0, help="motion-adaptive keyframes: median parallax since last keyframe (0 = off)")
@@ -99,6 +101,12 @@ def main(argv=None) -> int:
                         preprocess=args.preprocess, masks=args.masks, circle_mask=not args.no_circle_mask,
                         kf_every=args.kf_every, kf_rot_deg=args.kf_rot_deg, kf_parallax_px=args.kf_parallax_px, lag_s=args.lag, px_sigma=px_sigma, backend=args.backend, marg_mode=args.marg, smart_epi=args.epi, imu_noise_scale=noise_scale, verbose=args.verbose)
     tracker = Tracker(rig, cfg)
+    mapper = None
+    depth_topics: dict[str, int] = {}
+    if args.map_out:
+        from podslam.mapping import DenseMapper
+        mapper = DenseMapper(voxel=args.map_voxel)
+        depth_topics = {c.depth_topic: i for i, c in enumerate(rig.cameras) if c.depth_topic}
     cam_topics = {c.topic: i for i, c in enumerate(rig.cameras)}
     imu_topic = rig.imu.topic
     tum = (args.out / "est.tum").open("w")
@@ -129,6 +137,13 @@ def main(argv=None) -> int:
             T = est.T_W_I
             qx, qy, qz, qw = R_to_quat_xyzw(T[:3, :3])
             tum.write(f"{t_ns / 1e9:.6f} {T[0, 3]} {T[1, 3]} {T[2, 3]} {qx} {qy} {qz} {qw}\n")
+            if mapper is not None and est.keyframe:
+                be = tracker.backend
+                if be is not None and hasattr(be, "lm_point"):
+                    mapper.update_landmarks(be.lm_point)
+                for i, cam in enumerate(rig.cameras):
+                    if ("depth", i) in group:
+                        mapper.add_depth(T @ cam.T_imu_cam, cam.model, group[("depth", i)])
 
     def flush(upto_ns):
         for t in sorted(pending):
@@ -139,7 +154,7 @@ def main(argv=None) -> int:
                 process(t, g)
 
     with Reader(args.bag) as reader:
-        conns = [c for c in reader.connections if c.topic in cam_topics or c.topic == imu_topic]
+        conns = [c for c in reader.connections if c.topic in cam_topics or c.topic == imu_topic or c.topic in depth_topics]
         for conn, _, raw in reader.messages(connections=conns):
             msg = TS.deserialize_ros1(raw, conn.msgtype)
             if conn.topic == imu_topic:
@@ -149,6 +164,10 @@ def main(argv=None) -> int:
             # image stamps into the IMU clock (Kalibr timeshift_cam_imu, per rig); the
             # estimate is written with the shifted stamp so it aligns with IMU-frame GT
             t_ns = stamp_ns(msg) + shift_ns
+            if conn.topic in depth_topics:
+                pending.setdefault(t_ns, {})[("depth", depth_topics[conn.topic])] = \
+                    np.frombuffer(msg.data, dtype=np.float32).reshape(msg.height, msg.width)
+                continue
             pending.setdefault(t_ns, {})[cam_topics[conn.topic]] = to_gray(msg)
             flush(t_ns)
             if args.max_frames and n_frames >= args.max_frames:
@@ -162,6 +181,9 @@ def main(argv=None) -> int:
         extra += f", {be.n_outliers} outlier landmarks, prior absorbed/rejected {be.n_prior_absorbed}/{be.n_prior_rejected}, {be.n_marginalized} marginalised"
         if hasattr(be, "px_sigma"):
             extra += f", px_sigma {be.px_sigma:.2f}"
+    if mapper is not None:
+        info = mapper.finalize(args.map_out)
+        print(f"map: {info['n_points']} points ({info['n_dense']} dense, {info['n_landmarks']} landmarks) -> {args.map_out}(.npz/.ply)")
     print(f"tracked {n_ok}/{n_frames} frames ({n_kf} keyframes, {resets} soft resets{extra}) -> {args.out / 'est.tum'}")
     return 0
 

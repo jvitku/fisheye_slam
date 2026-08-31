@@ -1,0 +1,51 @@
+# Skydio-style navigation set, single (top) trinocular plane — modeled on the
+# Skydio X10 nav system: six 200-deg fisheye nav cameras in trinocular sets top
+# and bottom with 20 m obstacle coverage and NightSense IR illumination
+# (skydio.com/x10, dronexl.co/guides/skydio-x10). This rig is ONE set: three
+# COPLANAR cameras on the top plane (equilateral, r = 7 cm), each optical axis
+# tilted 40 deg from vertical toward its azimuth (0/120/240 deg, one forward),
+# so the set covers the full upper hemisphere plus the horizon with overlap.
+# Cameras are NoIR; at night the set's own 850 nm IR flood (NightSense-style)
+# at the set centre illuminates along +z with a wide cone.
+#
+# Exact Skydio calibrations are proprietary; geometry/FOV follow the public
+# description, imaging uses our bench-standard 512x512 KB4 (f-theta) model.
+
+name: skydio3
+px_sigma: 1.5
+pod:
+  mount: {position: [0.0, 0.0, 0.0], rpy_deg: [0.0, 0.0, 0.0]}
+
+imu:
+  topic: /uav1/sensor_pod/imu
+  source: px4_fc
+  rate_hz: 400
+  mount: {position: [0.0, 0.0, 0.0], rpy_deg: [0.0, 0.0, 0.0]}
+  gyro_noise_density: 1.0e-4
+  gyro_random_walk: 1.0e-5
+  accel_noise_density: 1.0e-3
+  accel_random_walk: 1.0e-4
+
+illuminators:
+  - type: ir_850nm
+    mount: {position: [0.0, 0.0, 0.04], rpy_deg: [0.0, -90.0, 0.0]}   # beam along +z (up)
+    cone_half_angle_deg: 100
+    intensity: 30000
+
+camera_defaults: &cam
+  model: kb4
+  resolution: [512, 512]
+  rate_hz: 20
+  fov_deg: 200.0
+  intrinsics: {fx: 146.7, fy: 146.7, cx: 256.0, cy: 256.0, k1: 0.0, k2: 0.0, k3: 0.0, k4: 0.0}
+
+cameras:                       # coplanar at z=+0.03, axes 40 deg off vertical
+  - <<: *cam
+    name: cam0                 # forward-tilted
+    mount: {position: [0.07, 0.0, 0.03], rpy_deg: [0.0, -50.0, 0.0]}
+  - <<: *cam
+    name: cam1                 # left-rear
+    mount: {position: [-0.035, 0.0606, 0.03], rpy_deg: [0.0, -50.0, 120.0]}
+  - <<: *cam
+    name: cam2                 # right-rear
+    mount: {position: [-0.035, -0.0606, 0.03], rpy_deg: [0.0, -50.0, 240.0]}
