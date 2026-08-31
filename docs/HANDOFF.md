@@ -153,10 +153,20 @@ Done today (each a commit, all pushed):
    `--init-mode static|auto|dynamic`; static default bit-exact (verified); auto on
    static start 2.25 vs 2.79 cm (track warm-up helps). 8 solver unit tests.
    Candidate: flip default to auto after full-matrix A/B.
-3. **Dynamic-scene weighting implemented, A/B pending** (priority 5): `--dyn-weight`
-   (per-landmark EMA gate, lo=3.0 from measured static tail p99=2.75) and
-   `--px-adapt-up` (one-sided global sigma, floored at rig nominal). Forest renders
-   queued on this machine; compare vs ps25 numbers.
+3. **Dynamic-scene weighting ACCEPTED** (priority 5): `--dyn-weight` wins every
+   sequence tried — forest dyn 9.41 -> 0.416 m (22.6x), forest static 0.398 -> 0.324,
+   px4b2 2.79 -> 2.60 cm, indoor day 0.228 -> 0.165. px2.5 stopgap obsolete (1.367 dyn
+   / 0.560 static on the same bags). --px-adapt-up kept as secondary (0.467 dyn, exactly
+   neutral static). Default OFF until a TUM-VI/Hilti no-harm pass (datasets not on this
+   box). Also: multiklt + circle masks + generalized landmark loop ported to podslam-cpp
+   (C++ 1.96 vs Py 2.85 cm on the px4b window slice; 78 ms/frame for 6 cams single-core;
+   build_deps.sh = pinned GTSAM 4.3a2 + OpenCV 5.0.0 recipe). px4c windows: takeoff
+   3.16 cm; mid-flight static 0.094 vs auto 0.090 (auto never worse anywhere).
+   NEW BACKLOG (robustness): analytic indoor-day early-window fragility — ±2 features
+   swings ATE {0.221, 0.228, 0.733}, bad from the first 30 s; fix = delayed/quality-gated
+   gauge anchoring. Ops: background A/B tasks were externally killed 4x -> run long
+   sweeps in foreground chunks; kill only by full guard-id label, never bare
+   fisheye_guard; pkill -f self-match hit us again (use -x).
 4. **px4-sitl container** (docker/px4-sitl, PX4 v1.15.4 SIH prebuilt). Traps hit and
    fixed in the Dockerfile: shallow NuttX needs a local nuttx-* tag; pip needs pyyaml.
    bench/minisim/trim_traj.py replaces the lost ad-hoc window trimming.
