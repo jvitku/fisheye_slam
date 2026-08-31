@@ -60,6 +60,18 @@ class TrackerConfig:
                                       # cost 8.8 -> 12.2 cm on TUM-VI day (bisected): keep tight.  Gravity from the static
                                       # accelerometer mean carries the accel bias (0.17 m/s^2 = 1 deg on the Hilti
                                       # BMI085); roll/pitch are observable, only yaw/position need the hard anchor
+    # initialisation: 'static' = wait-for-still (legacy, forced fallback after 3 s);
+    # 'auto' = still-detection when genuinely still, else moving-platform init from
+    # cross-camera metric structure + IMU (init_dynamic); 'dynamic' = always the latter.
+    # Both non-static modes fall back to the forced-static assumption after
+    # init_max_s of starvation (featureless / matchless scenes) — never worse than legacy.
+    init_mode: str = "static"             # static | auto | dynamic
+    init_window_s: float = 1.5            # dynamic init: collection window
+    init_max_s: float = 6.0               # dynamic init: give up and force static after this
+    init_stride: int = 2                  # dynamic init: cross-cam match every Nth frame
+    dyn_vel_sigma: float = 0.3            # dynamic init: velocity prior sigma [m/s]
+    dyn_tilt_sigma: float = 0.03          # dynamic init: roll/pitch prior sigma [rad]
+    dyn_gyro_bias_sigma: float = 0.02     # dynamic init: gyro bias prior sigma [rad/s] (bias not estimated)
     verbose: bool = False
 
 
@@ -83,7 +95,12 @@ class Tracker:
         self.mask_provider = build_mask_provider(self.cfg.masks)
         self.static_masks = [c.circle_mask() if self.cfg.circle_mask else None for c in rig.cameras]
         self.imu = ImuBuffer()
-        self.init = StaticInitializer()
+        # auto/dynamic: still-detection may win (auto) or serve as the starvation
+        # fallback (force()), but must never fire the 3 s forced assumption itself
+        self.init = StaticInitializer() if self.cfg.init_mode == "static" else StaticInitializer(max_wait_s=float("inf"))
+        self.dyn_init = None
+        self.t_first_frame = None
+        self.init_frame_i = -1
         self.backend = None
         self.pim = Preintegrator(rig.imu, noise_scale=self.cfg.imu_noise_scale)
         self.k = -1                        # current keyframe index
@@ -117,10 +134,12 @@ class Tracker:
                 m = masks[i] if m is None else np.minimum(m, masks[i])
             ms.append(m)
         if not self.initialized:
-            if self.init.result is None:
-                return Estimate(t_ns, None, False, False, [0] * len(imgs), "waiting for static init")
-            self._initialize(t, imgs, ms)
-            return Estimate(t_ns, self.kf_navstate.pose().matrix(), True, True, self._last_nobs, "initialized", self._n_lm)
+            if self.cfg.init_mode == "static":
+                if self.init.result is None:
+                    return Estimate(t_ns, None, False, False, [0] * len(imgs), "waiting for static init")
+                self._initialize(t, imgs, ms)
+                return Estimate(t_ns, self.kf_navstate.pose().matrix(), True, True, self._last_nobs, "initialized", self._n_lm)
+            return self._pre_init_dynamic(t_ns, t, imgs, ms)
 
         dR = delta_rotation(self.imu, self.t_prev_frame, t, self.gyro_bias)
         feats = self.frontend.process(t_ns, imgs, ms, dR)
@@ -147,12 +166,23 @@ class Tracker:
             return 0
         return getattr(self.backend, "n_valid_lm", len(self.backend.landmark_t))
 
-    def _initialize(self, t, imgs, ms):
-        import gtsam
+    def _initialize(self, t, imgs, ms, feats=None):
         r = self.init.result
         self.gyro_bias = r["gyro_bias"]
-        self.bias = gtsam.imuBias.ConstantBias(np.zeros(3), self.gyro_bias)
         T = np.eye(4); T[:3, :3] = r["R_W_I"]
+        self._finish_init(t, imgs, ms, feats, T, np.zeros(3),
+                          sigmas=(1e-3, self.cfg.init_tilt_sigma, 0.1, self.cfg.init_acc_bias_sigma, 0.01))
+
+    def _initialize_dynamic(self, t, feats, r):
+        self.gyro_bias = r["gyro_bias"]
+        T = np.eye(4); T[:3, :3] = r["R_W_I"]; T[:3, 3] = r["p_W"]
+        self._finish_init(t, None, None, feats, T, r["v_W"],
+                          sigmas=(1e-3, self.cfg.dyn_tilt_sigma, self.cfg.dyn_vel_sigma,
+                                  self.cfg.init_acc_bias_sigma, self.cfg.dyn_gyro_bias_sigma))
+
+    def _finish_init(self, t, imgs, ms, feats, T, vel, sigmas):
+        import gtsam
+        self.bias = gtsam.imuBias.ConstantBias(np.zeros(3), self.gyro_bias)
         if self.cfg.backend == "smart":
             self.backend = SmartBackend(self.rig, lag_s=self.cfg.lag_s, px_sigma=self.cfg.px_sigma, marg_mode=self.cfg.marg_mode, epi=self.cfg.smart_epi,
                                         max_window_kf=self.cfg.max_window_kf, max_obs_angle_deg=self.cfg.max_obs_angle_deg,
@@ -160,10 +190,11 @@ class Tracker:
         else:
             self.backend = Backend(self.rig, lag_s=self.cfg.lag_s, px_sigma=self.cfg.px_sigma, verbose=self.cfg.verbose)
         self.k = 0
-        self.backend.initialize(0, t, T, np.zeros(3), self.bias, sigmas=(1e-3, self.cfg.init_tilt_sigma, 0.1, self.cfg.init_acc_bias_sigma, 0.01))
-        self.kf_navstate = gtsam.NavState(gtsam.Pose3(T), np.zeros(3))
+        self.backend.initialize(0, t, T, np.asarray(vel, float), self.bias, sigmas=sigmas)
+        self.kf_navstate = gtsam.NavState(gtsam.Pose3(T), np.asarray(vel, float))
         self.pim.reset(self.bias, t)
-        feats = self.frontend.process(int(t * 1e9), imgs, ms, None)
+        if feats is None:
+            feats = self.frontend.process(int(t * 1e9), imgs, ms, None)
         self._last_nobs = [len(c) for c in feats.cams]
         self._add_landmarks_and_factors(0, t, feats, T)
         self.backend.optimize(0, t)
@@ -178,6 +209,44 @@ class Tracker:
             self.n_tracks_at_kf = len(feats.cams[0])
             self.px_at_kf = {int(i): p for i, p in zip(feats.cams[0].ids, feats.cams[0].px)}
         self.initialized = True
+
+    def _pre_init_dynamic(self, t_ns, t, imgs, ms):
+        """auto/dynamic modes: track features while collecting cross-camera metric
+        structure; initialise from whichever is ready first — still-detection
+        (auto) or the moving-platform solve. Falls back to the forced static
+        assumption after init_max_s (matchless scenes: never worse than legacy)."""
+        from .init_dynamic import CrossCamMatcher, DynamicInitializer
+        dR = None if self.t_prev_frame is None else delta_rotation(self.imu, self.t_prev_frame, t, np.zeros(3))
+        feats = self.frontend.process(t_ns, imgs, ms, dR)
+        self.t_prev_frame = t
+        self._last_nobs = [len(c) for c in feats.cams]
+        if self.t_first_frame is None:
+            self.t_first_frame = t
+        if self.dyn_init is None:
+            self.dyn_init = DynamicInitializer(self.imu, window_s=self.cfg.init_window_s)
+            self._matcher = CrossCamMatcher(self.rig)
+        if self.cfg.init_mode == "auto" and self.init.result is not None:
+            self._initialize(t, imgs, ms, feats=feats)
+            return Estimate(t_ns, self.kf_navstate.pose().matrix(), True, True, self._last_nobs, "initialized", self._n_lm)
+        self.init_frame_i += 1
+        if self.init_frame_i % max(self.cfg.init_stride, 1) == 0:
+            pts, stats = self._matcher.match(imgs, ms, feats)
+            self.dyn_init.add_frame_points(t, pts)
+            self._init_match_stats = stats
+        if self.dyn_init.ready:
+            r = self.dyn_init.solve()
+            if r is not None:
+                self._initialize_dynamic(t, feats, r)
+                if self.cfg.verbose:
+                    print(f"dynamic init: {r['n_frames']} frames / {r['span_s']:.2f} s, ~{r['n_pts']} pts, "
+                          f"|v| {np.linalg.norm(r['v_W']):.2f} m/s, |g| {r['g_norm']:.2f}")
+                return Estimate(t_ns, self.kf_navstate.pose().matrix(), True, True, self._last_nobs, "initialized dynamic", self._n_lm)
+        if t - self.t_first_frame > self.cfg.init_max_s:
+            self.init.force(t)
+            self._initialize(t, imgs, ms, feats=feats)
+            return Estimate(t_ns, self.kf_navstate.pose().matrix(), True, True, self._last_nobs, "initialized forced-static", self._n_lm)
+        n = len(self.dyn_init.frames)
+        return Estimate(t_ns, None, False, False, self._last_nobs, f"dynamic init: {n} frames")
 
     def _feed_depths(self, feats, T_W_I):
         """Give the front-end the estimator's landmark depths (tracking camera frame) as

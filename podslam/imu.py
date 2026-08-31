@@ -72,14 +72,28 @@ class StaticInitializer:
         still = (np.linalg.norm(w, axis=1).max() < self.gyro_thr) and (a.std(axis=0).max() < self.accel_std_thr)
         forced = (t_arr[-1] - t_arr[0]) > self.max_wait_s
         if still or forced:
-            a_mean = a.mean(axis=0)
-            g_body = a_mean / max(np.linalg.norm(a_mean), 1e-9)          # "up" in body coordinates
-            R_W_I = rotation_aligning(g_body, [0.0, 0.0, 1.0])           # maps body up -> world +Z
-            self.result = dict(t=float(t_arr[-1]), R_W_I=R_W_I, gyro_bias=w.mean(axis=0),
-                               accel_bias=np.zeros(3), forced=bool(forced and not still),
-                               accel_norm=float(np.linalg.norm(a_mean)))
+            self._finalize(t_arr[-1], w, a, forced=bool(forced and not still))
             return True
         return False
+
+    def _finalize(self, t, w, a, forced):
+        a_mean = a.mean(axis=0)
+        g_body = a_mean / max(np.linalg.norm(a_mean), 1e-9)          # "up" in body coordinates
+        R_W_I = rotation_aligning(g_body, [0.0, 0.0, 1.0])           # maps body up -> world +Z
+        self.result = dict(t=float(t), R_W_I=R_W_I, gyro_bias=w.mean(axis=0),
+                           accel_bias=np.zeros(3), forced=forced,
+                           accel_norm=float(np.linalg.norm(a_mean)))
+
+    def force(self, t=None):
+        """Assume the most recent window was still, regardless of motion — the legacy
+        fallback, invoked explicitly when dynamic initialisation starves."""
+        if self.result is not None or not self.t:
+            return self.result
+        t_arr = np.asarray(self.t)
+        i0 = int(np.searchsorted(t_arr, t_arr[-1] - self.window_s))
+        self._finalize(t if t is not None else t_arr[-1],
+                       np.asarray(self.w[i0:]), np.asarray(self.a[i0:]), forced=True)
+        return self.result
 
 
 class Preintegrator:
