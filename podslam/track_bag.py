@@ -82,7 +82,10 @@ def main(argv=None) -> int:
     ap.add_argument("--map-depth-immediate", action="store_true", help="map: fuse depth at the newest pose (legacy) instead of the marginalisation-time pose")
     ap.add_argument("--map-densify", type=int, default=0, help="semi-dense fisheye mapping: cross-camera grid stereo every Nth keyframe (0 = off)")
     ap.add_argument("--map-densify-step", type=int, default=12, help="densify grid pitch [px]")
+    ap.add_argument("--map-max-sigma", type=float, default=0.10, help="densify: keep a point while its predicted range sigma [m] stays below this")
+    ap.add_argument("--map-no-temporal", dest="map_temporal", action="store_false", help="densify: disable motion-baseline temporal refinement")
     ap.add_argument("--map-min-hits", type=int, default=2, help="dense-channel voxel hit requirement (temporal agreement filter)")
+    ap.add_argument("--map-gt-poses", default=None, help="DIAGNOSTIC: build the map from this TUM ground truth instead of the estimate (isolates pose error from ranging error)")
     ap.add_argument("--max-landmarks-per-kf", type=int, default=None, help="smart backend: per-keyframe new-landmark budget (default TrackerConfig 120)")
     ap.add_argument("--cams", default=None, help="comma-separated camera names to use (subset of the rig, first = tracking camera)")
     ap.add_argument("--kf-rot-deg", type=float, default=0.0, help="motion-adaptive keyframes: IMU rotation since last keyframe (0 = off)")
@@ -124,10 +127,17 @@ def main(argv=None) -> int:
         from podslam.mapping import DenseMapper
         mapper = DenseMapper(voxel=args.map_voxel, min_hits=args.map_min_hits, min_obs=args.map_min_obs, min_parallax=args.map_min_parallax)
         depth_topics = {c.depth_topic: i for i, c in enumerate(rig.cameras) if c.depth_topic}
+    gt_poses = None
+    if args.map_gt_poses:
+        import numpy as _np
+        _d = _np.loadtxt(args.map_gt_poses)
+        gt_poses = (_d[:, 0], _d[:, 1:4], _d[:, 4:8])
+        print(f"map: DIAGNOSTIC ground-truth poses from {args.map_gt_poses} ({len(_d)} poses)")
     densifier = None
     if args.map_out and args.map_densify > 0:
         from podslam.densify import Densifier
-        densifier = Densifier(rig, grid_step=args.map_densify_step)
+        densifier = Densifier(rig, grid_step=args.map_densify_step,
+                              max_sigma=args.map_max_sigma, temporal=args.map_temporal)
     cam_topics = {c.topic: i for i, c in enumerate(rig.cameras)}
     imu_topic = rig.imu.topic
     tum = (args.out / "est.tum").open("w")
@@ -159,6 +169,14 @@ def main(argv=None) -> int:
             T = est.T_W_I
             qx, qy, qz, qw = R_to_quat_xyzw(T[:3, :3])
             tum.write(f"{t_ns / 1e9:.6f} {T[0, 3]} {T[1, 3]} {T[2, 3]} {qx} {qy} {qz} {qw}\n")
+            if mapper is not None and est.keyframe and gt_poses is not None:
+                # swap in the GT pose at this stamp (nearest sample) for mapping only
+                from .geometry import quat_xyzw_to_R
+                _i = int(np.searchsorted(gt_poses[0], t_ns / 1e9))
+                _i = min(max(_i, 0), len(gt_poses[0]) - 1)
+                T = np.eye(4)
+                T[:3, :3] = quat_xyzw_to_R(gt_poses[2][_i])
+                T[:3, 3] = gt_poses[1][_i]
             if mapper is not None and est.keyframe:
                 be = tracker.backend
                 if be is not None and hasattr(be, "lm_point"):
@@ -169,10 +187,10 @@ def main(argv=None) -> int:
                         mapper.remove_landmarks(dropped)
                         dropped.clear()
                 if densifier is not None and n_kf % args.map_densify == 0:
-                    pts_imu = densifier.points([tracker.condition(im) for im in imgs],
-                                               tracker.static_masks)
-                    if len(pts_imu):
-                        mapper.add_points((T[:3, :3] @ pts_imu.T).T + T[:3, 3])
+                    pts_w = densifier.world_points(T, [tracker.condition(im) for im in imgs],
+                                                   tracker.static_masks)
+                    if len(pts_w):
+                        mapper.add_points(pts_w)
                 for i, cam in enumerate(rig.cameras):
                     if ("depth", i) in group:
                         if args.map_depth_immediate:
