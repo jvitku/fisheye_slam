@@ -357,6 +357,146 @@ struct DynInit {
     }
 };
 
+// podslam/densify.py + podslam/occupancy.py — the world model lane.
+// Grid-seeded cross-camera stereo, motion-baseline temporal refinement,
+// uncertainty gate, then log-odds occupancy with free-space ray carving.
+struct Densifier {
+    int grid_step = 9;
+    double max_sigma = 0.10, sigma_px = 0.5, min_baseline = 0.25;
+    size_t hist_max = 12;
+    const std::vector<Kb4>* cams = nullptr;
+    const std::vector<Mat4>* Ts = nullptr;
+    CrossCamMatcher matcher;
+    std::vector<std::pair<cv::Matx44d, std::vector<cv::Mat>>> hist;
+    std::vector<CamOut> seeds;                 // per-camera grid seeds
+    std::vector<std::vector<cv::Vec3d>> seed_b;
+    // NOTE (WIP): the temporal stage here only applies the motion-baseline
+    // UNCERTAINTY GATE; the python version also re-triangulates each point
+    // against the earlier keyframe (LK + midpoint), which is what buys the
+    // 9.8 -> 4.0 cm median. Porting that refinement is the open item.
+    long n_biggate = 0, n_gated = 0;
+    cv::TermCriteria crit{cv::TermCriteria::EPS + cv::TermCriteria::COUNT, 30, 0.01};
+
+    void init(const std::vector<Kb4>& c, const std::vector<Mat4>& T,
+              const std::vector<double>& fov, int w, int h) {
+        cams = &c; Ts = &T;
+        matcher.cams = &c; matcher.Ts = &T; matcher.max_px = 1.5;
+        const double cz = std::cos(75.0 * M_PI / 180.0);
+        seeds.assign(c.size(), CamOut{});
+        seed_b.assign(c.size(), {});
+        int64_t base = 0;
+        for (size_t i = 0; i < c.size(); ++i) {
+            for (int y = grid_step / 2; y < h; y += grid_step)
+                for (int x = grid_step / 2; x < w; x += grid_step) {
+                    double bx, by, bz;
+                    if (!c[i].unproject(x + 0.5, y + 0.5, bx, by, bz) || bz <= cz) continue;
+                    if (i < fov.size() && fov[i] > 0) {      // image-circle
+                        const double r = c[i].fx * fov[i] / 2 * M_PI / 180.0 * 0.97;
+                        const double dx = x + 0.5 - c[i].cx, dy = y + 0.5 - c[i].cy;
+                        if (dx * dx + dy * dy > r * r) continue;
+                    }
+                    seeds[i].ids.push_back(base++);
+                    seeds[i].px.emplace_back(float(x + 0.5f), float(y + 0.5f));
+                    seed_b[i].push_back({bx, by, bz});
+                }
+        }
+    }
+    double sigma(double z, double b, double fx) const { return z * z * sigma_px / std::max(b * fx, 1e-9); }
+
+    // returns WORLD points for this keyframe
+    std::vector<cv::Vec3d> world_points(const cv::Matx44d& T_W_I, const std::vector<cv::Mat>& imgs) {
+        std::map<int64_t, cv::Vec3d> coarse;
+        matcher.match(imgs, seeds, seed_b, coarse);
+        cv::Matx33d Rw; cv::Vec3d tw;
+        for (int r = 0; r < 3; ++r) { for (int c2 = 0; c2 < 3; ++c2) Rw(r, c2) = T_W_I(r, c2); tw[r] = T_W_I(r, 3); }
+        std::vector<cv::Vec3d> out;
+        // rig-baseline gate constant
+        double fx_mean = 0, b_rig = 0;
+        for (size_t i = 0; i < cams->size(); ++i) {
+            fx_mean += (*cams)[i].fx;
+            b_rig += std::sqrt((*Ts)[i].m[0][3] * (*Ts)[i].m[0][3] + (*Ts)[i].m[1][3] * (*Ts)[i].m[1][3] +
+                               (*Ts)[i].m[2][3] * (*Ts)[i].m[2][3]);
+        }
+        fx_mean /= double(cams->size()); b_rig = 2.0 * b_rig / double(cams->size());
+        // temporal refinement against the oldest history frame with enough baseline
+        const std::pair<cv::Matx44d, std::vector<cv::Mat>>* old = nullptr;
+        for (const auto& h : hist) {
+            const double dx = T_W_I(0, 3) - h.first(0, 3), dy = T_W_I(1, 3) - h.first(1, 3), dz = T_W_I(2, 3) - h.first(2, 3);
+            if (std::sqrt(dx*dx + dy*dy + dz*dz) >= min_baseline) { old = &h; break; }
+        }
+        for (const auto& [tid, p_b] : coarse) {
+            cv::Vec3d pw;
+            for (int r = 0; r < 3; ++r) pw[r] = Rw(r,0)*p_b[0] + Rw(r,1)*p_b[1] + Rw(r,2)*p_b[2] + tw[r];
+            bool kept = false;
+            if (old) {
+                const size_t ci = size_t(tid) < seeds[0].ids.size() ? 0 : 0;  // camera of the seed
+                size_t cam_i = 0, acc = 0;
+                for (size_t i = 0; i < seeds.size(); ++i) { acc += seeds[i].ids.size(); if (size_t(tid) < acc) { cam_i = i; break; } }
+                (void)ci;
+                const Mat4& Tic = (*Ts)[cam_i];
+                cv::Vec3d c_now, c_old;
+                for (int r = 0; r < 3; ++r) {
+                    c_now[r] = Rw(r,0)*Tic.m[0][3] + Rw(r,1)*Tic.m[1][3] + Rw(r,2)*Tic.m[2][3] + tw[r];
+                    c_old[r] = old->first(r,0)*Tic.m[0][3] + old->first(r,1)*Tic.m[1][3] + old->first(r,2)*Tic.m[2][3] + old->first(r,3);
+                }
+                const double base_len = cv::norm(c_now - c_old);
+                const double z = cv::norm(pw - c_now);
+                if (sigma(z, base_len, (*cams)[cam_i].fx) <= max_sigma) { kept = true; ++n_biggate; }
+            }
+            if (!kept) {
+                const double z = cv::norm(pw - tw);
+                if (sigma(z, b_rig, fx_mean) > max_sigma) { ++n_gated; continue; }
+            }
+            out.push_back(pw);
+        }
+        hist.insert(hist.begin(), {T_W_I, imgs});
+        if (hist.size() > hist_max) hist.resize(hist_max);
+        return out;
+    }
+};
+
+struct OccupancyGrid {
+    double voxel = 0.15, max_range = 6.0;
+    static constexpr double L_HIT = 0.85, L_MISS = -0.35, L_MIN = -2.0, L_MAX = 3.5, L_OCC = 1.6;
+    std::map<std::array<int64_t, 3>, double> logodds;
+
+    void bump(const std::array<int64_t, 3>& k, double dl) {
+        double& v = logodds[k];
+        v = std::min(std::max(v + dl, L_MIN), L_MAX);
+    }
+    void integrate(const cv::Vec3d& origin, const std::vector<cv::Vec3d>& pts) {
+        for (const auto& p : pts) {
+            const cv::Vec3d d = p - origin;
+            const double r = cv::norm(d);
+            if (r < 1e-6 || r > max_range) continue;
+            std::array<int64_t, 3> cur{}, end{};
+            double tmax[3], tdelta[3];
+            int64_t step[3];
+            for (int a = 0; a < 3; ++a) {
+                cur[a] = int64_t(std::floor(origin[a] / voxel));
+                end[a] = int64_t(std::floor(p[a] / voxel));
+                const double da = std::abs(d[a]) < 1e-12 ? 1e-12 : d[a];
+                step[a] = da > 0 ? 1 : -1;
+                tdelta[a] = std::abs(voxel / da);
+                tmax[a] = ((double(cur[a] + (step[a] > 0 ? 1 : 0)) * voxel) - origin[a]) / da;
+            }
+            int guard = 0;
+            while (cur != end && guard++ < 200) {
+                bump(cur, L_MISS);
+                int a = (tmax[0] < tmax[1]) ? ((tmax[0] < tmax[2]) ? 0 : 2) : ((tmax[1] < tmax[2]) ? 1 : 2);
+                cur[a] += step[a];
+                tmax[a] += tdelta[a];
+            }
+            bump(end, L_HIT);
+        }
+    }
+    std::pair<long, long> stats() const {
+        long occ = 0, free_ = 0;
+        for (const auto& [k, l] : logodds) { if (l > L_OCC) ++occ; else if (l < -L_OCC) ++free_; }
+        return {occ, free_};
+    }
+};
+
 struct Tracker {
     // TrackerConfig defaults (mirrors tracker.py)
     int kf_every = 3;
@@ -717,6 +857,12 @@ int main(int argc, char** argv) {
     tr.matcher.cams = &tr.fe.cams; tr.matcher.Ts = &tr.fe.T_imu_cam;
     if (tr.init_mode == "auto") std::printf("init-mode auto\n");
     if (tr.kf_dense_init_s > 0) std::printf("kf-dense-init %.1f s\n", tr.kf_dense_init_s);
+    // world model (densify + occupancy) timing harness: PODSLAM_WORLD=1
+    Densifier dens; OccupancyGrid occ;
+    const char* _w = std::getenv("PODSLAM_WORLD");
+    const bool world = _w && std::atoi(_w) != 0;
+    double world_ms = 0; long world_kf = 0, world_pts = 0;
+    if (world) std::printf("world model ON\n");
 
     // IMU rows (t_ns gx gy gz ax ay az) and frames.bin interleaved by time
     struct ImuRow { double t; Vector3 w, a; };
@@ -755,6 +901,21 @@ int main(int argc, char** argv) {
         gtsam::Pose3 pose; bool is_kf = false;
         const bool ok = tr.track(t, imgs, pose, is_kf);
         ++frames;
+        if (world && ok && is_kf) {
+            if (dens.cams == nullptr)
+                dens.init(tr.fe.cams, tr.fe.T_imu_cam, fovs, imgs[0].cols, imgs[0].rows);
+            const auto w0 = std::chrono::steady_clock::now();
+            cv::Matx44d T = cv::Matx44d::eye();
+            const auto M = pose.matrix();
+            for (int r = 0; r < 4; ++r) for (int c2 = 0; c2 < 4; ++c2) T(r, c2) = M(r, c2);
+            auto pts = dens.world_points(T, imgs);
+            std::vector<cv::Vec3d> near_pts;
+            const cv::Vec3d org(T(0,3), T(1,3), T(2,3));
+            for (const auto& q : pts) if (cv::norm(q - org) < 4.0) near_pts.push_back(q);
+            occ.integrate(org, near_pts);
+            world_ms += std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - w0).count();
+            ++world_kf; world_pts += long(pts.size());
+        }
         if (ok) {
             ++tracked; kfs += is_kf ? 1 : 0;
             const auto q = pose.rotation().toQuaternion();
@@ -766,6 +927,11 @@ int main(int argc, char** argv) {
         }
     }
     et.close();
+    if (world && world_kf) {
+        const auto [o, f_] = occ.stats();
+        std::printf("world model: %.0f ms/kf over %ld keyframes | %ld pts (%ld big-baseline, %ld gated) | occ %ld free %ld\n",
+                    world_ms / double(world_kf), world_kf, world_pts, dens.n_biggate, dens.n_gated, o, f_);
+    }
     const double wall = std::chrono::duration<double>(std::chrono::steady_clock::now() - t_start).count();
     std::printf("wall %.1f s, %.1f ms/frame\n", wall, 1000.0 * wall / std::max(1, frames));
     std::printf("tracked %d/%d frames, %d keyframes; window stats: absorbed %d outliers %d marginalised %d failed %d\n",
