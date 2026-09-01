@@ -226,11 +226,18 @@ def main(out_path):
   </section>
   <section>
     <h2>World model (Skydio-style, fisheyes only)</h2>
-    <p>Semi-dense cross-camera stereo (<code>--map-densify</code>): flight map 8.5k &rarr; 23k pts at
-    9.8 cm median (51k/17 cm coverage mode). 15 cm octomap-style occupancy with free-space ray
-    carving: 5,953 occupied / 36,957 known-free voxels on the PX4 flight at 170 ms/kf in python
-    (C++ fits realtime; the matcher is already native). Next lever for crisp long-range walls:
-    temporal motion-baseline stereo.</p>
+    <p>Semi-dense cross-camera stereo with <b>motion-baseline temporal refinement</b>
+    (<code>--map-densify</code>): each point is re-triangulated against an earlier keyframe of the same
+    camera, and an uncertainty gate (<code>--map-max-sigma</code>) keeps a point only while its
+    predicted &sigma;<sub>z</sub> stays voxel-scale. On the PX4 flight: <b>17.9k pts at 4.0 cm median /
+    74% inliers</b> (was 23k at 9.8 cm / 50%), or 55.6k pts at 6.4 cm in coverage mode &mdash; the
+    fisheye-only map now matches the OAK-D depth <i>sensor</i>&rsquo;s median (4.1 cm).
+    15 cm octomap-style occupancy with free-space ray carving: 5,428 occupied / 33,083 known-free
+    voxels, 299 ms/kf in python (the C++ port is the realtime path).</p>
+    <p class="sub">Why it was not the pose: an oracle ablation (<code>--map-gt-poses</code>) rebuilt the
+    map from ground truth and got 11.5 cm vs 9.8 cm estimated &mdash; at 2.4 cm ATE the budget was
+    per-point range, &sigma;<sub>z</sub> = z&sup2;&sigma;<sub>px</sub>/(bf), i.e. ~54 cm at 4 m on the
+    rig&rsquo;s 14 cm baselines. Radial spikes = range error; ghosted walls would have been pose error.</p>
     <p class="sub">Interactive 3D viewer (drag to orbit): <a href="https://claude.ai/code/artifact/68e46c17-5ad9-466e-b23a-0867b6b98679">podslam Maps</a>.</p>
   </section>
   <section>
