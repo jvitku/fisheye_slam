@@ -207,7 +207,7 @@ class CrossCamMatcher:
     """
 
     def __init__(self, rig, max_px=3.0, fb_max=1.5, min_cand=8, max_theta_deg=80.0,
-                 min_overlap=0.03, lk=None):
+                 min_overlap=0.03, max_depth=40.0, lk=None):
         import cv2
         self.rig = rig
         self.max_px = max_px
@@ -215,6 +215,7 @@ class CrossCamMatcher:
         self.min_cand = min_cand
         self.cos_max = np.cos(np.deg2rad(max_theta_deg))
         self.min_overlap = min_overlap
+        self.max_depth = float(max_depth)
         self.lk = lk or dict(winSize=(21, 21), maxLevel=3,
                              criteria=(cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 30, 0.01))
         self.maps: dict[tuple, object] = {}       # (i, j) -> (map_x, map_y) | None
@@ -241,10 +242,12 @@ class CrossCamMatcher:
         self.maps[key] = (map_x, map_y)
         return self.maps[key]
 
-    def match(self, images, masks, feats):
+    def match(self, images, masks, feats, all_hits=False):
         """feats: FrameFeatures from a per-camera front-end (disjoint id spaces).
-        Returns ({track id: p_imu}, stats)."""
+        Returns ({track id: p_imu}, stats); with all_hits=True the dict values are
+        lists of every camera-pair hit [(lk_err, p_imu), ...] for consensus tests."""
         import cv2
+        hits: dict[int, list] = {}
         pts: dict[int, tuple[float, np.ndarray]] = {}   # tid -> (lk_err, p_imu)
         n_att = n_ok = 0
         for i, cam_i in enumerate(self.rig.cameras):
@@ -300,14 +303,18 @@ class CrossCamMatcher:
                     continue
                 b_j = b_j[bvalid]
                 p_imu, _, keep = stereo_verify_batch(self.rig, i, j, b_i[idx[sel]], b_j,
-                                                     px_i[idx[sel]], nxt[sel], max_px=self.max_px)
+                                                     px_i[idx[sel]], nxt[sel], max_px=self.max_px,
+                                                     max_depth=self.max_depth)
                 e_all = err.ravel()
                 for s, k_ok, p in zip(sel, keep, p_imu):
                     if not k_ok:
                         continue
                     tid = int(ids_i[idx[s]])
                     e = float(e_all[s])
+                    hits.setdefault(tid, []).append((e, p))
                     if tid not in pts or e < pts[tid][0]:
                         pts[tid] = (e, p)
                     n_ok += 1
+        if all_hits:
+            return hits, dict(attempted=n_att, matched=n_ok, unique=len(hits))
         return {tid: p for tid, (e, p) in pts.items()}, dict(attempted=n_att, matched=n_ok, unique=len(pts))

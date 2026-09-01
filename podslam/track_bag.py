@@ -79,6 +79,9 @@ def main(argv=None) -> int:
     ap.add_argument("--map-min-obs", type=int, default=2, help="map: landmark maturity gate (observations)")
     ap.add_argument("--map-min-parallax", type=float, default=0.012, help="map: triangulation parallax gate [rad] (range-outlier tail)")
     ap.add_argument("--map-depth-immediate", action="store_true", help="map: fuse depth at the newest pose (legacy) instead of the marginalisation-time pose")
+    ap.add_argument("--map-densify", type=int, default=0, help="semi-dense fisheye mapping: cross-camera grid stereo every Nth keyframe (0 = off)")
+    ap.add_argument("--map-densify-step", type=int, default=12, help="densify grid pitch [px]")
+    ap.add_argument("--map-min-hits", type=int, default=2, help="dense-channel voxel hit requirement (temporal agreement filter)")
     ap.add_argument("--max-landmarks-per-kf", type=int, default=None, help="smart backend: per-keyframe new-landmark budget (default TrackerConfig 120)")
     ap.add_argument("--cams", default=None, help="comma-separated camera names to use (subset of the rig, first = tracking camera)")
     ap.add_argument("--kf-rot-deg", type=float, default=0.0, help="motion-adaptive keyframes: IMU rotation since last keyframe (0 = off)")
@@ -118,8 +121,12 @@ def main(argv=None) -> int:
     depth_topics: dict[str, int] = {}
     if args.map_out:
         from podslam.mapping import DenseMapper
-        mapper = DenseMapper(voxel=args.map_voxel, min_obs=args.map_min_obs, min_parallax=args.map_min_parallax)
+        mapper = DenseMapper(voxel=args.map_voxel, min_hits=args.map_min_hits, min_obs=args.map_min_obs, min_parallax=args.map_min_parallax)
         depth_topics = {c.depth_topic: i for i, c in enumerate(rig.cameras) if c.depth_topic}
+    densifier = None
+    if args.map_out and args.map_densify > 0:
+        from podslam.densify import Densifier
+        densifier = Densifier(rig, grid_step=args.map_densify_step)
     cam_topics = {c.topic: i for i, c in enumerate(rig.cameras)}
     imu_topic = rig.imu.topic
     tum = (args.out / "est.tum").open("w")
@@ -160,6 +167,11 @@ def main(argv=None) -> int:
                     if dropped:
                         mapper.remove_landmarks(dropped)
                         dropped.clear()
+                if densifier is not None and n_kf % args.map_densify == 0:
+                    pts_imu = densifier.points([tracker.condition(im) for im in imgs],
+                                               tracker.static_masks)
+                    if len(pts_imu):
+                        mapper.add_points((T[:3, :3] @ pts_imu.T).T + T[:3, 3])
                 for i, cam in enumerate(rig.cameras):
                     if ("depth", i) in group:
                         if args.map_depth_immediate:
