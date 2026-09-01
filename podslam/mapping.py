@@ -31,6 +31,10 @@ class DenseMapper:
         self._n: dict[tuple, int] = {}
         self.landmarks: dict[int, np.ndarray] = {}
         self._ray_cache = {}
+        # deferred depth: backprojected camera-frame points wait for their keyframe's
+        # FINAL (marginalisation-time) pose instead of fusing at the newest estimate
+        self._depth_queue: list[dict] = []
+        self._kf_pose: dict[int, np.ndarray] = {}
 
     # ------------------------------------------------------------- sources
     def update_landmarks(self, lm_point: dict, obs: dict | None = None, min_obs: int | None = None,
@@ -61,7 +65,13 @@ class DenseMapper:
         return n
 
     def add_depth(self, T_W_C: np.ndarray, model, depth: np.ndarray) -> None:
-        """Backproject a depth image (H,W float32 m; 0 = invalid) into the map."""
+        """Immediate fusion at the given pose (legacy path; the deferred path fuses
+        at marginalisation-time poses instead)."""
+        pts_c = self._backproject(model, depth)
+        if pts_c is not None:
+            self._accumulate((T_W_C[:3, :3] @ pts_c.T).T + T_W_C[:3, 3])
+
+    def _backproject(self, model, depth: np.ndarray):
         h, w = depth.shape
         key = (id(model), h, w)
         if key not in self._ray_cache:
@@ -70,15 +80,41 @@ class DenseMapper:
             rays, ok = model.unproject(np.stack([xs.ravel(), ys.ravel()], 1))
             self._ray_cache[key] = (xs.astype(int), ys.astype(int), rays, ok)
         xs, ys, rays, ok = self._ray_cache[key]
-        d = depth[ys.ravel() - 0, xs.ravel() - 0] if False else depth[np.minimum(ys.ravel(), h - 1), np.minimum(xs.ravel(), w - 1)]
+        d = depth[np.minimum(ys.ravel(), h - 1), np.minimum(xs.ravel(), w - 1)]
         good = ok & (d > 0.15) & (d < self.max_depth)
         if not good.any():
-            return
-        # rays are unit; depth images store z-depth for pinhole, range for f-theta.
+            return None
         rz = np.clip(rays[good, 2], 1e-6, None)
-        pts_c = rays[good] * (d[good] / rz)[:, None]
-        pts_w = (T_W_C[:3, :3] @ pts_c.T).T + T_W_C[:3, 3]
-        self._accumulate(pts_w)
+        return rays[good] * (d[good] / rz)[:, None]
+
+    def add_depth_deferred(self, kf: int, T_imu_cam: np.ndarray, model, depth: np.ndarray) -> None:
+        """Backproject now (camera frame), fuse into the world when the keyframe is
+        marginalised — its pose is then the most-refined it will ever be."""
+        pts_c = self._backproject(model, depth)
+        if pts_c is not None:
+            self._depth_queue.append(dict(kf=int(kf), T_imu_cam=np.asarray(T_imu_cam, float), pts=pts_c))
+
+    def refresh_kf_pose(self, kf: int, T_W_I: np.ndarray) -> None:
+        if any(e["kf"] == int(kf) for e in self._depth_queue):
+            self._kf_pose[int(kf)] = np.asarray(T_W_I, float)
+
+    def fuse_marginalized(self, live_kfs) -> int:
+        """Fuse queued depth whose keyframe left the window, at its last refreshed pose."""
+        keep, n = [], 0
+        for e in self._depth_queue:
+            if e["kf"] in live_kfs:
+                keep.append(e)
+                continue
+            T = self._kf_pose.get(e["kf"])
+            if T is not None:
+                T_W_C = T @ e["T_imu_cam"]
+                self._accumulate((T_W_C[:3, :3] @ e["pts"].T).T + T_W_C[:3, 3])
+                n += 1
+        self._depth_queue = keep
+        for kf in list(self._kf_pose):
+            if kf not in live_kfs and all(e["kf"] != kf for e in keep):
+                self._kf_pose.pop(kf)
+        return n
 
     def add_points(self, pts_w: np.ndarray) -> None:
         if len(pts_w):

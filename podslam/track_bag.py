@@ -78,6 +78,7 @@ def main(argv=None) -> int:
     ap.add_argument("--map-voxel", type=float, default=0.05)
     ap.add_argument("--map-min-obs", type=int, default=2, help="map: landmark maturity gate (observations)")
     ap.add_argument("--map-min-parallax", type=float, default=0.012, help="map: triangulation parallax gate [rad] (range-outlier tail)")
+    ap.add_argument("--map-depth-immediate", action="store_true", help="map: fuse depth at the newest pose (legacy) instead of the marginalisation-time pose")
     ap.add_argument("--max-landmarks-per-kf", type=int, default=None, help="smart backend: per-keyframe new-landmark budget (default TrackerConfig 120)")
     ap.add_argument("--cams", default=None, help="comma-separated camera names to use (subset of the rig, first = tracking camera)")
     ap.add_argument("--kf-rot-deg", type=float, default=0.0, help="motion-adaptive keyframes: IMU rotation since last keyframe (0 = off)")
@@ -161,7 +162,14 @@ def main(argv=None) -> int:
                         dropped.clear()
                 for i, cam in enumerate(rig.cameras):
                     if ("depth", i) in group:
-                        mapper.add_depth(T @ cam.T_imu_cam, cam.model, group[("depth", i)])
+                        if args.map_depth_immediate:
+                            mapper.add_depth(T @ cam.T_imu_cam, cam.model, group[("depth", i)])
+                        else:
+                            mapper.add_depth_deferred(tracker.k, cam.T_imu_cam, cam.model, group[("depth", i)])
+                if be is not None and hasattr(be, "kf_state") and not args.map_depth_immediate:
+                    for kk, st in be.kf_state.items():
+                        mapper.refresh_kf_pose(kk, st[0].matrix())
+                    mapper.fuse_marginalized(set(be.kf_state.keys()))
 
     def flush(upto_ns):
         for t in sorted(pending):
@@ -200,6 +208,7 @@ def main(argv=None) -> int:
         if hasattr(be, "px_sigma"):
             extra += f", px_sigma {be.px_sigma:.2f}"
     if mapper is not None:
+        mapper.fuse_marginalized(set())          # flush depth still waiting on live keyframes
         info = mapper.finalize(args.map_out)
         print(f"map: {info['n_points']} points ({info['n_dense']} dense, {info['n_landmarks']} landmarks) -> {args.map_out}(.npz/.ply)")
     print(f"tracked {n_ok}/{n_frames} frames ({n_kf} keyframes, {resets} soft resets{extra}) -> {args.out / 'est.tum'}")
