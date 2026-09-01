@@ -267,3 +267,34 @@ fisheye_slam/
     └── 08_oakdpro_slam/        ← Track G: OAK-D Pro device lane — 3 stacks,
                                    sim ↔ HW bag contract (docs/oak_d_pro_slam.md)
 ```
+
+
+---
+
+## Addendum (2026-09-01): where this landed
+
+The portfolio evaluation converged on the modular in-house stack (`podslam/`,
+C++ twin in `podslam-cpp/`), which now leads the requirement list it was
+scored against — see docs/HANDOFF.md for the live state and the progress
+artifact for the full result tables. Headlines against the six requirements:
+
+1. **Robustness**: 0 tracker resets across every condition ever run; moving-
+   platform init (mid-flight start 13.38 m -> 0.09 m); per-landmark dynamic-
+   scene weighting (61 swaying trees: 9.41 -> 0.32 m with the production
+   profile); early-window fragility root-caused and mitigated (dense-init).
+2. **2-3 -> 6 cameras**: one code path (smart rig factors); 6-cam skydio6 is
+   the winner rig; multiklt front-end for divergent rigs, ported to C++.
+3. **Cheap unsynchronized rolling-shutter cams**: per-rig yaml sensor models,
+   Kalibr time-shift applied; sim lanes carry measured IMU/extrinsics.
+4. **Edge realtime**: C++ tracker ~35 ms/frame single-core (TUM-VI stereo),
+   78 ms for SIX 512^2 cameras — within the Orin budget before CUDA work.
+5. **Dense local map**: mapping v2 — parallax/maturity-gated landmarks with
+   outlier retirement (map rmse tails 4810 -> 27 cm) + marginalisation-time
+   depth fusion (OAK-D 4.1 cm median / 93% inliers).
+6. **IR/NIR**: flood-lit night lanes evaluated day/night/fog/dust; night
+   limits are geometric (ceiling flood pool), 1024^2 buys -17% ATE.
+
+External baselines on identical PX4-flown bags: podslam 2.25 cm @ 97%
+coverage vs OpenVINS 3.35 cm @ 48% (its supported 2-cam serial mode; the
+6-cam live node never initializes). TUM-VI/Hilti real-data rows still favor
+OpenVINS on accuracy — the no-harm/parity pass there is queued behind disk.
