@@ -20,20 +20,45 @@ import numpy as np
 
 class DenseMapper:
     def __init__(self, voxel: float = 0.05, min_hits: int = 2, max_depth: float = 20.0,
-                 depth_stride: int = 6):
+                 depth_stride: int = 6, min_obs: int = 2, min_parallax: float = 0.012):
         self.voxel = float(voxel)
         self.min_hits = int(min_hits)
         self.max_depth = float(max_depth)
         self.stride = int(depth_stride)
+        self.min_obs = int(min_obs)
+        self.min_parallax = float(min_parallax)
         self._sum: dict[tuple, np.ndarray] = {}
         self._n: dict[tuple, int] = {}
         self.landmarks: dict[int, np.ndarray] = {}
         self._ray_cache = {}
 
     # ------------------------------------------------------------- sources
-    def update_landmarks(self, lm_point: dict) -> None:
+    def update_landmarks(self, lm_point: dict, obs: dict | None = None, min_obs: int | None = None,
+                         parallax: dict | None = None, min_parallax: float | None = None) -> None:
+        """Live landmark positions. Gates:
+        - maturity: >= min_obs observations (obs = backend.landmark_obs)
+        - triangulation conditioning: parallax >= min_parallax rad (backend.lm_parallax);
+          low-parallax landmarks reproject fine at ANY depth, so their range error is
+          chi2-invisible — they are the map's far-outlier tail."""
+        min_obs = self.min_obs if min_obs is None else min_obs
+        min_parallax = self.min_parallax if min_parallax is None else min_parallax
         for j, p in lm_point.items():
+            if obs is not None and obs.get(j, 0) < min_obs:
+                continue
+            if parallax is not None and parallax.get(j, 0.0) < min_parallax:
+                self.landmarks.pop(j, None)      # may have entered before it degraded
+                continue
             self.landmarks[j] = np.asarray(p, float)
+
+    def remove_landmarks(self, ids) -> int:
+        """Retirement feedback: erase landmarks the backend dropped as OUTLIERS
+        (chi2 / cheirality / prior-reject). Healthy-ended tracks are NOT removed —
+        their last (marginalisation-time, most-refined) position stays in the map."""
+        n = 0
+        for j in ids:
+            if self.landmarks.pop(j, None) is not None:
+                n += 1
+        return n
 
     def add_depth(self, T_W_C: np.ndarray, model, depth: np.ndarray) -> None:
         """Backproject a depth image (H,W float32 m; 0 = invalid) into the map."""

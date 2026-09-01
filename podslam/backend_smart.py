@@ -145,6 +145,9 @@ class SmartBackend:
         self.n_marginalized = 0
         self.n_marg_fallback = 0
         self.n_resets = 0; self.n_rebuilds = 0; self.n_retired = 0; self.n_dropped = 0
+        self.lm_dropped_outlier = set()   # landmark ids dropped as OUTLIERS (chi2/cheirality) — mapper feedback
+        self.lm_parallax = {}             # landmark id -> triangulation parallax [rad] (map-quality gate:
+                                          # low-parallax landmarks reproject fine at ANY depth — chi2-blind range error)
         self.n_failed_solves = 0
         self.n_active_lm = 0
         self.n_valid_lm = 0
@@ -192,7 +195,7 @@ class SmartBackend:
         self.lm_point[j] = np.asarray(point_w, float) if point_w is not None else None
     def drop_pending_landmark(self, j):
         self.lm_meas.pop(j, None); self.landmark_t.pop(j, None); self.landmark_obs.pop(j, None); self.lm_point.pop(j, None)
-        self.lm_ema.pop(j, None); self.lm_w.pop(j, None); self.lm_nup.pop(j, None)
+        self.lm_ema.pop(j, None); self.lm_w.pop(j, None); self.lm_nup.pop(j, None); self.lm_parallax.pop(j, None)
     def retire_landmark(self, j):
         self.drop_pending_landmark(j); self.n_retired += 1
 
@@ -277,8 +280,10 @@ class SmartBackend:
                             gfg.add(lin); self.n_prior_absorbed += 1
                     else:
                         self.n_prior_rejected += 1
+                        self.lm_dropped_outlier.add(j)
                 except Exception:
                     self.n_prior_rejected += 1
+                    self.lm_dropped_outlier.add(j)
             consumed.append(j)
         present = set(gfg.keys()) if hasattr(gfg, "keys") else keys_m
         order = g.Ordering([key for key in [self.X(kk) for kk in gone] + [self.V(kk) for kk in gone] + [self.B(kk) for kk in gone] if key in present])
@@ -386,10 +391,30 @@ class SmartBackend:
                         pt = np.asarray(pt, dtype=float).reshape(-1)
                         if pt.shape == (3,) and np.all(np.isfinite(pt)):
                             self.lm_point[j] = pt
+                            # observing-camera centers -> perpendicular baseline / depth
+                            cs = []
+                            for kk, c, _m in self.lm_meas.get(j, []):
+                                st = self.kf_state.get(kk)
+                                if st is None:
+                                    continue
+                                Tm = st[0].matrix()
+                                tc = self.rig.cameras[c].T_imu_cam[:3, 3]
+                                cs.append(Tm[:3, :3] @ tc + Tm[:3, 3])
+                            if len(cs) >= 2:
+                                cs = np.asarray(cs)
+                                mid = cs.mean(axis=0)
+                                r = pt - mid
+                                depth = max(float(np.linalg.norm(r)), 1e-6)
+                                r /= depth
+                                rel = cs - mid
+                                perp = rel - np.outer(rel @ r, r)
+                                base = float(np.linalg.norm(perp, axis=1).max()) * 2.0
+                                self.lm_parallax[j] = base / depth
                 except Exception:
                     pass
             for j in outliers:
                 self.drop_pending_landmark(j)
+                self.lm_dropped_outlier.add(j)
             self.n_outliers += len(outliers)
             if self.dyn_weight:
                 self.n_downweighted = sum(1 for w in self.lm_w.values() if w > 1.0)

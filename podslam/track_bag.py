@@ -76,6 +76,8 @@ def main(argv=None) -> int:
     ap.add_argument("--max-window-kf", type=int, default=32, help="smart backend: keyframe-count cap of the window")
     ap.add_argument("--map-out", default=None, help="dense map output basename (.npz + .ply); landmark + depth fusion")
     ap.add_argument("--map-voxel", type=float, default=0.05)
+    ap.add_argument("--map-min-obs", type=int, default=2, help="map: landmark maturity gate (observations)")
+    ap.add_argument("--map-min-parallax", type=float, default=0.012, help="map: triangulation parallax gate [rad] (range-outlier tail)")
     ap.add_argument("--max-landmarks-per-kf", type=int, default=None, help="smart backend: per-keyframe new-landmark budget (default TrackerConfig 120)")
     ap.add_argument("--cams", default=None, help="comma-separated camera names to use (subset of the rig, first = tracking camera)")
     ap.add_argument("--kf-rot-deg", type=float, default=0.0, help="motion-adaptive keyframes: IMU rotation since last keyframe (0 = off)")
@@ -115,7 +117,7 @@ def main(argv=None) -> int:
     depth_topics: dict[str, int] = {}
     if args.map_out:
         from podslam.mapping import DenseMapper
-        mapper = DenseMapper(voxel=args.map_voxel)
+        mapper = DenseMapper(voxel=args.map_voxel, min_obs=args.map_min_obs, min_parallax=args.map_min_parallax)
         depth_topics = {c.depth_topic: i for i, c in enumerate(rig.cameras) if c.depth_topic}
     cam_topics = {c.topic: i for i, c in enumerate(rig.cameras)}
     imu_topic = rig.imu.topic
@@ -151,7 +153,12 @@ def main(argv=None) -> int:
             if mapper is not None and est.keyframe:
                 be = tracker.backend
                 if be is not None and hasattr(be, "lm_point"):
-                    mapper.update_landmarks(be.lm_point)
+                    mapper.update_landmarks(be.lm_point, obs=getattr(be, "landmark_obs", None),
+                                            parallax=getattr(be, "lm_parallax", None))
+                    dropped = getattr(be, "lm_dropped_outlier", None)
+                    if dropped:
+                        mapper.remove_landmarks(dropped)
+                        dropped.clear()
                 for i, cam in enumerate(rig.cameras):
                     if ("depth", i) in group:
                         mapper.add_depth(T @ cam.T_imu_cam, cam.model, group[("depth", i)])
