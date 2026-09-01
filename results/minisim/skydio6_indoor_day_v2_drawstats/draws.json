@@ -1,0 +1,25 @@
+{
+ "note": "indoor day 110s, +/- detector feature draws; baseline vs production profile (auto + kf-dense-init 2.0 + dyn-weight; mf298 cell = dense+dw). ATE rmse [m].",
+ "draws": {
+  "mf296": {
+   "baseline": 0.2196,
+   "profile": 0.1943
+  },
+  "mf298": {
+   "baseline": 0.7326,
+   "profile": 0.1077
+  },
+  "mf300": {
+   "baseline": 0.2285,
+   "profile": 0.1656
+  },
+  "mf302": {
+   "baseline": 0.2208,
+   "profile": 0.202
+  },
+  "mf304": {
+   "baseline": 0.8529,
+   "profile": 0.1926
+  }
+ }
+}
