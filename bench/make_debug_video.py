@@ -51,8 +51,12 @@ def main(argv=None) -> int:
 
     rig = load_rig(a.rig)
     n_cams = len(rig.cameras)
-    cols = 3 if n_cams > 2 else n_cams
-    rows = (n_cams + cols - 1) // cols
+    # world mode: cameras in a tall grid on the LEFT, cloud + octomap stacked on the RIGHT
+    if getattr(a, "world", False) and n_cams > 2:
+        cols, rows = 2, (n_cams + 1) // 2
+    else:
+        cols = 3 if n_cams > 2 else n_cams
+        rows = (n_cams + cols - 1) // cols
     cfg = TrackerConfig(frontend=a.frontend, init_mode=a.init_mode,
                         kf_dense_init_s=a.kf_dense_init, dyn_weight=a.dyn_weight,
                         px_sigma=float(getattr(rig, "px_sigma", 1.5) or 1.5))
@@ -73,9 +77,10 @@ def main(argv=None) -> int:
 
     cw = int(rig.cameras[0].size[0] * a.scale)
     ch = int(rig.cameras[0].size[1] * a.scale)
-    PH = 430 if a.world else 0
-    W, H = cols * cw, rows * ch + PH
-    MH = rows * ch                       # mosaic height
+    MW = cols * cw                       # camera block width
+    PR = int(MW * 1.05) if a.world else 0    # right column width
+    W, H = MW + PR, rows * ch
+    MH = 0                               # panels start at top of the right column
     densifier = occ = None
     world_pts = {}                       # 5 cm dedup: voxel key -> (x,y,z)
     world_ms = []
@@ -168,67 +173,68 @@ def main(argv=None) -> int:
         ca, sa, ce, se = np.cos(az), np.sin(az), np.cos(el), np.sin(el)
         R = np.array([[ca, sa, 0], [-sa * se, ca * se, ce], [-sa * ce, ca * ce, -se]])
         camd = 1.7 * ext
-        f = PH * 0.95
+        f = (H // 2) * 0.95
         def proj(pw):
             q = R @ (np.asarray(pw) - ctr)
             z = q[2] + camd
             if z < 0.2:
                 return None
             return int(f * q[0] / z), int(f * q[1] / z), z
-        panels = [(0, W // 2, "live points (2-hit filtered)"),
-                  (W // 2, W, f"occupancy {a.occ_voxel*100:.0f} cm")]
-        for x0, x1, label in panels:
-            cv2.rectangle(canvas, (x0, MH), (x1, H), (18, 14, 11), -1)
-            cv2.line(canvas, (x0, MH), (x0, H), (60, 60, 60), 1)
-        zlo = ctr[2] - ext / 2, 
+        # right column, two stacked panels
+        panels = [(MW, W, 0, H // 2, "live points (2-hit filtered)"),
+                  (MW, W, H // 2, H, f"occupancy {a.occ_voxel*100:.0f} cm")]
+        for x0, x1, y0_, y1_, label in panels:
+            cv2.rectangle(canvas, (x0, y0_), (x1, y1_), (18, 14, 11), -1)
+            cv2.line(canvas, (x0, y0_), (x0, y1_), (60, 60, 60), 1)
+            cv2.line(canvas, (x0, y1_ - 1), (x1, y1_ - 1), (60, 60, 60), 1)
         def hcol(z):
             t = min(max((z - (ctr[2] - ext / 3)) / max(ext * 0.66, 1e-3), 0), 1)
             return (int(140 + 60 * (1 - t)), int(90 + 150 * t), int(40 + 40 * t))
-        # left: points (same >=2-hit voxel filter the product map applies)
-        cx0, cy0 = W // 4, MH + PH // 2
+        # top-right panel: points (same >=2-hit voxel filter the product map applies)
+        cx0, cy0 = MW + PR // 2, H // 4
         for pw in shown:
             pr = proj(pw)
             if pr is None: continue
             x, y, _ = pr
             xx, yy = cx0 + x, cy0 + y
-            if 0 <= xx < W // 2 - 1 and MH <= yy < H - 1:
-                canvas[yy, xx] = hcol(pw[2]); canvas[yy, xx + 1] = hcol(pw[2])
-        # right: occupied voxels as z-sorted squares
-        cx1 = 3 * W // 4
+            if MW + 1 <= xx < W - 1 and 1 <= yy < H // 2 - 1:
+                canvas[yy - 1:yy + 1, xx - 1:xx + 1] = hcol(pw[2])
+        # bottom-right panel: occupied voxels as z-sorted squares
+        cx1, cy1 = MW + PR // 2, 3 * H // 4
         cents, _odds = occ.occupied()
         if len(cents):
             prs = []
             for c in cents:
                 pr = proj(c)
                 if pr is None: continue
-                prs.append((pr[2], cx1 + pr[0], cy0 + pr[1], c[2]))
+                prs.append((pr[2], cx1 + pr[0], cy1 + pr[1], c[2]))
             prs.sort(key=lambda r: -r[0])
             for z, x, y, h in prs:
                 s_ = max(1, int(f * a.occ_voxel / z * 0.75))
-                if W // 2 <= x - s_ and x + s_ < W and MH <= y - s_ and y + s_ < H:
+                if MW <= x - s_ and x + s_ < W and H // 2 <= y - s_ and y + s_ < H:
                     col = hcol(h)
                     cv2.rectangle(canvas, (x - s_, y - s_), (x + s_, y + s_), col, -1)
                     cv2.rectangle(canvas, (x - s_, y - s_), (x + s_, y + s_), (25, 20, 16), 1)
         # trajectory + drone marker on both panels
-        for cx in (cx0, cx1):
+        for cx, cy in ((cx0, cy0), (cx1, cy1)):
             if len(est_path) > 1:
                 ep = est_path[::3]
                 last = None
                 for q in ep:
                     pr = proj(q)
                     if pr is None: continue
-                    pt = (cx + pr[0], cy0 + pr[1])
+                    pt = (cx + pr[0], cy + pr[1])
                     if last is not None:
                         cv2.line(canvas, last, pt, (80, 255, 120), 1, cv2.LINE_AA)
                     last = pt
                 if last is not None:
                     cv2.circle(canvas, last, 4, (60, 60, 255), -1)
-        for (x0, x1, label) in panels:
-            cv2.putText(canvas, label, (x0 + 10, MH + 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (200, 200, 200), 1, cv2.LINE_AA)
+        for (x0, x1, y0_, y1_, label) in panels:
+            cv2.putText(canvas, label, (x0 + 10, y0_ + 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (200, 200, 200), 1, cv2.LINE_AA)
         st = occ.stats()
         ms = np.mean(world_ms[-20:]) if world_ms else 0
-        cv2.putText(canvas, f"pts {len(shown)}/{len(world_pts)}   vox occ {st['occupied']} free {st['free']}   {ms:.0f} ms/kf",
-                    (W // 2 + 10, H - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.48, (150, 160, 170), 1, cv2.LINE_AA)
+        cv2.putText(canvas, f"pts {len(shown)}/{len(world_pts)}  vox occ {st['occupied']} free {st['free']}  {ms:.0f} ms/kf",
+                    (MW + 10, H - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.46, (150, 160, 170), 1, cv2.LINE_AA)
 
     def render(t_ns, group):
         nonlocal n_frames, t0_ns
