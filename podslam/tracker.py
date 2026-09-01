@@ -45,8 +45,10 @@ class TrackerConfig:
     depth_feedback: bool = False          # estimator landmark depths as stereo guesses: no gain on Hilti, hurts TUM-VI
     px_sigma_adapt: bool = False          # residual-driven sigma converges to 0.5-0.9 px (residuals at the
                                           # converged solution do not see calibration/distortion errors): off
-    dyn_weight: bool = False              # smart backend: per-landmark temporal-consistency down-weighting
-                                          # (wind sway); replaces the global px_sigma 2.5 stopgap when on
+    dyn_weight: bool = True               # smart backend: per-landmark temporal-consistency down-weighting.
+                                          # DEFAULT ON since 2026-09-01: better-or-equal on every sequence,
+                                          # sim and real (TUM-VI day 0.121->0.118, night 0.133->0.131,
+                                          # transition 0.145->0.048; forest dyn 22.6x; px4/indoor no-harm)
     px_adapt_up: bool = False             # smart backend: one-sided global sigma adaptation (>= rig nominal)
     anchor_delay_kf: int = 0              # smart backend: soft gauge at init, hard re-anchor at this keyframe (0 = legacy)
     kf_dense_init_s: float = 0.0          # keyframe every frame for this long after init (landmark maturity)
