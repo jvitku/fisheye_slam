@@ -128,6 +128,12 @@ reap_orphans() {   # containers labelled by a guard whose PID no longer exists
     local line cid label pid
     while read -r cid label; do
         [ -n "$cid" ] || continue
+        # only reap labels in the guard's own format (YYYYmmdd-HHMMSS-PID);
+        # manually-labelled detached containers (fisheye_guard=manual-*) are exempt
+        case "$label" in
+            [0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]-[0-9]*-[0-9]*) ;;
+            *) continue;;
+        esac
         pid="${label##*-}"
         if ! kill -0 "$pid" 2>/dev/null; then
             echo "guard: killing orphaned container $cid (guard $label is gone)" >&2
