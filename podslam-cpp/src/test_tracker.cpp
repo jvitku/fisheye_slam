@@ -9,6 +9,7 @@
 
 #include <deque>
 #include <chrono>
+#include <cstdlib>
 
 using gtsam::Vector3;
 
@@ -109,7 +110,10 @@ struct Tracker {
     // TrackerConfig defaults (mirrors tracker.py)
     int kf_every = 3;
     double kf_min_track_ratio = 0.6, lag_s = 4.0;
+    double kf_dense_init_s = 0.0;      // keyframe every frame this long after init
+    double t_init = -1;
     int max_landmarks_per_kf = 120;
+    bool setup_dw = false;
 
     KltFrontend fe;
     MultiKltFrontend mfe;
@@ -260,6 +264,7 @@ struct Tracker {
             kf_navstate = gtsam::NavState(T, Vector3::Zero());
             pim = std::make_unique<gtsam::PreintegratedCombinedMeasurements>(pp, bias);
             pim_t_last = t;
+            t_init = t;
             int n_new = 0;
             auto outs = per_cam ? mfe.process(imgs, nullptr, n_new)
                                 : fe.process(imgs[0], imgs, nullptr, n_new);
@@ -293,6 +298,7 @@ struct Tracker {
         int n0 = int(outs[0].ids.size());
         if (per_cam) { n0 = 0; for (size_t c = 0; c < outs.size(); ++c) n0 += int(outs[c].ids.size()); }
         bool is_kf = frames_since_kf >= kf_every || n0 < kf_min_track_ratio * std::max(n_tracks_at_kf, 1);
+        if (kf_dense_init_s > 0 && t_init >= 0 && (t - t_init) < kf_dense_init_s) is_kf = true;
         if (!is_kf) { pose_out = predicted.pose(); return true; }
         // _keyframe
         ++k;
@@ -361,7 +367,11 @@ int main(int argc, char** argv) {
                     tr.mfe.subs.size(), fovs.size());
     }
     if (kf_every_arg > 0) tr.kf_every = kf_every_arg;
+    if (const char* e = std::getenv("PODSLAM_DW"))    tr.setup_dw = std::atoi(e) != 0;
+    if (const char* e = std::getenv("PODSLAM_DENSE")) tr.kf_dense_init_s = std::atof(e);
     tr.setup();
+    if (tr.setup_dw) { tr.win->dyn_weight = true; std::printf("dyn-weight ON\n"); }
+    if (tr.kf_dense_init_s > 0) std::printf("kf-dense-init %.1f s\n", tr.kf_dense_init_s);
 
     // IMU rows (t_ns gx gy gz ax ay az) and frames.bin interleaved by time
     struct ImuRow { double t; Vector3 w, a; };

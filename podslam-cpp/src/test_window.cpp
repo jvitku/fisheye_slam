@@ -50,6 +50,10 @@ struct Window {
     // ---- configuration (mirrors backend_smart defaults)
     double lag_s = 4.0, chi2_gate = 5.0, abs_err_tol = 1e-2;
     int max_iters = 6, min_obs_prior = 4, max_window_kf = 32;
+    // dyn-weight (backend_smart parity): per-landmark temporal-consistency down-weighting
+    bool dyn_weight = false;
+    double dyn_weight_lo = 3.0, dyn_weight_max = 3.0, dyn_weight_alpha = 0.3;
+    int dyn_weight_min_n = 3;
 
     std::shared_ptr<gtsam::CameraSet<Camera>> cam_set;
     gtsam::SharedNoiseModel noise;
@@ -61,6 +65,9 @@ struct Window {
     std::map<long, std::vector<Obs>> lm_meas;
     std::map<long, double> landmark_t;
     std::map<long, std::array<double, 3>> lm_point;   // last valid triangulation (for _in_front)
+    std::map<long, double> lm_ema, lm_w;
+    std::map<long, int> lm_nup;
+    double base_sigma = 0.0;
     std::vector<gtsam::NonlinearFactor::shared_ptr> prior_factors;
     std::set<int> graph_keys;
     int n_absorbed = 0, n_rejected = 0, n_outliers = 0, n_marginalized = 0, n_failed = 0;
@@ -76,17 +83,23 @@ struct Window {
             cam_set->push_back(Camera(gtsam::Pose3(T), K));
             sig_sum += px_sigma / r[0];
         }
-        noise = gtsam::noiseModel::Isotropic::Sigma(2, sig_sum / rig_rows.size());
+        base_sigma = sig_sum / rig_rows.size();
+        noise = gtsam::noiseModel::Isotropic::Sigma(2, base_sigma);
         sp.setRankTolerance(1e-9);
         sp.setLandmarkDistanceThreshold(-1.0);
         sp.setDynamicOutlierRejectionThreshold(-1.0);
     }
 
-    SmartRig::shared_ptr smart_factor(const std::vector<Obs>& meas) const {
-        auto f = std::make_shared<SmartRig>(noise, cam_set, sp);
+    SmartRig::shared_ptr smart_factor(const std::vector<Obs>& meas, double w = 1.0) const {
+        auto n = w == 1.0 ? noise : gtsam::noiseModel::Isotropic::Sigma(2, base_sigma * w);
+        auto f = std::make_shared<SmartRig>(n, cam_set, sp);
         for (const auto& o : meas) f->add(gtsam::Point2(o.mx, o.my), X(o.k), size_t(o.cam));
         return f;
     }
+
+    double lw(long j) const { auto it = lm_w.find(j); return it == lm_w.end() ? 1.0 : it->second; }
+    void drop_lm(long j) { lm_meas.erase(j); landmark_t.erase(j); lm_point.erase(j);
+                           lm_ema.erase(j); lm_w.erase(j); lm_nup.erase(j); }
 
     gtsam::Values values_for(const std::vector<int>& keys) const {
         gtsam::Values v;
@@ -180,7 +193,7 @@ struct Window {
                 if (lf && lf->size() > 0)
                     prior_factors.push_back(std::make_shared<gtsam::LinearContainerFactor>(lf, values));
         }
-        for (long j : consumed) { lm_meas.erase(j); landmark_t.erase(j); lm_point.erase(j); }
+        for (long j : consumed) drop_lm(j);
         for (int k : gone) {
             graph_keys.erase(k); kf_state.erase(k); imu_factor.erase(k); kf_t.erase(k);
         }
@@ -202,7 +215,7 @@ struct Window {
             std::vector<Obs> inwin;
             for (const auto& o : meas) if (kset.count(o.k)) inwin.push_back(o);
             if (inwin.size() < 2) continue;
-            auto f = smart_factor(inwin);
+            auto f = smart_factor(inwin, dyn_weight ? lw(j) : 1.0);
             graph.push_back(f); factors[j] = f;
         }
         gtsam::LevenbergMarquardtParams params;
@@ -222,7 +235,22 @@ struct Window {
             std::vector<long> outliers;
             for (auto& [j, f] : factors) {
                 try {
-                    if (f->error(result) / std::max<size_t>(1, f->measured().size()) > chi2_gate) {
+                    const double e_w = f->error(result) / std::max<size_t>(1, f->measured().size());
+                    double e_raw = e_w;
+                    if (dyn_weight) {
+                        const double w = lw(j);
+                        e_raw = e_w * w * w;              // base-noise units (undo the inflation)
+                        auto it = lm_ema.find(j);
+                        const double ema = it == lm_ema.end() ? e_raw
+                                          : (1 - dyn_weight_alpha) * it->second + dyn_weight_alpha * e_raw;
+                        lm_ema[j] = ema;
+                        const int n_up = ++lm_nup[j];
+                        if (n_up >= dyn_weight_min_n)
+                            lm_w[j] = ema <= dyn_weight_lo ? 1.0 : std::min(std::sqrt(ema), dyn_weight_max);
+                    }
+                    // retire on the RAW error (backend_smart parity: inflated landmarks
+                    // must not out-survive the gate)
+                    if (e_raw > chi2_gate) {
                         outliers.push_back(j);
                     } else if (f->isValid()) {
                         auto pt = f->point();
@@ -230,7 +258,7 @@ struct Window {
                     }
                 } catch (...) {}
             }
-            for (long j : outliers) { lm_meas.erase(j); landmark_t.erase(j); }
+            for (long j : outliers) drop_lm(j);
             n_outliers += int(outliers.size());
         }
         // slide
@@ -244,7 +272,7 @@ struct Window {
         if (!gone.empty() && !remaining.empty()) marginalize(gone, remaining, t);
         std::vector<long> stale;
         for (auto& [j, tj] : landmark_t) if (tj < cutoff) stale.push_back(j);
-        for (long j : stale) { lm_meas.erase(j); landmark_t.erase(j); }
+        for (long j : stale) drop_lm(j);
         std::set<int> rset2(graph_keys.begin(), graph_keys.end());
         for (auto& [j, meas] : lm_meas) {
             std::vector<Obs> keep2;
