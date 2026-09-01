@@ -372,6 +372,7 @@ class SmartBackend:
             for j, f in factors.items():
                 try:
                     e_w = f.error(result) / max(1, len(f.measured()))
+                    e_raw = e_w
                     if self.dyn_weight:
                         w = self.lm_w.get(j, 1.0)
                         e_raw = e_w * w * w              # error in base-noise units (undo the inflation)
@@ -382,7 +383,11 @@ class SmartBackend:
                         self.lm_nup[j] = n_up
                         if n_up >= self.dyn_weight_min_n:
                             self.lm_w[j] = 1.0 if ema <= self.dyn_weight_lo else min(float(np.sqrt(ema)), self.dyn_weight_max)
-                    if e_w > self.chi2_gate:
+                    # retire on the RAW error: an inflated landmark must not survive the
+                    # chi2 gate merely because its noise was widened (transient movers
+                    # were living on as biased constraints under auto+dyn-weight);
+                    # sway stays alive-and-downweighted (raw error mostly under the gate)
+                    if e_raw > self.chi2_gate:
                         outliers.append(j); continue
                     if f.isValid():
                         self.n_valid_lm += 1

@@ -225,12 +225,22 @@ class Tracker:
         (auto) or the moving-platform solve. Falls back to the forced static
         assumption after init_max_s (matchless scenes: never worse than legacy)."""
         from .init_dynamic import CrossCamMatcher, DynamicInitializer
+        if self.t_first_frame is None:
+            self.t_first_frame = t
+        # auto: give still-detection its window BEFORE warming the front-end — a
+        # still start then initialises bit-identically to static mode (pre-init
+        # track warm-up interacts badly with dyn-weight on transient-mover
+        # scenes); a moving start proceeds to the dynamic path with warm-up.
+        if (self.cfg.init_mode == "auto" and self.init.result is None
+                and (t - self.t_first_frame) < self.init.window_s + 0.15):
+            return Estimate(t_ns, None, False, False, [0] * len(imgs), "waiting (still-detection window)")
+        if self.cfg.init_mode == "auto" and self.init.result is not None and self.t_prev_frame is None:
+            self._initialize(t, imgs, ms)
+            return Estimate(t_ns, self.kf_navstate.pose().matrix(), True, True, self._last_nobs, "initialized", self._n_lm)
         dR = None if self.t_prev_frame is None else delta_rotation(self.imu, self.t_prev_frame, t, np.zeros(3))
         feats = self.frontend.process(t_ns, imgs, ms, dR)
         self.t_prev_frame = t
         self._last_nobs = [len(c) for c in feats.cams]
-        if self.t_first_frame is None:
-            self.t_first_frame = t
         if self.dyn_init is None:
             self.dyn_init = DynamicInitializer(self.imu, window_s=self.cfg.init_window_s)
             self._matcher = CrossCamMatcher(self.rig)
