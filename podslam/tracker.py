@@ -48,6 +48,8 @@ class TrackerConfig:
     dyn_weight: bool = False              # smart backend: per-landmark temporal-consistency down-weighting
                                           # (wind sway); replaces the global px_sigma 2.5 stopgap when on
     px_adapt_up: bool = False             # smart backend: one-sided global sigma adaptation (>= rig nominal)
+    anchor_delay_kf: int = 0              # smart backend: soft gauge at init, hard re-anchor at this keyframe (0 = legacy)
+    kf_dense_init_s: float = 0.0          # keyframe every frame for this long after init (landmark maturity)
     kf_min_track_ratio: float = 0.6       # ...or earlier when tracks fall below this share
     lag_s: float = 4.0
     px_sigma: float = 1.5
@@ -116,6 +118,7 @@ class Tracker:
         self.px_at_kf = {}
         self.track_to_lm = {}              # front-end track id -> landmark id
         self.next_lm = 0
+        self.t_init = None
         self.initialized = False
 
     # ------------------------------------------------------------------ IMU
@@ -152,6 +155,8 @@ class Tracker:
         predicted = self.pim.predict(self.kf_navstate)
         n0 = sum(len(c) for c in feats.cams) if getattr(self.frontend, "per_cam", False) else len(feats.cams[0])
         is_kf = (self.frames_since_kf >= self.cfg.kf_every) or (n0 < self.cfg.kf_min_track_ratio * max(self.n_tracks_at_kf, 1))
+        if self.cfg.kf_dense_init_s > 0 and self.t_init is not None and (t - self.t_init) < self.cfg.kf_dense_init_s:
+            is_kf = True
         if not is_kf and self.frames_since_kf >= self.cfg.kf_min_every:
             rot = np.degrees(np.linalg.norm(self.pim.delta_rotvec()))
             par = self._parallax_since_kf(feats)
@@ -185,11 +190,12 @@ class Tracker:
 
     def _finish_init(self, t, imgs, ms, feats, T, vel, sigmas):
         import gtsam
+        self.t_init = t
         self.bias = gtsam.imuBias.ConstantBias(np.zeros(3), self.gyro_bias)
         if self.cfg.backend == "smart":
             self.backend = SmartBackend(self.rig, lag_s=self.cfg.lag_s, px_sigma=self.cfg.px_sigma, marg_mode=self.cfg.marg_mode, epi=self.cfg.smart_epi,
                                         max_window_kf=self.cfg.max_window_kf, max_obs_angle_deg=self.cfg.max_obs_angle_deg,
-                                        px_sigma_adapt=self.cfg.px_sigma_adapt, px_adapt_up=self.cfg.px_adapt_up, dyn_weight=self.cfg.dyn_weight, verbose=self.cfg.verbose)
+                                        px_sigma_adapt=self.cfg.px_sigma_adapt, px_adapt_up=self.cfg.px_adapt_up, dyn_weight=self.cfg.dyn_weight, anchor_delay_kf=self.cfg.anchor_delay_kf, verbose=self.cfg.verbose)
         else:
             self.backend = Backend(self.rig, lag_s=self.cfg.lag_s, px_sigma=self.cfg.px_sigma, verbose=self.cfg.verbose)
         self.k = 0

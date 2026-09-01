@@ -70,6 +70,8 @@ def main(argv=None) -> int:
     ap.add_argument("--px-adapt", action="store_true", help="smart backend: adapt px_sigma to residual statistics (experimental)")
     ap.add_argument("--dyn-weight", action="store_true", help="smart backend: per-landmark temporal-consistency down-weighting (dynamic scenes)")
     ap.add_argument("--px-adapt-up", action="store_true", help="smart backend: one-sided global sigma adaptation (only above the rig nominal; dynamic scenes)")
+    ap.add_argument("--anchor-delay", type=int, default=0, help="smart backend: soft gauge at init, hard re-anchor at this keyframe (early-window robustness; 0 = legacy)")
+    ap.add_argument("--kf-dense-init", type=float, default=0.0, help="keyframe every frame for this many seconds after init (early landmark maturity)")
     ap.add_argument("--depth-feedback", action="store_true", help="front-end: use estimator landmark depths as stereo guesses (experimental)")
     ap.add_argument("--max-window-kf", type=int, default=32, help="smart backend: keyframe-count cap of the window")
     ap.add_argument("--map-out", default=None, help="dense map output basename (.npz + .ply); landmark + depth fusion")
@@ -103,7 +105,7 @@ def main(argv=None) -> int:
     noise_scale = tuple(float(x) for x in args.imu_noise_scale.split(","))
     px_sigma = args.px_sigma if args.px_sigma is not None else float(getattr(rig, "px_sigma", 1.5) or 1.5)
     cfg = TrackerConfig(frontend=args.frontend, frontend_cfg={"max_features": args.max_features, "noise_gate": args.noise_gate, **{k: float(v) for k, v in (o.split("=", 1) for o in args.frontend_opt)}},
-                        init_acc_bias_sigma=args.init_acc_bias_sigma, init_tilt_sigma=args.init_tilt_sigma, init_mode=args.init_mode, init_window_s=args.init_window, max_obs_angle_deg=args.max_obs_angle, px_sigma_adapt=args.px_adapt, dyn_weight=args.dyn_weight, px_adapt_up=args.px_adapt_up, depth_feedback=args.depth_feedback, max_window_kf=args.max_window_kf,
+                        init_acc_bias_sigma=args.init_acc_bias_sigma, init_tilt_sigma=args.init_tilt_sigma, init_mode=args.init_mode, init_window_s=args.init_window, max_obs_angle_deg=args.max_obs_angle, px_sigma_adapt=args.px_adapt, dyn_weight=args.dyn_weight, px_adapt_up=args.px_adapt_up, anchor_delay_kf=args.anchor_delay, kf_dense_init_s=args.kf_dense_init, depth_feedback=args.depth_feedback, max_window_kf=args.max_window_kf,
                         preprocess=args.preprocess, masks=args.masks, circle_mask=not args.no_circle_mask,
                         kf_every=args.kf_every, kf_rot_deg=args.kf_rot_deg, kf_parallax_px=args.kf_parallax_px, lag_s=args.lag, px_sigma=px_sigma, backend=args.backend, marg_mode=args.marg, smart_epi=args.epi, imu_noise_scale=noise_scale, verbose=args.verbose)
     if args.max_landmarks_per_kf is not None:

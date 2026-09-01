@@ -34,7 +34,7 @@ class SmartBackend:
                  outlier_thr_sigma=0.0, max_landmark_dist=40.0, abs_err_tol=1e-2, marg_mode="all",
                  chi2_gate=5.0, min_obs_prior=4, epi=False, max_window_kf=32, max_obs_angle_deg=80.0,
                  px_sigma_adapt=True, px_adapt_up=False, dyn_weight=False, dyn_weight_lo=3.0, dyn_weight_max=3.0,
-                 dyn_weight_alpha=0.3, verbose=False):
+                 dyn_weight_alpha=0.3, anchor_delay_kf=0, verbose=False):
         import gtsam
         from gtsam.symbol_shorthand import B, V, X
         self.gtsam = gtsam
@@ -115,6 +115,16 @@ class SmartBackend:
         self.lm_w = {}                 # landmark id -> current noise inflation (>= 1)
         self.dyn_weight_min_n = 3      # solves of evidence before any inflation applies
         self.n_downweighted = 0
+        # Delayed gauge anchoring (early-window robustness): with anchor_delay_kf > 0
+        # the first pose gets a SOFT yaw/position prior at init (the early window may
+        # settle as a block instead of bending around unlucky early landmarks) and the
+        # hard gauge anchor is placed on the MATURE estimate at keyframe
+        # anchor_delay_kf. Must re-anchor before the first marginalisation
+        # (anchor_delay_kf << window keyframes).
+        self.anchor_delay_kf = int(anchor_delay_kf)
+        self.anchored = self.anchor_delay_kf <= 0
+        self._anchor_cp = None
+        self._soft_pose_prior = None
         self.n_outliers = 0; self.n_prior_absorbed = 0; self.n_prior_rejected = 0
         self.outlier_thr = float(outlier_thr_sigma) * sig if outlier_thr_sigma > 0 else 0.0
         self.params = p
@@ -153,12 +163,18 @@ class SmartBackend:
         # gauge anchor: the first pose's position and yaw are fixed hard (unobservable
         # otherwise they random-walk through the re-linearised marginal prior)
         cp = np.diag([sigmas[1], sigmas[1], yaw_sigma, sigmas[0], sigmas[0], sigmas[0]]) ** 2
+        if not self.anchored:
+            self._anchor_cp = cp                                  # the hard gauge, applied later
+            soft = max(0.05, sigmas[1])
+            cp = np.diag([sigmas[1], sigmas[1], soft, soft, soft, soft]) ** 2
         cv = np.eye(3) * sigmas[2] ** 2
         cb = np.diag([sigmas[3]] * 3 + [sigmas[4]] * 3) ** 2
         self.prior_factors = [g.PriorFactorPose3(self.X(k), pose, g.noiseModel.Gaussian.Covariance(cp)),
                               g.PriorFactorVector(self.V(k), np.asarray(vel, float), g.noiseModel.Gaussian.Covariance(cv)),
                               g.PriorFactorConstantBias(self.B(k), bias, g.noiseModel.Gaussian.Covariance(cb))]
         self.graph_keys = {k}
+        if not self.anchored:
+            self._soft_pose_prior = self.prior_factors[0]
         self.estimate.insert(self.X(k), pose); self.estimate.insert(self.V(k), np.asarray(vel, float)); self.estimate.insert(self.B(k), bias)
 
     def add_keyframe(self, k, t, pim, predicted, bias_prev_key):
@@ -334,6 +350,17 @@ class SmartBackend:
             for kk in window:
                 self.kf_state[kk] = (result.atPose3(self.X(kk)), np.asarray(result.atVector(self.V(kk))), result.atConstantBias(self.B(kk)))
             self.estimate = result
+            if not self.anchored and k >= self.anchor_delay_kf:
+                # re-anchor the gauge on the mature state; drop the soft init prior
+                pose_now = self.kf_state[k][0]
+                if self._soft_pose_prior is not None:
+                    self.prior_factors = [f for f in self.prior_factors if f is not self._soft_pose_prior]
+                    self._soft_pose_prior = None
+                self.prior_factors.append(g.PriorFactorPose3(self.X(k), pose_now,
+                                          g.noiseModel.Gaussian.Covariance(self._anchor_cp)))
+                self.anchored = True
+                if self.verbose:
+                    print(f"[smart] kf {k}: gauge re-anchored on the mature estimate")
             # landmark points for diagnostics / cheirality checks + outlier gate
             self.n_valid_lm = 0
             outliers = []
