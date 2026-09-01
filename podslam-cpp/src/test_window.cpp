@@ -111,14 +111,15 @@ struct Window {
     }
 
     void initialize(int k, double t, const gtsam::Pose3& pose, const gtsam::Vector3& vel,
-                    const gtsam::imuBias::ConstantBias& bias) {
+                    const gtsam::imuBias::ConstantBias& bias,
+                    double tilt_sigma = 0.01, double vel_sigma = 0.1) {
         kf_t[k] = t; kf_state[k] = {pose, vel, bias}; graph_keys.insert(k);
         gtsam::Vector6 sp_;                       // rot(tilt,tilt,yaw), trans(pos)
-        sp_ << 0.01, 0.01, 1e-3, 1e-3, 1e-3, 1e-3;
+        sp_ << tilt_sigma, tilt_sigma, 1e-3, 1e-3, 1e-3, 1e-3;
         prior_factors.push_back(std::make_shared<gtsam::PriorFactor<gtsam::Pose3>>(
             X(k), pose, gtsam::noiseModel::Diagonal::Sigmas(sp_)));
         prior_factors.push_back(std::make_shared<gtsam::PriorFactor<gtsam::Vector3>>(
-            V(k), vel, gtsam::noiseModel::Isotropic::Sigma(3, 0.1)));
+            V(k), vel, gtsam::noiseModel::Isotropic::Sigma(3, vel_sigma)));
         gtsam::Vector6 sb; sb << 0.1, 0.1, 0.1, 0.01, 0.01, 0.01;
         prior_factors.push_back(std::make_shared<gtsam::PriorFactor<gtsam::imuBias::ConstantBias>>(
             B(k), bias, gtsam::noiseModel::Diagonal::Sigmas(sb)));

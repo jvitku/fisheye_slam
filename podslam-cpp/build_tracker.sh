@@ -2,7 +2,7 @@
 # Compile + run the end-to-end C++ tracker (frontend + window) on the frame dump.
 set -euo pipefail
 cd "$(dirname "$0")/.."
-docker run --rm ${GUARD_DOCKER_ARGS:-} ${PODSLAM_CPU_QUOTA:+--cpus=$PODSLAM_CPU_QUOTA} -e OPENCV_CPU_DISABLE="${OPENCV_CPU_DISABLE:-}" -e PODSLAM_SKIP_BUILD="${PODSLAM_SKIP_BUILD:-}" -e PODSLAM_DW="${PODSLAM_DW:-}" -e PODSLAM_DENSE="${PODSLAM_DENSE:-}" -v "$PWD:/work" -v /tmp/claude-1001:/tmp/claude-1001 -w /work fisheye/gtsam-dev bash -c '
+docker run --rm ${GUARD_DOCKER_ARGS:-} ${PODSLAM_CPU_QUOTA:+--cpus=$PODSLAM_CPU_QUOTA} -e OPENCV_CPU_DISABLE="${OPENCV_CPU_DISABLE:-}" -e PODSLAM_SKIP_BUILD="${PODSLAM_SKIP_BUILD:-}" -e PODSLAM_DW="${PODSLAM_DW:-}" -e PODSLAM_DENSE="${PODSLAM_DENSE:-}" -e PODSLAM_INIT_MODE="${PODSLAM_INIT_MODE:-}" -v "$PWD:/work" -v /tmp/claude-1001:/tmp/claude-1001 -w /work fisheye/gtsam-dev bash -c '
   set -e
   [ -n "$PODSLAM_SKIP_BUILD" ] && [ -x podslam-cpp/build/test_tracker ] || \
   g++ -O2 -std=c++17 -Wall -Ipodslam-cpp/include \

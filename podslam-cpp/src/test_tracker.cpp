@@ -95,6 +95,22 @@ struct StaticInit {
         const bool still = wmax < gyro_thr && amax_std < accel_std_thr;
         const bool forced = (t.back() - t.front()) > max_wait_s;
         if (still || forced) {
+            finalize(i0);
+        }
+        return done;
+    }
+    void force() {   // legacy fallback for starving dynamic init
+        if (done || t.empty()) return;
+        size_t i0 = 0;
+        while (i0 < t.size() && t[i0] < t.back() - window_s) ++i0;
+        finalize(i0);
+    }
+    void finalize(size_t i0) {
+        const size_t n = t.size() - i0;
+        Vector3 mean = Vector3::Zero();
+        for (size_t i = i0; i < t.size(); ++i) mean += a[i];
+        mean /= double(n);
+        {
             Vector3 g_body = mean / std::max(mean.norm(), 1e-9);
             R_W_I = rotation_aligning(g_body, Vector3(0, 0, 1));
             Vector3 bg = Vector3::Zero();
@@ -102,7 +118,242 @@ struct StaticInit {
             gyro_bias = bg / double(n);
             done = true;
         }
-        return done;
+    }
+};
+
+// podslam/init_dynamic.py — moving-platform initialisation.
+// CrossCamMatcher: per-pair ROTATION warps (cam i rendered in cam j's geometry at
+// infinite depth) so LK only finds the small translation parallax; stereo_verify
+// turns matches into metric body-frame points.
+struct CrossCamMatcher {
+    double max_px = 3.0, fb_max = 1.5;
+    int min_cand = 8;
+    double cos_max = std::cos(80.0 * M_PI / 180.0), min_overlap = 0.03;
+    const std::vector<Kb4>* cams = nullptr;
+    const std::vector<Mat4>* Ts = nullptr;
+    std::map<std::pair<int,int>, std::pair<cv::Mat,cv::Mat>> maps;   // (i,j) -> map_x, map_y
+    std::set<std::pair<int,int>> no_overlap;
+    cv::TermCriteria crit{cv::TermCriteria::EPS + cv::TermCriteria::COUNT, 30, 0.01};
+
+    static void rot_v(const Mat4& T, const cv::Vec3d& v, cv::Vec3d& o, bool transpose) {
+        for (int r = 0; r < 3; ++r)
+            o[r] = transpose ? T.m[0][r]*v[0] + T.m[1][r]*v[1] + T.m[2][r]*v[2]
+                             : T.m[r][0]*v[0] + T.m[r][1]*v[1] + T.m[r][2]*v[2];
+    }
+    // direction cam_j coords -> cam_i coords: R_ci_cj = R_imu_ci^T * R_imu_cj
+    cv::Vec3d cj_to_ci(int i, int j, const cv::Vec3d& b) const {
+        cv::Vec3d imu, out;
+        rot_v((*Ts)[j], b, imu, false);
+        rot_v((*Ts)[i], imu, out, true);
+        return out;
+    }
+    const std::pair<cv::Mat,cv::Mat>* pair_map(int i, int j, int w, int h) {
+        auto key = std::make_pair(i, j);
+        if (no_overlap.count(key)) return nullptr;
+        auto it = maps.find(key);
+        if (it != maps.end()) return &it->second;
+        cv::Mat mx(h, w, CV_32F, cv::Scalar(-1)), my(h, w, CV_32F, cv::Scalar(-1));
+        long n_ok = 0;
+        for (int y = 0; y < h; ++y) {
+            float* rx = mx.ptr<float>(y);
+            float* ry = my.ptr<float>(y);
+            for (int x = 0; x < w; ++x) {
+                double bx, by, bz;
+                if (!(*cams)[j].unproject(x + 0.5, y + 0.5, bx, by, bz)) continue;
+                cv::Vec3d bi = cj_to_ci(i, j, {bx, by, bz});
+                if (bi[2] <= 0.05) continue;
+                double u, v;
+                if (!(*cams)[i].project(bi[0], bi[1], bi[2], u, v)) continue;
+                rx[x] = float(u); ry[x] = float(v); ++n_ok;
+            }
+        }
+        if (double(n_ok) / (double(w) * h) < min_overlap) { no_overlap.insert(key); return nullptr; }
+        return &(maps[key] = {mx, my});
+    }
+
+    // feats: per-cam (ids, px, bearings); imgs: per-cam gray. out: tid -> p_imu
+    void match(const std::vector<cv::Mat>& imgs,
+               const std::vector<CamOut>& feats,
+               const std::vector<std::vector<cv::Vec3d>>& bearings,
+               std::map<int64_t, cv::Vec3d>& pts) {
+        std::map<int64_t, double> best_err;
+        const int n = int(cams->size());
+        for (int i = 0; i < n; ++i) {
+            if (feats[i].ids.empty()) continue;
+            for (int j = 0; j < n; ++j) {
+                if (j == i) continue;
+                const int w = imgs[j].cols, h = imgs[j].rows;
+                auto* m = pair_map(i, j, w, h);
+                if (!m) continue;
+                std::vector<int> idx;
+                std::vector<cv::Point2f> guess;
+                for (size_t nfe = 0; nfe < feats[i].ids.size(); ++nfe) {
+                    const cv::Vec3d& bi = bearings[i][nfe];
+                    if (bi[2] <= cos_max) continue;
+                    cv::Vec3d bj;
+                    { cv::Vec3d imu; rot_v((*Ts)[i], bi, imu, false); rot_v((*Ts)[j], imu, bj, true); }
+                    if (bj[2] <= cos_max) continue;
+                    double u, v;
+                    if (!(*cams)[j].project(bj[0], bj[1], bj[2], u, v)) continue;
+                    const int xi = std::min(std::max(int(u), 0), w - 1), yi = std::min(std::max(int(v), 0), h - 1);
+                    if (m->first.at<float>(yi, xi) < 0) continue;
+                    idx.push_back(int(nfe));
+                    guess.emplace_back(float(u), float(v));
+                }
+                if (int(idx.size()) < min_cand) continue;
+                cv::Mat warp;
+                cv::remap(imgs[i], warp, m->first, m->second, cv::INTER_LINEAR,
+                          cv::BORDER_CONSTANT, cv::Scalar(0));
+                std::vector<cv::Point2f> nxt = guess, back = guess;
+                std::vector<uint8_t> st, st2;
+                cv::Mat err;
+                cv::calcOpticalFlowPyrLK(warp, imgs[j], guess, nxt, st, err, cv::Size(21, 21), 3,
+                                         crit, cv::OPTFLOW_USE_INITIAL_FLOW);
+                cv::calcOpticalFlowPyrLK(imgs[j], warp, nxt, back, st2, err, cv::Size(21, 21), 3,
+                                         crit, cv::OPTFLOW_USE_INITIAL_FLOW);
+                for (size_t q = 0; q < idx.size(); ++q) {
+                    if (!(st[q] && st2[q])) continue;
+                    if (cv::norm(back[q] - guess[q]) >= fb_max) continue;
+                    if (nxt[q].x < 0 || nxt[q].x >= w || nxt[q].y < 0 || nxt[q].y >= h) continue;
+                    double bx, by, bz;
+                    if (!(*cams)[j].unproject(nxt[q].x, nxt[q].y, bx, by, bz)) continue;
+                    const int fi = idx[q];
+                    const double b0[3] = {bearings[i][fi][0], bearings[i][fi][1], bearings[i][fi][2]};
+                    const double b1[3] = {bx, by, bz};
+                    const double p0[2] = {feats[i].px[fi].x, feats[i].px[fi].y};
+                    const double p1[2] = {nxt[q].x, nxt[q].y};
+                    double pt[3], dep = 0;
+                    if (!podslam::stereo_verify((*Ts)[i], (*Ts)[j], (*cams)[i], (*cams)[j],
+                                                b0, b1, p0, p1, pt, dep, max_px))
+                        continue;
+                    const int64_t tid = feats[i].ids[fi];
+                    const double e = double(err.at<float>(int(q)));
+                    auto be = best_err.find(tid);
+                    if (be == best_err.end() || e < be->second) {
+                        best_err[tid] = e;
+                        pts[tid] = {pt[0], pt[1], pt[2]};
+                    }
+                }
+            }
+        }
+    }
+};
+
+// DynamicInitializer (solver): gyro chain + robust translation chain + linear
+// LSQ for gravity (frame-0 coords) and per-frame velocities; |g| pinned, v re-solved.
+struct DynInit {
+    double window_s = 1.5, g_mag = 9.81;
+    int min_frames = 6, min_common = 8;
+    struct Frame { double t; std::map<int64_t, cv::Vec3d> pts; };
+    std::vector<Frame> frames;
+
+    void add(double t, std::map<int64_t, cv::Vec3d>& pts) {
+        if (!pts.empty()) frames.push_back({t, pts});
+    }
+    bool ready() const {
+        return int(frames.size()) >= min_frames &&
+               frames.back().t - frames.front().t >= window_s - 1e-9;
+    }
+
+    // returns true + outputs on success
+    bool solve(const ImuBuffer& imu, cv::Matx33d& R_W_I, Vector3& v_W, Vector3& p_W) {
+        if (!ready()) return false;
+        const int m = int(frames.size());
+        std::vector<cv::Matx33d> C(1, cv::Matx33d::eye());
+        std::vector<Vector3> dP, dV, o(1, Vector3::Zero());
+        std::vector<double> dts;
+        for (int k = 1; k < m; ++k) {
+            const double ta = frames[k-1].t, tb = frames[k].t;
+            std::vector<size_t> idx;
+            imu.between(ta, tb, idx);
+            if (idx.empty()) return false;
+            // gyro delta + bias-0 preintegration (frame k-1 coords)
+            cv::Matx33d R = cv::Matx33d::eye();
+            Vector3 dv = Vector3::Zero(), dp = Vector3::Zero();
+            double t_prev = ta;
+            size_t last = size_t(-1);
+            auto step = [&](const Vector3& a, const Vector3& w, double dt) {
+                Vector3 a0; for (int r = 0; r < 3; ++r) a0[r] = R(r,0)*a[0] + R(r,1)*a[1] + R(r,2)*a[2];
+                dp += dv * dt + 0.5 * a0 * dt * dt;
+                dv += a0 * dt;
+                R = R * exp_so3(w * dt);
+            };
+            for (size_t i : idx) {
+                const double dt = imu.t[i] - t_prev;
+                if (dt > 0) { step(imu.a[i], imu.w[i], dt); t_prev = imu.t[i]; last = i; }
+            }
+            if (tb > t_prev && last != size_t(-1)) step(imu.a[last], imu.w[last], tb - t_prev);
+            C.push_back(C[k-1] * R);
+            dP.push_back(dp); dV.push_back(dv); dts.push_back(tb - ta);
+            // translation chain: median + 3xMAD inlier re-mean of per-point votes
+            std::vector<Vector3> d;
+            for (const auto& [tid, pb] : frames[k].pts) {
+                auto it = frames[k-1].pts.find(tid);
+                if (it == frames[k-1].pts.end()) continue;
+                Vector3 va, vb;
+                for (int r = 0; r < 3; ++r) {
+                    va[r] = C[k-1](r,0)*it->second[0] + C[k-1](r,1)*it->second[1] + C[k-1](r,2)*it->second[2];
+                    vb[r] = C[k](r,0)*pb[0] + C[k](r,1)*pb[1] + C[k](r,2)*pb[2];
+                }
+                d.push_back(va - vb);
+            }
+            if (int(d.size()) < min_common) return false;
+            auto med = [&](int axis) {
+                std::vector<double> v; v.reserve(d.size());
+                for (auto& x : d) v.push_back(x[axis]);
+                std::nth_element(v.begin(), v.begin() + v.size()/2, v.end());
+                return v[v.size()/2];
+            };
+            const Vector3 mm(med(0), med(1), med(2));
+            std::vector<double> r; r.reserve(d.size());
+            for (auto& x : d) r.push_back((x - mm).norm());
+            std::vector<double> rs = r;
+            std::nth_element(rs.begin(), rs.begin() + rs.size()/2, rs.end());
+            const double thr = std::max(3.0 * rs[rs.size()/2], 0.05);
+            Vector3 t_ab = Vector3::Zero();
+            int n_in = 0;
+            for (size_t q = 0; q < d.size(); ++q)
+                if (r[q] <= thr) { t_ab += d[q]; ++n_in; }
+            if (n_in < min_common) return false;
+            o.push_back(o[k-1] + t_ab / double(n_in));
+        }
+        // LSQ: x = [v_0..v_{m-1}, g0]
+        const int nu = 3*m + 3, ne = 6*(m-1);
+        Eigen::MatrixXd A = Eigen::MatrixXd::Zero(ne, nu);
+        Eigen::VectorXd b = Eigen::VectorXd::Zero(ne);
+        for (int k = 0; k < m-1; ++k) {
+            const double dt = dts[k];
+            Vector3 cdp, cdv;
+            for (int r = 0; r < 3; ++r) {
+                cdp[r] = C[k](r,0)*dP[k][0] + C[k](r,1)*dP[k][1] + C[k](r,2)*dP[k][2];
+                cdv[r] = C[k](r,0)*dV[k][0] + C[k](r,1)*dV[k][1] + C[k](r,2)*dV[k][2];
+            }
+            for (int r = 0; r < 3; ++r) {
+                A(6*k+r, 3*k+r) = dt;
+                A(6*k+r, 3*m+r) = 0.5 * dt * dt;
+                b(6*k+r) = o[k+1][r] - o[k][r] - cdp[r];
+                A(6*k+3+r, 3*k+r) = -1.0;
+                A(6*k+3+r, 3*(k+1)+r) = 1.0;
+                A(6*k+3+r, 3*m+r) = -dt;
+                b(6*k+3+r) = cdv[r];
+            }
+        }
+        Eigen::VectorXd x = A.colPivHouseholderQr().solve(b);
+        Vector3 g0(x(3*m), x(3*m+1), x(3*m+2));
+        const double gn = g0.norm();
+        if (gn < 0.5*g_mag || gn > 1.5*g_mag) return false;
+        const Vector3 u = g0 / gn, g_fix = g_mag * u;
+        Eigen::MatrixXd Av = A.leftCols(3*m);
+        Eigen::VectorXd bv = b - A.rightCols(3) * Eigen::Vector3d(g_fix[0], g_fix[1], g_fix[2]);
+        Eigen::VectorXd v = Av.colPivHouseholderQr().solve(bv);
+        const cv::Matx33d R_W_B0 = rotation_aligning(-u, Vector3(0, 0, 1));
+        R_W_I = R_W_B0 * C[m-1];
+        Vector3 vm(v(3*(m-1)), v(3*(m-1)+1), v(3*(m-1)+2));
+        for (int r = 0; r < 3; ++r) {
+            v_W[r] = R_W_B0(r,0)*vm[0] + R_W_B0(r,1)*vm[1] + R_W_B0(r,2)*vm[2];
+            p_W[r] = R_W_B0(r,0)*o[m-1][0] + R_W_B0(r,1)*o[m-1][1] + R_W_B0(r,2)*o[m-1][2];
+        }
+        return true;
     }
 };
 
@@ -114,6 +365,14 @@ struct Tracker {
     double t_init = -1;
     int max_landmarks_per_kf = 120;
     bool setup_dw = false;
+    // init modes (tracker.py): static | auto (deferred warm-up; dynamic solve on moving starts)
+    std::string init_mode = "static";
+    double init_window_s = 1.5, init_max_s = 6.0;
+    int init_stride = 2, init_frame_i = -1;
+    double t_first_frame = -1;
+    double dyn_vel_sigma = 0.3, dyn_tilt_sigma = 0.03;
+    DynInit dyn;
+    CrossCamMatcher matcher;
 
     KltFrontend fe;
     MultiKltFrontend mfe;
@@ -249,9 +508,91 @@ struct Tracker {
     }
 
     // returns (ok, pose); keyframe flag via out param
+    void finish_init(double t, const cv::Matx33d& Rwi, const Vector3& p0, const Vector3& v0,
+                     double tilt_sigma, double vel_sigma,
+                     const std::vector<CamOut>* feats_in, const std::vector<cv::Mat>& imgs) {
+        bias = gtsam::imuBias::ConstantBias(Vector3::Zero(), gyro_bias);
+        gtsam::Matrix3 Rm;
+        for (int r = 0; r < 3; ++r) for (int c = 0; c < 3; ++c) Rm(r, c) = Rwi(r, c);
+        const gtsam::Pose3 T(gtsam::Rot3(Rm), gtsam::Point3(p0[0], p0[1], p0[2]));
+        k = 0;
+        win->initialize(0, t, T, v0, bias, tilt_sigma, vel_sigma);
+        kf_navstate = gtsam::NavState(T, v0);
+        pim = std::make_unique<gtsam::PreintegratedCombinedMeasurements>(pp, bias);
+        pim_t_last = t;
+        t_init = t;
+        int n_new = 0;
+        std::vector<CamOut> outs = feats_in ? *feats_in
+                                 : (per_cam ? mfe.process(imgs, nullptr, n_new)
+                                            : fe.process(imgs[0], imgs, nullptr, n_new));
+        std::vector<std::vector<cv::Vec3d>> bs(outs.size());
+        for (size_t c = 0; c < outs.size(); ++c) {
+            std::vector<bool> v;
+            bs[c] = fe.bearings(cam_of(c), outs[c].px, v);
+        }
+        add_landmarks(0, t, outs, bs, T);
+        win->optimize(0, t);
+        const auto& [ps, vs, bsv] = win->kf_state[0];
+        kf_navstate = gtsam::NavState(ps, vs);
+        t_prev_frame = t;
+        frames_since_kf = 0;
+        n_tracks_at_kf = 0;
+        for (size_t c = 0; c < outs.size(); ++c) n_tracks_at_kf += int(outs[c].ids.size());
+        if (!per_cam) n_tracks_at_kf = int(outs[0].ids.size());
+        initialized = true;
+    }
+
+    bool pre_init_auto(double t, const std::vector<cv::Mat>& imgs, gtsam::Pose3& pose_out, bool& is_kf_out) {
+        if (t_first_frame < 0) t_first_frame = t;
+        // deferred warm-up: give still-detection its window first
+        if (!init.done && (t - t_first_frame) < init.window_s + 0.15) return false;
+        if (init.done && t_prev_frame < 0) {   // still start: bit-identical to static mode
+            gyro_bias = init.gyro_bias;
+            finish_init(t, init.R_W_I, Vector3::Zero(), Vector3::Zero(), 0.01, 0.1, nullptr, imgs);
+            pose_out = std::get<0>(win->kf_state[0]); is_kf_out = true;
+            return true;
+        }
+        // moving start: warm the front-end, collect metric structure, solve
+        const cv::Matx33d dR = t_prev_frame < 0 ? cv::Matx33d::eye()
+                              : delta_rotation(imu, t_prev_frame, t, Vector3::Zero());
+        int n_new = 0;
+        auto outs = per_cam ? mfe.process(imgs, t_prev_frame < 0 ? nullptr : &dR, n_new)
+                            : fe.process(imgs[0], imgs, t_prev_frame < 0 ? nullptr : &dR, n_new);
+        t_prev_frame = t;
+        if (++init_frame_i % std::max(init_stride, 1) == 0) {
+            std::vector<std::vector<cv::Vec3d>> bs(outs.size());
+            for (size_t c = 0; c < outs.size(); ++c) {
+                std::vector<bool> v;
+                bs[c] = fe.bearings(cam_of(c), outs[c].px, v);
+            }
+            std::map<int64_t, cv::Vec3d> pts;
+            matcher.match(imgs, outs, bs, pts);
+            dyn.add(t, pts);
+        }
+        if (dyn.ready()) {
+            cv::Matx33d Rwi; Vector3 vW, pW;
+            if (dyn.solve(imu, Rwi, vW, pW)) {
+                gyro_bias = Vector3::Zero();
+                finish_init(t, Rwi, pW, vW, dyn_tilt_sigma, dyn_vel_sigma, &outs, imgs);
+                std::printf("dynamic init: %zu frames, |v| %.2f m/s\n", dyn.frames.size(), vW.norm());
+                pose_out = std::get<0>(win->kf_state[0]); is_kf_out = true;
+                return true;
+            }
+        }
+        if (t - t_first_frame > init_max_s) {   // starvation: legacy forced-static
+            init.force();
+            gyro_bias = init.gyro_bias;
+            finish_init(t, init.R_W_I, Vector3::Zero(), Vector3::Zero(), 0.01, 0.1, &outs, imgs);
+            pose_out = std::get<0>(win->kf_state[0]); is_kf_out = true;
+            return true;
+        }
+        return false;
+    }
+
     bool track(double t, const std::vector<cv::Mat>& imgs, gtsam::Pose3& pose_out, bool& is_kf_out) {
         is_kf_out = false;
         if (!initialized) {
+            if (init_mode == "auto") return pre_init_auto(t, imgs, pose_out, is_kf_out);
             if (!init.done) return false;
             // _initialize
             gyro_bias = init.gyro_bias;
@@ -367,10 +708,14 @@ int main(int argc, char** argv) {
                     tr.mfe.subs.size(), fovs.size());
     }
     if (kf_every_arg > 0) tr.kf_every = kf_every_arg;
+    if (const char* e = std::getenv("PODSLAM_INIT_MODE")) tr.init_mode = e;
+    if (tr.init_mode == "auto") tr.init.max_wait_s = 1e12;
     if (const char* e = std::getenv("PODSLAM_DW"))    tr.setup_dw = std::atoi(e) != 0;
     if (const char* e = std::getenv("PODSLAM_DENSE")) tr.kf_dense_init_s = std::atof(e);
     tr.setup();
     if (tr.setup_dw) { tr.win->dyn_weight = true; std::printf("dyn-weight ON\n"); }
+    tr.matcher.cams = &tr.fe.cams; tr.matcher.Ts = &tr.fe.T_imu_cam;
+    if (tr.init_mode == "auto") std::printf("init-mode auto\n");
     if (tr.kf_dense_init_s > 0) std::printf("kf-dense-init %.1f s\n", tr.kf_dense_init_s);
 
     // IMU rows (t_ns gx gy gz ax ay az) and frames.bin interleaved by time
