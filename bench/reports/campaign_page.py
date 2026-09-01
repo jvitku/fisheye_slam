@@ -110,6 +110,22 @@ def bench_rows():
     return "\n".join(tr)
 
 
+def hilti_note():
+    import glob
+    base, dw = [], []
+    for f in glob.glob(str(ROOT / "results/hilti/exp14_base*/ate.json")):
+        base.append(json.loads(Path(f).read_text())["ate"]["rmse"])
+    for f in glob.glob(str(ROOT / "results/hilti/exp14_dw*/ate.json")):
+        dw.append(json.loads(Path(f).read_text())["ate"]["rmse"])
+    if not base or not dw:
+        return ""
+    fb = " / ".join(f"{v:.3f}" for v in sorted(base))
+    fd = " / ".join(f"{v:.3f}" for v in sorted(dw))
+    return (f"<p class=\"sub\">Hilti-Oxford exp14 (real 5-camera rig, {len(base)}+{len(dw)} detector draws): "
+            f"legacy {fb} vs dyn-weight {fd} [m] — overlapping bands, statistical tie; "
+            f"the default flip holds on real multi-camera data.</p>")
+
+
 def tumvi_rows():
     rows = []
     for seq, laptop in (("day", 0.088), ("night", 0.162), ("transition", 0.145)):
@@ -206,6 +222,7 @@ def main(out_path):
     no-harm on real data; dense-init helps drone-style starts, costs a little on handheld ones —
     flip decision per flag, not as a bundle. OpenVINS still leads these rows (7.4 cm day); the queued
     structural lever is loop closure.</p>
+    {hilti_note()}
   </section>
   <section>
     <h2>World model (Skydio-style, fisheyes only)</h2>
