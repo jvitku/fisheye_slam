@@ -162,11 +162,20 @@ Done today (each a commit, all pushed):
    (C++ 1.96 vs Py 2.85 cm on the px4b window slice; 78 ms/frame for 6 cams single-core;
    build_deps.sh = pinned GTSAM 4.3a2 + OpenCV 5.0.0 recipe). px4c windows: takeoff
    3.16 cm; mid-flight static 0.094 vs auto 0.090 (auto never worse anywhere).
-   NEW BACKLOG (robustness): analytic indoor-day early-window fragility — ±2 features
-   swings ATE {0.221, 0.228, 0.733}, bad from the first 30 s; fix = delayed/quality-gated
-   gauge anchoring. Ops: background A/B tasks were externally killed 4x -> run long
-   sweeps in foreground chunks; kill only by full guard-id label, never bare
-   fisheye_guard; pkill -f self-match hit us again (use -x).
+   Early-window fragility RESOLVED (Sep 1): kf-dense-init 2.0 collapses catastrophic
+   draws; over 5 detector draws baseline {0.22,0.73,0.23,0.22,0.85} -> production
+   profile {0.19,0.11,0.17,0.20,0.19}. The auto x dyn-weight mover interaction was
+   found (indoor_dyn trio 0.888) and fixed (raw-error chi2 retirement + deferred
+   warm-up) -> 0.189; forest re-verified 0.299. Production profile:
+   --init-mode auto --kf-dense-init 2.0 --dyn-weight (defaults stay legacy until
+   TUM-VI/Hilti). Mapping v2 both halves: parallax/maturity gates + outlier feedback
+   (map rmse 4810->27 cm) and marginalisation-time depth fusion (OAK-D 4.1cm/93%).
+   C++ twin FULLY caught up (multiklt, masks, generalized loop, dyn-weight, raw gate,
+   dense-init, moving-platform init — px4cmid golden: C++ 0.051 vs Py 0.042 vs GT).
+   Ops: background tasks get externally killed -> detached docker run -d with inline
+   limits + label for renders, foreground chunks for tracks; kill only by full
+   guard-id label, never bare fisheye_guard; pkill -f self-match (use -x); OAK-D
+   110 s bag = 9 GB, delete after eval.
 4. **px4-sitl container** (docker/px4-sitl, PX4 v1.15.4 SIH prebuilt). Traps hit and
    fixed in the Dockerfile: shallow NuttX needs a local nuttx-* tag; pip needs pyyaml.
    bench/minisim/trim_traj.py replaces the lost ad-hoc window trimming.
