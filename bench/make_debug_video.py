@@ -44,6 +44,9 @@ def main(argv=None) -> int:
     ap.add_argument("--trail", type=int, default=8, help="track trail length [frames]")
     ap.add_argument("--fps", type=float, default=20.0)
     ap.add_argument("--max-frames", type=int, default=0)
+    ap.add_argument("--world", action="store_true", help="add live point-cloud + 15 cm occupancy (octomap) panels")
+    ap.add_argument("--densify-step", type=int, default=12)
+    ap.add_argument("--occ-voxel", type=float, default=0.15)
     a = ap.parse_args(argv)
 
     rig = load_rig(a.rig)
@@ -70,7 +73,17 @@ def main(argv=None) -> int:
 
     cw = int(rig.cameras[0].size[0] * a.scale)
     ch = int(rig.cameras[0].size[1] * a.scale)
-    W, H = cols * cw, rows * ch
+    PH = 430 if a.world else 0
+    W, H = cols * cw, rows * ch + PH
+    MH = rows * ch                       # mosaic height
+    densifier = occ = None
+    world_pts = {}                       # 5 cm dedup: voxel key -> (x,y,z)
+    world_ms = []
+    if a.world:
+        from podslam.densify import Densifier
+        from podslam.occupancy import OccupancyGrid
+        densifier = Densifier(rig, grid_step=a.densify_step)
+        occ = OccupancyGrid(voxel=a.occ_voxel)
     vw = cv2.VideoWriter(a.out, cv2.VideoWriter_fourcc(*"mp4v"), a.fps, (W, H))
     if not vw.isOpened():
         raise SystemExit("VideoWriter failed to open (mp4v)")
@@ -101,10 +114,14 @@ def main(argv=None) -> int:
         n_lm = est.n_landmarks
         dw = getattr(be, "n_downweighted", 0) if be is not None else 0
         lines.append(f"landmarks {n_lm}   downweighted {dw}   obs " + "/".join(str(x) for x in est.n_obs))
+        # translucent dark panel behind the HUD, then the green text on top
+        pw = max(cv2.getTextSize(ln, cv2.FONT_HERSHEY_SIMPLEX, 0.62, 1)[0][0] for ln in lines) + 20
+        ph = 26 * len(lines) + 12
+        roi = canvas[4:4 + ph, 4:4 + pw]
+        cv2.addWeighted(roi, 0.35, np.zeros_like(roi), 0.65, 0, dst=roi)
         y = 26
         for ln in lines:
-            cv2.putText(canvas, ln, (10, y), cv2.FONT_HERSHEY_SIMPLEX, 0.62, (0, 0, 0), 4, cv2.LINE_AA)
-            cv2.putText(canvas, ln, (10, y), cv2.FONT_HERSHEY_SIMPLEX, 0.62, (80, 255, 120), 1, cv2.LINE_AA)
+            cv2.putText(canvas, ln, (14, y), cv2.FONT_HERSHEY_SIMPLEX, 0.62, (80, 255, 120), 1, cv2.LINE_AA)
             y += 26
 
     def inset(canvas, cur):
@@ -133,6 +150,85 @@ def main(argv=None) -> int:
         if cur is not None:
             cv2.circle(canvas, to_px(cur[:2]), 4, (60, 60, 255), -1)
         cv2.putText(canvas, "top-down: est vs GT", (x0 + 6, y0 + 16), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (200, 200, 200), 1, cv2.LINE_AA)
+
+    def draw_world(canvas, t_s):
+        import time as _t
+        # shared orbit camera around the scene
+        shown = [q for c_, q in world_pts.values() if c_ >= 2]
+        allp = np.asarray(shown) if shown else np.zeros((0, 3))
+        if len(allp) > 20:                      # robust framing: ignore stray far points
+            lo = np.percentile(allp, 2, axis=0)
+            hi = np.percentile(allp, 98, axis=0)
+            ctr = (lo + hi) / 2
+            ext = float(np.clip((hi - lo).max(), 3.0, 12.0))
+        else:
+            ctr, ext = np.zeros(3), 4.0
+        az = 0.5 + t_s * 0.12
+        el = 0.62
+        ca, sa, ce, se = np.cos(az), np.sin(az), np.cos(el), np.sin(el)
+        R = np.array([[ca, sa, 0], [-sa * se, ca * se, ce], [-sa * ce, ca * ce, -se]])
+        camd = 1.7 * ext
+        f = PH * 0.95
+        def proj(pw):
+            q = R @ (np.asarray(pw) - ctr)
+            z = q[2] + camd
+            if z < 0.2:
+                return None
+            return int(f * q[0] / z), int(f * q[1] / z), z
+        panels = [(0, W // 2, "live points (2-hit filtered)"),
+                  (W // 2, W, f"occupancy {a.occ_voxel*100:.0f} cm")]
+        for x0, x1, label in panels:
+            cv2.rectangle(canvas, (x0, MH), (x1, H), (18, 14, 11), -1)
+            cv2.line(canvas, (x0, MH), (x0, H), (60, 60, 60), 1)
+        zlo = ctr[2] - ext / 2, 
+        def hcol(z):
+            t = min(max((z - (ctr[2] - ext / 3)) / max(ext * 0.66, 1e-3), 0), 1)
+            return (int(140 + 60 * (1 - t)), int(90 + 150 * t), int(40 + 40 * t))
+        # left: points (same >=2-hit voxel filter the product map applies)
+        cx0, cy0 = W // 4, MH + PH // 2
+        for pw in shown:
+            pr = proj(pw)
+            if pr is None: continue
+            x, y, _ = pr
+            xx, yy = cx0 + x, cy0 + y
+            if 0 <= xx < W // 2 - 1 and MH <= yy < H - 1:
+                canvas[yy, xx] = hcol(pw[2]); canvas[yy, xx + 1] = hcol(pw[2])
+        # right: occupied voxels as z-sorted squares
+        cx1 = 3 * W // 4
+        cents, _odds = occ.occupied()
+        if len(cents):
+            prs = []
+            for c in cents:
+                pr = proj(c)
+                if pr is None: continue
+                prs.append((pr[2], cx1 + pr[0], cy0 + pr[1], c[2]))
+            prs.sort(key=lambda r: -r[0])
+            for z, x, y, h in prs:
+                s_ = max(1, int(f * a.occ_voxel / z * 0.75))
+                if W // 2 <= x - s_ and x + s_ < W and MH <= y - s_ and y + s_ < H:
+                    col = hcol(h)
+                    cv2.rectangle(canvas, (x - s_, y - s_), (x + s_, y + s_), col, -1)
+                    cv2.rectangle(canvas, (x - s_, y - s_), (x + s_, y + s_), (25, 20, 16), 1)
+        # trajectory + drone marker on both panels
+        for cx in (cx0, cx1):
+            if len(est_path) > 1:
+                ep = est_path[::3]
+                last = None
+                for q in ep:
+                    pr = proj(q)
+                    if pr is None: continue
+                    pt = (cx + pr[0], cy0 + pr[1])
+                    if last is not None:
+                        cv2.line(canvas, last, pt, (80, 255, 120), 1, cv2.LINE_AA)
+                    last = pt
+                if last is not None:
+                    cv2.circle(canvas, last, 4, (60, 60, 255), -1)
+        for (x0, x1, label) in panels:
+            cv2.putText(canvas, label, (x0 + 10, MH + 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (200, 200, 200), 1, cv2.LINE_AA)
+        st = occ.stats()
+        ms = np.mean(world_ms[-20:]) if world_ms else 0
+        cv2.putText(canvas, f"pts {len(shown)}/{len(world_pts)}   vox occ {st['occupied']} free {st['free']}   {ms:.0f} ms/kf",
+                    (W // 2 + 10, H - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.48, (150, 160, 170), 1, cv2.LINE_AA)
 
     def render(t_ns, group):
         nonlocal n_frames, t0_ns
@@ -168,8 +264,36 @@ def main(argv=None) -> int:
         if est.T_W_I is not None:
             cur = est.T_W_I[:3, 3].copy()
             est_path.append(cur)
+        if a.world and est.ok and est.keyframe and est.T_W_I is not None and densifier is not None:
+            import time as _t
+            w0 = _t.perf_counter()
+            T = est.T_W_I
+            pim = densifier.points([tracker.condition(im) for im in imgs], tracker.static_masks)
+            pw = (T[:3, :3] @ pim.T).T + T[:3, 3] if len(pim) else np.zeros((0, 3))
+            be = tracker.backend
+            lm = []
+            if be is not None:
+                for v_ in be.lm_point.values():
+                    v_ = np.asarray(v_, float).reshape(-1)
+                    if v_.shape == (3,) and np.isfinite(v_).all():
+                        lm.append(v_)
+            lm = np.asarray(lm) if lm else np.zeros((0, 3))
+            allw = np.vstack([pw, lm]) if len(pw) or len(lm) else np.zeros((0, 3))
+            # occupancy gets only near-field points: range sigma grows ~z^2/baseline,
+            # beyond ~4 m one fisheye-pair range is no longer voxel-scale evidence
+            if len(allw):
+                rng = np.linalg.norm(allw - T[:3, 3], axis=1)
+                occ.integrate(T[:3, 3], allw[rng < 4.0])
+            for q in allw:
+                k = tuple(np.floor(q / 0.05).astype(int))
+                e = world_pts.get(k)
+                world_pts[k] = (e[0] + 1, q) if e else (1, q)
+            world_ms.append((_t.perf_counter() - w0) * 1e3)
+        if a.world:
+            draw_world(canvas, (t_ns - t0_ns) * 1e-9)
         hud(canvas, (t_ns - t0_ns) * 1e-9, est)
-        inset(canvas, cur)
+        if not a.world:
+            inset(canvas, cur)
         vw.write(canvas)
         n_frames += 1
 
@@ -196,7 +320,10 @@ def main(argv=None) -> int:
                 break
         flush(None)
     vw.release()
-    print(f"{a.out}: {n_frames} frames, {Path(a.out).stat().st_size / 1e6:.1f} MB")
+    extra = ""
+    if world_ms:
+        extra = f" | world-model avg {np.mean(world_ms):.0f} ms/kf ({len(world_ms)} keyframes), occ {occ.stats()}"
+    print(f"{a.out}: {n_frames} frames, {Path(a.out).stat().st_size / 1e6:.1f} MB{extra}")
     return 0
 
 
