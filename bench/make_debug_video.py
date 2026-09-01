@@ -87,7 +87,7 @@ def main(argv=None) -> int:
     if a.world:
         from podslam.densify import Densifier
         from podslam.occupancy import OccupancyGrid
-        densifier = Densifier(rig, grid_step=a.densify_step)
+        densifier = Densifier(rig, grid_step=a.densify_step, max_sigma=0.10, temporal=True)
         occ = OccupancyGrid(voxel=a.occ_voxel)
     vw = cv2.VideoWriter(a.out, cv2.VideoWriter_fourcc(*"mp4v"), a.fps, (W, H))
     if not vw.isOpened():
@@ -274,8 +274,7 @@ def main(argv=None) -> int:
             import time as _t
             w0 = _t.perf_counter()
             T = est.T_W_I
-            pim = densifier.points([tracker.condition(im) for im in imgs], tracker.static_masks)
-            pw = (T[:3, :3] @ pim.T).T + T[:3, 3] if len(pim) else np.zeros((0, 3))
+            pw = densifier.world_points(T, [tracker.condition(im) for im in imgs], tracker.static_masks)
             be = tracker.backend
             lm = []
             if be is not None:
