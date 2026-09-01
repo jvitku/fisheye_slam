@@ -133,6 +133,12 @@ struct CrossCamMatcher {
     const std::vector<Mat4>* Ts = nullptr;
     std::map<std::pair<int,int>, std::pair<cv::Mat,cv::Mat>> maps;   // (i,j) -> map_x, map_y
     std::set<std::pair<int,int>> no_overlap;
+    // pair pruning: a 200-deg rig has nominal overlap in all 30 ordered pairs, but
+    // most carry a sliver. Keep the best max_pairs targets per source camera
+    // (ranked by warp coverage) — the rest cost a remap+LK for a handful of points.
+    int max_pairs = 3;
+    std::map<int, std::vector<int>> pair_rank;
+    std::map<std::pair<int,int>, double> coverage;
     cv::TermCriteria crit{cv::TermCriteria::EPS + cv::TermCriteria::COUNT, 30, 0.01};
 
     static void rot_v(const Mat4& T, const cv::Vec3d& v, cv::Vec3d& o, bool transpose) {
@@ -167,7 +173,8 @@ struct CrossCamMatcher {
                 rx[x] = float(u); ry[x] = float(v); ++n_ok;
             }
         }
-        if (double(n_ok) / (double(w) * h) < min_overlap) { no_overlap.insert(key); return nullptr; }
+        coverage[key] = double(n_ok) / (double(w) * h);
+        if (coverage[key] < min_overlap) { no_overlap.insert(key); return nullptr; }
         return &(maps[key] = {mx, my});
     }
 
@@ -180,8 +187,21 @@ struct CrossCamMatcher {
         const int n = int(cams->size());
         for (int i = 0; i < n; ++i) {
             if (feats[i].ids.empty()) continue;
-            for (int j = 0; j < n; ++j) {
-                if (j == i) continue;
+            // build (once) the ranked target list for this source camera
+            if (!pair_rank.count(i)) {
+                std::vector<std::pair<double,int>> sc;
+                for (int j = 0; j < n; ++j) {
+                    if (j == i) continue;
+                    pair_map(i, j, imgs[j].cols, imgs[j].rows);
+                    sc.emplace_back(-coverage[{i, j}], j);
+                }
+                std::sort(sc.begin(), sc.end());
+                std::vector<int> keep;
+                for (size_t q = 0; q < sc.size() && int(keep.size()) < max_pairs; ++q)
+                    if (-sc[q].first >= min_overlap) keep.push_back(sc[q].second);
+                pair_rank[i] = keep;
+            }
+            for (int j : pair_rank[i]) {
                 const int w = imgs[j].cols, h = imgs[j].rows;
                 auto* m = pair_map(i, j, w, h);
                 if (!m) continue;
@@ -807,7 +827,12 @@ struct Tracker {
 
 #ifndef PODSLAM_TRACKER_NO_MAIN
 int main(int argc, char** argv) {
-    cv::setNumThreads(1);
+    // parity runs stay single-threaded; the world-model timing run uses the
+    // thread budget a Jetson would actually give OpenCV (PODSLAM_CV_THREADS)
+    {
+        const char* t_ = std::getenv("PODSLAM_CV_THREADS");
+        cv::setNumThreads(t_ ? std::max(1, std::atoi(t_)) : 1);
+    }
     const char* dir = argc > 1 ? argv[1] : "/tmp/frontend_golden";
     const char* rig = argc > 2 ? argv[2] : "podslam-cpp/tests/data/backend_golden.txt";
     const int kf_every_arg = argc > 3 ? std::atoi(argv[3]) : 0;
